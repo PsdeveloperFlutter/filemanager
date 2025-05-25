@@ -1,12 +1,11 @@
 import 'dart:io';
-
+import 'package:intl/intl.dart';
 import 'package:filemanager/passwordProtection.dart';
 import 'package:filemanager/sqfliteDatabase.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
 import 'fileBrowserController.dart';
-
+import 'package:path/path.dart' as p;
 class FileBrowserScreen extends StatefulWidget {
   FileBrowserScreen({super.key});
 
@@ -22,166 +21,96 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
         child: Scaffold(
-          floatingActionButton: Obx(() {
-            if (!fileController.isSelectionMode.value ||
-                fileController.selectedItems.isEmpty) {
-              return const SizedBox();
-            }
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildActionButton(
-                    icon: Icons.copy,
-                    label: "Copy",
-                    heroTag: "copy",
-                    onPressed: () {
-                      fileController.initiateMoveOrCopyMultiple(
-                          fileController.selectedItems, "copy");
-                    },
-                  ),
-                  _buildActionButton(
-                    icon: Icons.drive_file_move,
-                    label: "Move",
-                    heroTag: "move",
-                    onPressed: () {
-                      fileController.initiateMoveOrCopyMultiple(
-                          fileController.selectedItems, "move");
-                    },
-                  ),
-                  _buildActionButton(
-                    icon: Icons.delete,
-                    label: "Delete",
-                    heroTag: "delete",
-                    onPressed: () async {
-                      final confirm = await Get.dialog(AlertDialog(
-                        title: const Text("Delete Selected?"),
-                        content: const Text(
-                            "This will permanently delete selected files/folders."),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Get.back(result: false),
-                            child: const Text("Cancel"),
-                          ),
-                          ElevatedButton(
-                            onPressed: () => Get.back(result: true),
-                            child: const Text("Delete"),
-                          ),
-                        ],
-                      ));
-
-                      if (confirm == true) {
-                        for (final file in fileController.selectedItems) {
-                          try {
-                            if (file.existsSync()) {
-                              file.deleteSync(recursive: true);
-                            }
-                          } catch (e) {
-                            Get.snackbar(
-                                "Error", "Failed to delete ${file.path}");
-                          }
-                        }
-                        fileController.clearAllItems();
-                        fileController
-                            .listFiles(fileController.currentDirectory.value);
-                        Get.snackbar("Success", "Selected items deleted.");
-                      }
-                    },
-                  ),
-                ],
-              ),
-            );
-          }),
-          appBar: AppBar(
-            leading: Obx(() => Visibility(
-                  visible: fileController.canGoBack.value,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () {
-                      fileController.goBackDirectory();
-                    },
-                  ),
-                )),
-            title: const Text("File Manager"),
-            actions: [
-              Obx(
-                () => mainFeatures(
-                    context, fileController.currentDirectory.value),
-              )
-            ],
-          ),
-          body: Obx(() {
-            final files = fileController.filteredFiles;
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: TextField(
-                    controller: searchController,
-                    onChanged: (value) {
-                      // Implement search functionality here
-                      fileController.updateSearch(value);
-                    },
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.all(8),
-                      hintText: 'Search',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          searchController.clear();
-                          fileController.updateSearch('');
-                        },
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(),
-                      ),
+            floatingActionButton: Obx(() {
+              if (!fileController.isSelectionMode.value ||
+                  fileController.selectedItems.isEmpty) {
+                return const SizedBox();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildActionButton(
+                      icon: Icons.copy,
+                      label: "Copy",
+                      heroTag: "copy",
+                      onPressed: () {
+                        fileController.initiateMoveOrCopyMultiple(
+                            fileController.selectedItems, "copy");
+                      },
                     ),
-                  ),
+                    _buildActionButton(
+                      icon: Icons.drive_file_move,
+                      label: "Move",
+                      heroTag: "move",
+                      onPressed: () {
+                        fileController.initiateMoveOrCopyMultiple(
+                            fileController.selectedItems, "move");
+                      },
+                    ),
+                    _buildActionButton(
+                      icon: Icons.delete,
+                      label: "Delete",
+                      heroTag: "delete",
+                      onPressed: () async {
+                        final confirm = await Get.dialog(AlertDialog(
+                          title: const Text("Delete Selected?"),
+                          content: const Text(
+                              "This will permanently delete selected files/folders."),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Get.back(result: false),
+                              child: const Text("Cancel"),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => Get.back(result: true),
+                              child: const Text("Delete"),
+                            ),
+                          ],
+                        ));
+
+                        if (confirm == true) {
+                          for (final file in fileController.selectedItems) {
+                            try {
+                              if (file.existsSync()) {
+                                file.deleteSync(recursive: true);
+                              }
+                            } catch (e) {
+                              Get.snackbar(
+                                  "Error", "Failed to delete ${file.path}");
+                            }
+                          }
+                          fileController.clearAllItems();
+                          fileController
+                              .listFiles(fileController.currentDirectory.value);
+                          Get.snackbar("Success", "Selected items deleted.");
+                        }
+                      },
+                    ),
+                  ],
                 ),
-                Container(
-                  height: 50,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Obx(() => buildBreadcrumbBar(fileController)),
-                ),
-                const Divider(),
-                Obx(() {
-                  if (fileController.refreshValue.value) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  return Expanded(
-                    child: fileController.refreshValue.value
-                        ? const Center(child: CircularProgressIndicator())
-                        : files.isEmpty
-                            ? const Center(child: Text("No files found"))
-                            : fileController.isGridView.value
-                                ? GridView.builder(
-                                    gridDelegate:
-                                        const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 2,
-                                      childAspectRatio: 0.8,
-                                    ),
-                                    itemCount: files.length,
-                                    itemBuilder: (context, index) {
-                                      return buildFileCardGrid(files[index],
-                                          context, searchController.text);
-                                    },
-                                  )
-                                : ListView.builder(
-                                    itemCount: files.length,
-                                    itemBuilder: (context, index) {
-                                      return buildFileCard(files[index],
-                                          context, searchController.text);
-                                    },
-                                  ),
-                  );
-                })
+              );
+            }),
+            appBar: AppBar(
+              leading: Obx(() => Visibility(
+                    visible: fileController.canGoBack.value,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () {
+                        fileController.goBackDirectory();
+                      },
+                    ),
+                  )),
+              title: const Text("File Manager"),
+              actions: [
+                Obx(
+                  () => mainFeatures(
+                      context, fileController.currentDirectory.value),
+                )
               ],
-            );
-          }),
-        ),
+            ),
+            body: mainScreen(fileController, searchController, context)),
         onWillPop: () async {
           if (fileController.canGoBack.value) {
             fileController.goBackDirectory();
@@ -189,6 +118,81 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
           }
           return true;
         });
+  }
+
+  //this is the Main Screen  of the App
+  Widget mainScreen(FileBrowserController fileController,
+      TextEditingController searchController, BuildContext context) {
+    return Obx(() {
+      final files = fileController.filteredFiles;
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: searchController,
+              onChanged: (value) {
+                // Implement search functionality here
+                fileController.updateSearch(value);
+              },
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.all(8),
+                hintText: 'Search',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    searchController.clear();
+                    fileController.updateSearch('');
+                  },
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(),
+                ),
+              ),
+            ),
+          ),
+          Container(
+            height: 50,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Obx(() => buildBreadcrumbBar(fileController)),
+          ),
+          const Divider(),
+          Obx(() {
+            if (fileController.refreshValue.value) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            return Expanded(
+              child: fileController.refreshValue.value
+                  ? const Center(child: CircularProgressIndicator())
+                  : files.isEmpty
+                      ? const Center(child: Text("No files found"))
+                      : fileController.isGridView.value
+                          ? GridView.builder(
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                childAspectRatio: 0.8,
+                              ),
+                              itemCount: files.length,
+                              itemBuilder: (context, index) {
+                                return buildFileCardGrid(files[index], context,
+                                    searchController.text);
+                              },
+                            )
+                          : ListView.builder(
+                              itemCount: files.length,
+                              itemBuilder: (context, index) {
+                                return buildFileCard(files[index], context,
+                                    searchController.text);
+                              },
+                            ),
+            );
+          })
+        ],
+      );
+    });
   }
 
 // This is for the Grid View
@@ -247,7 +251,7 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text.rich(highlightMatch(
-                          fileController.getFileName(entity), query)),
+                         p.basename(entity.path), query)),
                       IconButton(
                           onPressed: () {
                             dbHelper.addFavorite(entity.path);
@@ -260,9 +264,10 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text("Type: ${fileController.getFileType(entity)}"),
+                Text("Type: ${entity is Directory ? "Folder" : "File"}"),
                 Text("Size: ${fileController.getFileSize(entity)}"),
-                Text("Modified: ${fileController.getModifiedDate(entity)}"),
+                Text(
+                    "Modified: ${DateFormat('dd-MM-yyyy HH:mm a').format(entity.statSync().modified)}"),
               ],
             ),
           ),
@@ -290,7 +295,7 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
             child: Row(
               children: [
                 Text.rich(
-                  highlightMatch(fileController.getFileName(entity), query),
+                  highlightMatch(p.basename(entity.path), query),
                   style: const TextStyle(fontSize: 16),
                 ),
                 IconButton(
@@ -305,7 +310,7 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
             ),
           ),
           subtitle: Text(
-              '	Type:${fileController.getFileType(entity)} ${fileController.getFileSize(entity)} • ${fileController.getModifiedDate(entity)}'),
+              '	Type:${entity is Directory ? "Folder" : "File"})} ${fileController.getFileSize(entity)} • ${DateFormat('dd-MM-yyyy HH:mm a').format(entity.statSync().modified)}}'),
           onTap: () async {
             bool allowed = await ProtectionManager.validatePasswordIfProtected(
                 context, entity.path);
@@ -333,9 +338,8 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                 fileController.toggleSelectionMode();
                 fileController.selectAllItems();
               }
-              if (value == "layout") {
-                fileController.isGridView.value =
-                    !fileController.isGridView.value;
+              if (value == "layout") {;
+                fileController.toggleView(); //This is for toggling of layout of the file manager
               }
               if (value == "Sort by") {
                 showSortOptions(context, 'Name A → Z');
@@ -344,7 +348,7 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                 fileController.showCreateFolderDialog(context);
               }
               if (value == "theme") {
-                fileController.toggleTheme();
+                fileController.toggleTheme(); //This is for toggling of theme of the file manager
               }
               if (value == "Favorite") {
                 Navigator.push(context,
@@ -456,6 +460,7 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
   }
 }
 
+//This is for the Showing sort Options for the file manager
 void showSortOptions(BuildContext context, String selectedOption) {
   final fileController = Get.find<FileBrowserController>();
   showModalBottomSheet(
@@ -532,6 +537,7 @@ void showSortOptions(BuildContext context, String selectedOption) {
   );
 }
 
+//This is the Widget of the sortRadioOption
 Widget sortRadioOption(
   String option,
   String selectedOption,
@@ -549,12 +555,10 @@ Widget sortRadioOption(
   );
 }
 
-//This is the Widget of the buildBreadCrumber
-// Use only one controller reference (not two)
+//This is the Widget of the buildBreadCrumbed
 Widget buildBreadcrumbBar(FileBrowserController controller) {
   final segments =
       controller.getPathSegments(controller.currentDirectory.value.path);
-
   return SingleChildScrollView(
     scrollDirection: Axis.horizontal, // Set horizontal scroll
     child: Row(

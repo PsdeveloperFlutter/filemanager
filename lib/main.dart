@@ -7,10 +7,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Await the permission request properly
   await requestPermission();
-
-  // Register the controller after permission and bindings are handled
-  Get.put(FileBrowserController()).loadThemeFromPrefs();
-  Get.put(FileBrowserController()).loadLayoutFromPrefs();
+  final controller = Get.put(FileBrowserController());
+  controller.loadThemeFromPrefs();
+  controller.loadLayoutFromPrefs();
   runApp(MyApp());
 }
 Future<void> requestPermission() async {

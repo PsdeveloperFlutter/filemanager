@@ -1,9 +1,9 @@
 import 'dart:io';
+
 import 'package:archive/archive.dart';
-import 'package:filemanager/passwordProtection.dart';
+import 'package:filemanager/selectDestionation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -13,26 +13,30 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class FileBrowserController extends GetxController {
   // Holds copied item (file or folder)
-  RxBool refreshValue = false.obs;
-  FileSystemEntity? copiedEntity;
-  RxBool isDarkTheme = false.obs;
-  static const _themekey = 'isDarkTheme';
-  ThemeMode get themeMode =>
-      isDarkTheme.value ? ThemeMode.dark : ThemeMode.light;
+  RxBool refreshValue = false.obs; //This is for the Refreshing purpose
+  FileSystemEntity? copiedEntity; //
+  RxBool isDarkTheme = false.obs; // This is for the Dark Theme
+  static const _themekey = 'isDarkTheme'; // Key for SharedPreferences
 
+  ThemeMode get themeMode => isDarkTheme.value
+      ? ThemeMode.dark
+      : ThemeMode.light; //This is for the getting Theme data
   void toggleTheme() {
+    //This is for the changing the theme of app
     isDarkTheme.value = !isDarkTheme.value;
     Get.changeThemeMode(themeMode);
-    _saveThemeToPrefs(isDarkTheme.value);
+    _saveThemeToPrefs(isDarkTheme.value); // Save the theme preference
   }
 
   Future<void> loadThemeFromPrefs() async {
+    //This is for the loading the theme from SharedPreferences
     SharedPreferences prefs = await SharedPreferences.getInstance();
     isDarkTheme.value = prefs.getBool(_themekey) ?? false;
     Get.changeThemeMode(isDarkTheme.value ? ThemeMode.dark : ThemeMode.light);
   }
 
   Future<void> _saveThemeToPrefs(bool isDark) async {
+    //This is for the saving the theme to SharedPreferences
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_themekey, isDark);
   }
@@ -48,18 +52,20 @@ class FileBrowserController extends GetxController {
   }
 
   //This is for the file and folder list
-  Rx<Directory> currentDirectory = Directory('/storage/emulated/0').obs;
-  var isGridView = false.obs;
-  final fileName = <FileSystemEntity>[].obs;
-  final searchQuery = ''.obs;
-  final List<Directory> _navigationStack = [];
-  final canGoBack = false.obs;
-
+  Rx<Directory> currentDirectory =
+      Directory('/storage/emulated/0').obs; // Default to internal storage
+  var isGridView = false.obs; // Default to list view
+  final fileName =
+      <FileSystemEntity>[].obs; // This is for the file and folder list
+  final searchQuery = ''.obs; // This is for the search query
+  final List<Directory> _navigationStack =
+      []; // This is for the navigation stack
+  final canGoBack = false.obs; // This is for the go back functionality
+  // This is for the filtered files based on search query
   List<FileSystemEntity> get filteredFiles => fileName
-      .where((file) =>
-          getFileName(file).toLowerCase().contains(searchQuery.toLowerCase()))
+      .where(
+          (file) => p.basename(file.path).contains(searchQuery.toLowerCase()))
       .toList();
-
   //this function is for the goback functionality
   void goBackDirectory() {
     if (_navigationStack.isNotEmpty) {
@@ -79,7 +85,7 @@ class FileBrowserController extends GetxController {
     super.onInit();
     _initStorage();
   }
-
+  // This is for the initialization of the storage and listing files
   Future<void> _initStorage() async {
     if (await Permission.storage.request().isGranted) {
       listFiles(currentDirectory.value);
@@ -99,10 +105,9 @@ class FileBrowserController extends GetxController {
         "path": currentPath,
       });
     }
-
     return segments;
   }
-
+// This is for the listing the files in the current directory
   void listFiles(Directory dir) {
     try {
       final files = dir.listSync();
@@ -129,20 +134,8 @@ class FileBrowserController extends GetxController {
     return "-";
   }
 
-  //for getting the modified date
-  String getModifiedDate(FileSystemEntity entity) {
-    final date = entity.statSync().modified;
-    return DateFormat('dd-MM-yyyy HH:mm a').format(date);
-  }
-
-  //for getting the file type
-  String getFileType(FileSystemEntity entity) {
-    return entity is Directory ? "Folder" : "File";
-  }
-
 //for opening the directory
   void openDirectory(FileSystemEntity entity, BuildContext context) {
-
     if (entity is Directory) {
       _navigationStack
           .add(currentDirectory.value); // Push current before navigating
@@ -151,26 +144,17 @@ class FileBrowserController extends GetxController {
     }
   }
 
-  //for getting the file name
-  String getFileName(FileSystemEntity entity) {
-    return p.basename(entity.path);
-  }
-
   //this is for the Rename Functionality
   Future<void> renameFileOrFolder(
       BuildContext context, FileSystemEntity entity) async {
     final oldPath = entity.path;
     final isDirectory = entity is Directory;
     final oldName = oldPath.split(Platform.pathSeparator).last;
-
     // Protect against renaming system folders
     if (oldPath.contains('/ColorOS') ||
         oldPath.contains('/Android') ||
         oldPath == '/storage/emulated/0') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Cannot rename system or restricted folders.')),
-      );
+      feedBack(context, 'Cannot rename system or restricted folders.');
       return;
     }
     final TextEditingController controller =
@@ -212,15 +196,10 @@ class FileBrowserController extends GetxController {
       } else {
         await (entity as File).rename(newPath);
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Renamed to $newName')),
-      ); // Refresh the file list after rename
+      feedBack(context, 'Renamed to $newName');
       refreshFiles();
     } catch (e) {
-      print('Rename failed: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Rename failed: ${e.toString()}')),
-      );
+      feedBack(context, 'Rename failed: ${e.toString()}');
     }
   }
 
@@ -230,10 +209,7 @@ class FileBrowserController extends GetxController {
       if (entity.path.contains("/Android") ||
           entity.path.contains("/ColorOS") ||
           entity.path == "/storage/emulated/0") {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Cannot delete system or restricted folders.')),
-        );
+        feedBack(context, 'Cannot delete system or restricted folders.');
         return;
       }
       bool isDirectory = entity is Directory;
@@ -243,11 +219,11 @@ class FileBrowserController extends GetxController {
         await (entity as File).delete();
       }
       // Show success message
-      Get.snackbar("Deleted", "Item deleted successfully.");
+      feedBack(context, "Item deleted successfully.");
       // Refresh file list
       refreshFiles();
     } catch (e) {
-      Get.snackbar("Error", "Failed to delete: $e");
+      feedBack(context, "Failed to delete: $e");
     }
   }
 
@@ -277,11 +253,7 @@ class FileBrowserController extends GetxController {
       await Share.shareXFiles([XFile(zipFile.path)],
           text: 'Here is your zipped file');
     } catch (e) {
-      print(e.toString());
-      print("Zip and Share failed: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
+      feedBack(context, 'Error: ${e.toString()}');
     }
   }
 
@@ -310,23 +282,15 @@ class FileBrowserController extends GetxController {
       if (entity is File) {
         final result = await OpenFilex.open(entity.path);
         if (result.type == ResultType.noAppToOpen) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('No app found to open this file')),
-          );
+          feedBack(context, 'No app found to open this file');
         } else if (result.type == ResultType.error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to open file: ${result.message}')),
-          );
+          feedBack(context, 'Failed to open file: ${result.message}');
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cannot open a folder')),
-        );
+        feedBack(context, 'Cannot open a folder');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error opening file: $e')),
-      );
+      feedBack(context, 'Error opening file: $e');
     }
   }
 
@@ -336,13 +300,15 @@ class FileBrowserController extends GetxController {
     files.sort((a, b) {
       switch (option) {
         case 'Name A → Z':
-          return getFileName(a)
+          return p
+              .basename(a.path)
               .toLowerCase()
-              .compareTo(getFileName(b).toLowerCase());
+              .compareTo(p.basename(b.path).toLowerCase());
         case 'Name Z → A':
-          return getFileName(b)
+          return p
+              .basename(b.path)
               .toLowerCase()
-              .compareTo(getFileName(a).toLowerCase());
+              .compareTo(p.basename(a.path).toLowerCase());
         case 'Largest first':
           return _getSize(b).compareTo(_getSize(a));
         case 'Smallest first':
@@ -404,7 +370,7 @@ class FileBrowserController extends GetxController {
       builder: (_) => AlertDialog(
         title: const Text("Delete"),
         content:
-            Text("Are you sure you want to delete ${getFileName(entity)}?"),
+            Text("Are you sure you want to delete ${p.basename(entity.path)}?"),
         actions: [
           TextButton(
             onPressed: () {
@@ -468,19 +434,21 @@ class FileBrowserController extends GetxController {
     clearSelection(); // clear previous selection
     initiateMoveOrCopyMultiple([entity], mode); // treat as multi with 1 item
   }
-  void initiateMoveOrCopyMultiple(List<FileSystemEntity> entities, String mode) {
+
+  void initiateMoveOrCopyMultiple(
+      List<FileSystemEntity> entities, String mode) {
     clearSelection();
     if (mode == "copy") {
-      itemsToCopy.assignAll(entities);  // ✅ this too
+      itemsToCopy.assignAll(entities); // ✅ this too
     } else if (mode == "move") {
-      itemsToMove.assignAll(entities);  // ✅ this too
+      itemsToMove.assignAll(entities); // ✅ this too
     }
-
     Get.bottomSheet(
       backgroundColor: Colors.white,
       SelectDestinationSheet(mode: mode),
     );
   }
+
   /// ✅ Clear old selections
   void clearSelection() {
     itemsToCopy.clear();
@@ -541,7 +509,6 @@ class FileBrowserController extends GetxController {
         ],
       ),
     );
-
     if (result != null && result.trim().isNotEmpty) {
       final newPath = "${selectedDestination.value?.path}/$result";
       final newDir = Directory(newPath);
@@ -572,6 +539,7 @@ class FileBrowserController extends GetxController {
     }
     itemsToMove.clear();
   }
+
   void executeCopy() async {
     final destination = selectedDestination.value;
     if (destination == null || itemsToCopy.isEmpty) {
@@ -589,8 +557,6 @@ class FileBrowserController extends GetxController {
     itemsToCopy.clear();
   }
 
-
-
   /// 🔁 Shared file operation handler
   Future<void> handleFileOperation({
     required FileSystemEntity source,
@@ -606,12 +572,10 @@ class FileBrowserController extends GetxController {
       Get.snackbar("Invalid", "File is already in this location.");
       return;
     }
-
     final newEntity =
         FileSystemEntity.typeSync(source.path) == FileSystemEntityType.directory
             ? Directory(newPath)
             : File(newPath);
-
     if (newEntity.existsSync()) {
       final choice = await Get.dialog(
         AlertDialog(
@@ -630,7 +594,6 @@ class FileBrowserController extends GetxController {
           ],
         ),
       );
-
       if (choice == 'rename') {
         final newName = await Get.defaultDialog<String>(
           title: "Rename File",
@@ -651,19 +614,18 @@ class FileBrowserController extends GetxController {
     } else {
       await performOperation(newPath);
     }
-
     Get.back(); // Close the sheet
     refreshFiles(); // Refresh view
     Get.snackbar("Success",
         "Item ${operation == 'copy' ? 'copied' : 'moved'} successfully.");
   }
+
   Future<void> copyEntity(FileSystemEntity source, String newPath) async {
     if (source is File) {
       await File(source.path).copy(newPath);
     } else if (source is Directory) {
       final newDir = Directory(newPath);
       if (!newDir.existsSync()) await newDir.create(recursive: true);
-
       final entities = Directory(source.path).listSync();
       for (var entity in entities) {
         final entityName = entity.path.split('/').last;
@@ -675,144 +637,38 @@ class FileBrowserController extends GetxController {
   // At the top
   var isSelectionMode = false.obs;
   var selectedItems = <FileSystemEntity>[].obs;
+
   //for doing toggling of Selection Mode
-  void toggleSelectionMode(){
-    isSelectionMode.value=!isSelectionMode.value;
-    if(!isSelectionMode.value){
+  void toggleSelectionMode() {
+    isSelectionMode.value = !isSelectionMode.value;
+    if (!isSelectionMode.value) {
       selectedItems.clear();
     }
   }
-  void 	toggleItemSelection(FileSystemEntity entity){
-    if(selectedItems.contains(entity)){
+
+  void toggleItemSelection(FileSystemEntity entity) {
+    if (selectedItems.contains(entity)) {
       selectedItems.remove(entity);
-    }else{
+    } else {
       selectedItems.add(entity);
     }
     selectedItems.refresh(); // Force UI update!
   }
-  void selectAllItems(){
+
+  void selectAllItems() {
     selectedItems.assignAll(fileName);
   }
-  void clearAllItems(){
+
+  void clearAllItems() {
     selectedItems.clear();
-    isSelectionMode.value=false;
+    isSelectionMode.value = false;
   }
-}
-class SelectDestinationSheet extends StatelessWidget {
-  final FileBrowserController controller = Get.find<FileBrowserController>();
 
-  /// Mode: "copy" or "move"
-  final String mode;
-
-  SelectDestinationSheet({required this.mode});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: Get.height * 0.85,
-      padding: const EdgeInsets.all(12.0),
-      child: Obx(() => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 🟡 Title Bar
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    mode == "copy"
-                        ? "Select Copy Destination"
-                        : "Select Destination",
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Get.back(),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 10),
-
-              // 🔁 Back Navigation & Current Path
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () {
-                      final parent =
-                          controller.currentDestinationDir.value.parent;
-                      if (parent.existsSync()) {
-                        controller.browseDestinationFolder(parent);
-                      }
-                    },
-                  ),
-                  Expanded(
-                    child: Text(
-                      "Path: ${controller.currentDestinationDir.value.path}",
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 8),
-
-              // 📁 Internal Storage Button
-              ElevatedButton.icon(
-                onPressed: () {
-                  final root = Directory('/storage/emulated/0');
-                  controller.selectedDestination.value = root;
-                  controller.browseInternalStorage();
-                },
-                icon: const Icon(Icons.sd_storage),
-                label: const Text("Internal Storage"),
-              ),
-
-              const SizedBox(height: 8),
-
-              // 📂 Folder List
-              Expanded(
-                child: ListView.builder(
-                  itemCount: controller.destinationFolders.length,
-                  itemBuilder: (context, index) {
-                    final folder = controller.destinationFolders[index];
-                    final folderName = folder.path.split('/').last;
-                    return ListTile(
-                      leading: const Icon(Icons.folder),
-                      title: Text(folderName),
-                      onTap: () {
-                        controller.selectedDestination.value = folder;
-                        controller.browseDestinationFolder(folder);
-                      },
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // ➕ Create Folder & Copy/Move Button
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: controller.createFolderInDestination,
-                    icon: const Icon(Icons.create_new_folder),
-                    label: const Text("Create Folder"),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: mode == "copy"
-                        ? controller.executeCopy
-                        : controller.executeMove,
-                    icon: Icon(mode == "copy" ? Icons.copy : Icons.check),
-                    label: Text(mode == "copy" ? "Copy Here" : "Select Here"),
-                  ),
-                ],
-              ),
-            ],
-          )),
-    );
+  //this is for the Snackbar purpose
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason> feedBack(
+      BuildContext context, String value) {
+    return ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(value),
+    ));
   }
 }

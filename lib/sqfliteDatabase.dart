@@ -1,20 +1,16 @@
 import 'dart:io';
-
 import 'package:filemanager/fileBrowserController.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
-
 class FavoriteDBHelper {
   static Database? _db;
-
   Future<Database> get database async {
     if (_db != null) return _db!;
     _db = await initDB();
     return _db!;
   }
-
   Future<Database> initDB() async {
     final path = join(await getDatabasesPath(), 'favorites.db');
     return await openDatabase(
@@ -62,7 +58,7 @@ class FavoriteDBHelper {
     return result.isNotEmpty;
   }
 }
-
+// This is the screen that displays the favorite files and folders
 class FavoriteScreen extends StatefulWidget {
   @override
   State<FavoriteScreen> createState() => _FavoriteScreenState();
@@ -111,6 +107,10 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                               color: Colors.blue.shade700),
                           SizedBox(height: 8),
                           Text(path.split('/').last),
+                          SizedBox(height: 8),IconButton(onPressed: (){dbHelper.removeFavorite(path);
+                            setState(() {});
+                            Get.snackbar("Delete","Deleted from favorites");
+                            }, icon: Icon(Icons.delete))
                         ],
                       ),
                     );
@@ -145,10 +145,8 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                         icon: Icon(Icons.delete),
                         onPressed: () {
                           dbHelper.removeFavorite(path);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Removed from favorites")),
-                          );
                           setState(() {});
+                          Get.snackbar("Delete", "Deleted from favorites");
                         },
                       ),
                     );
