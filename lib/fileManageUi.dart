@@ -283,13 +283,13 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
         child: Obx(
       () => GestureDetector(
         onLongPress:(){
-          fileController.toggleSelectionMode();//This is for When the USER OPEN THE SELECTION MODE
-          fileController.selectAllItems(index);
+          fileController.enableSelectionModeIfNeeded(); // don't toggle every time
+          fileController.toggleItemSelection(entity);   // this checks/unchecks correctly
         } ,
         child: ListTile(
             leading: fileController.isSelectionMode.value
                 ? Checkbox(
-                    value: fileController.selectedItems.contains(entity),
+                    value: fileController.selectedItems.contains(fileController.fileName[index]),
                     onChanged: (_) => fileController.toggleItemSelection(entity),
                   )
                 : Icon(

@@ -640,13 +640,6 @@ class FileBrowserController extends GetxController {
 
 
 
-  //for doing toggling of Selection Mode
-  void toggleSelectionMode() {
-    isSelectionMode.value = !isSelectionMode.value;
-    if (!isSelectionMode.value) {
-      selectedItems.clear();
-    }
-  }
 
   void toggleItemSelection(FileSystemEntity entity) {
     if (selectedItems.contains(entity)) {
@@ -657,7 +650,7 @@ class FileBrowserController extends GetxController {
     selectedItems.refresh(); // Force UI update!
   }
 
-  void selectAllItems(int index) {
+  void selectItems(int index) {
     selectedItems.insert(index, fileName[index]);
 
   }
@@ -665,6 +658,11 @@ class FileBrowserController extends GetxController {
   void clearAllItems() {
     selectedItems.clear();
     isSelectionMode.value = false;
+  }
+  void enableSelectionModeIfNeeded() {
+    if (!isSelectionMode.value) {
+      isSelectionMode.value = true;
+    }
   }
 
   //this is for the Snackbar purpose
