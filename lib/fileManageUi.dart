@@ -26,7 +26,7 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                   fileController.selectedItems.isEmpty) {
                 return const SizedBox();
               }
-              return Padding(
+               return Padding(
                 padding: const EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -185,7 +185,7 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                               itemCount: files.length,
                               itemBuilder: (context, index) {
                                 return buildFileCard(files[index], context,
-                                    searchController.text);
+                                    searchController.text, index);
                               },
                             ),
             );
@@ -277,50 +277,56 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
   }
 
   // Build the file card based on the type of file
-  Widget buildFileCard(dynamic entity, BuildContext context, String query) {
+  Widget buildFileCard(dynamic entity, BuildContext context, String query  ,int index ) {
     final dbHelper = FavoriteDBHelper();
     return Card(
         child: Obx(
-      () => ListTile(
-          leading: fileController.isSelectionMode.value
-              ? Checkbox(
-                  value: fileController.selectedItems.contains(entity),
-                  onChanged: (_) => fileController.toggleItemSelection(entity),
-                )
-              : Icon(
-                  entity is Directory ? Icons.folder : Icons.insert_drive_file,
-                  color: Colors.blue.shade700),
-          title: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                Text.rich(
-                  highlightMatch(p.basename(entity.path), query),
-                  style: const TextStyle(fontSize: 16),
-                ),
-                IconButton(
-                    onPressed: () {
-                      dbHelper.addFavorite(entity.path);
-                    },
-                    icon: Icon(
-                      Icons.favorite,
-                      color: Colors.red.shade700,
-                    ))
-              ],
+      () => GestureDetector(
+        onLongPress:(){
+          fileController.toggleSelectionMode();//This is for When the USER OPEN THE SELECTION MODE
+          fileController.selectAllItems(index);
+        } ,
+        child: ListTile(
+            leading: fileController.isSelectionMode.value
+                ? Checkbox(
+                    value: fileController.selectedItems.contains(entity),
+                    onChanged: (_) => fileController.toggleItemSelection(entity),
+                  )
+                : Icon(
+                    entity is Directory ? Icons.folder : Icons.insert_drive_file,
+                    color: Colors.blue.shade700),
+            title: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  Text.rich(
+                    highlightMatch(p.basename(entity.path), query),
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  IconButton(
+                      onPressed: () {
+                        dbHelper.addFavorite(entity.path);
+                      },
+                      icon: Icon(
+                        Icons.favorite,
+                        color: Colors.red.shade700,
+                      ))
+                ],
+              ),
             ),
-          ),
-          subtitle: Text(
-              '	Type:${entity is Directory ? "Folder" : "File"})} ${fileController.getFileSize(entity)} • ${DateFormat('dd-MM-yyyy HH:mm a').format(entity.statSync().modified)}}'),
-          onTap: () async {
-            bool allowed = await ProtectionManager.validatePasswordIfProtected(
-                context, entity.path);
-            if (allowed) {
-              fileController.openDirectory(
-                  entity, context); // Your existing open logic
-            }
-          },
-          trailing: featuresOption(context, entity) // Handle more options here
-          ),
+            subtitle: Text(
+                '	Type:${entity is Directory ? "Folder" : "File"})} ${fileController.getFileSize(entity)} • ${DateFormat('dd-MM-yyyy HH:mm a').format(entity.statSync().modified)}}'),
+            onTap: () async {
+              bool allowed = await ProtectionManager.validatePasswordIfProtected(
+                  context, entity.path);
+              if (allowed) {
+                fileController.openDirectory(
+                    entity, context); // Your existing open logic
+              }
+            },
+            trailing: featuresOption(context, entity) // Handle more options here
+            ),
+      ),
     ));
   }
 
@@ -334,10 +340,6 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
             icon: Icon(Icons.close))
         : PopupMenuButton<String>(
             onSelected: (String value) {
-              if (value == 'selectAll') {
-                fileController.toggleSelectionMode();
-                fileController.selectAllItems();
-              }
               if (value == "layout") {;
                 fileController.toggleView(); //This is for toggling of layout of the file manager
               }
@@ -356,10 +358,6 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
               }
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              const PopupMenuItem(
-                value: 'selectAll',
-                child: Text("Select All"),
-              ),
               PopupMenuItem<String>(
                 value: 'layout',
                 child: Obx(() => Text(
@@ -397,65 +395,64 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
 
   //for the features option Share, copy , delete , rename, properties etc
   Widget featuresOption(BuildContext context, FileSystemEntity entity) {
-    return PopupMenuButton<String>(
-      onSelected: (String value) async {
-        // Handle the selected value
-        print('Selected: $value');
-        if (value == "Rename") {
-          fileController.renameFileOrFolder(
-            context,
-            entity,
-          );
-        }
-        if (value == "Copy") {
-          fileController.initiateMoveOrCopySingle(entity, "copy");
-        }
-        if (value == "Share") {
-          fileController.shareFile(context, entity);
-        }
-        if (value == "Delete") {
-          fileController.showDeleteDialog(context, entity);
-        }
-        if (value == "Open") {
-          fileController.openFile(entity, context);
-        }
-        if (value == "Move") {
-          fileController.initiateMoveOrCopySingle(entity, "move");
-        }
-        if (value == "Protection") {
-          await ProtectionManager.setPassword(context, entity.path);
-        }
+    return IconButton(
+      icon: const Icon(Icons.more_vert),
+      onPressed: () {
+        showModalBottomSheet(
+          context: context,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+          builder: (BuildContext context) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildSheetItem(context, 'Open', Icons.open_in_new, () {
+                  Navigator.pop(context); // Close sheet
+                  fileController.openFile(entity, context);
+                }),
+                _buildSheetItem(context, 'Share', Icons.share, () {
+                  Navigator.pop(context);
+                  fileController.shareFile(context, entity);
+                }),
+                _buildSheetItem(context, 'Copy', Icons.copy, () {
+                  Navigator.pop(context);
+                  fileController.initiateMoveOrCopySingle(entity, "copy");
+                }),
+                _buildSheetItem(context, 'Move', Icons.drive_file_move, () {
+                  Navigator.pop(context);
+                  fileController.initiateMoveOrCopySingle(entity, "move");
+                }),
+                _buildSheetItem(context, 'Delete', Icons.delete, () {
+                  Navigator.pop(context);
+                  fileController.showDeleteDialog(context, entity);
+                }),
+                _buildSheetItem(context, 'Rename', Icons.edit, () {
+                  Navigator.pop(context);
+                  fileController.renameFileOrFolder(context, entity);
+                }),
+                _buildSheetItem(context, 'Protection', Icons.lock, () async {
+                  Navigator.pop(context);
+                  await ProtectionManager.setPassword(context, entity.path);
+                }),
+              ],
+            );
+          },
+        );
       },
-      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        const PopupMenuItem<String>(
-          value: 'Open',
-          child: Text('Open'),
-        ),
-        const PopupMenuItem<String>(
-          value: 'Share',
-          child: Text('Share'),
-        ),
-        const PopupMenuItem<String>(
-          value: 'Copy',
-          child: Text('Copy'),
-        ),
-        const PopupMenuItem<String>(
-          value: 'Move',
-          child: Text('Move'),
-        ),
-        const PopupMenuItem<String>(
-          value: 'Delete',
-          child: Text('Delete'),
-        ),
-        const PopupMenuItem(
-          child: Text('Rename'),
-          value: 'Rename',
-        ),
-        const PopupMenuItem(
-          child: Text('Protection'),
-          value: 'Protection',
-        ),
-      ],
+    );
+  }
+  /// Helper widget for bottom sheet item and set the  content of bottom sheet
+  Widget _buildSheetItem(
+      BuildContext context,
+      String label,
+      IconData icon,
+      VoidCallback onTap,
+      ) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(label),
+      onTap: onTap,
     );
   }
 }

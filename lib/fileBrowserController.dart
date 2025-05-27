@@ -12,6 +12,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class FileBrowserController extends GetxController {
+  // At the top
+  var isSelectionMode = false.obs;  //this for the selection process for the Select all features
+  var selectedItems = <FileSystemEntity>[].obs; //This is for the selected items by user
   // Holds copied item (file or folder)
   RxBool refreshValue = false.obs; //This is for the Refreshing purpose
   FileSystemEntity? copiedEntity; //
@@ -84,6 +87,7 @@ class FileBrowserController extends GetxController {
   void onInit() {
     super.onInit();
     _initStorage();
+    clearAllItems();
   }
   // This is for the initialization of the storage and listing files
   Future<void> _initStorage() async {
@@ -634,9 +638,7 @@ class FileBrowserController extends GetxController {
     }
   }
 
-  // At the top
-  var isSelectionMode = false.obs;
-  var selectedItems = <FileSystemEntity>[].obs;
+
 
   //for doing toggling of Selection Mode
   void toggleSelectionMode() {
@@ -655,8 +657,9 @@ class FileBrowserController extends GetxController {
     selectedItems.refresh(); // Force UI update!
   }
 
-  void selectAllItems() {
-    selectedItems.assignAll(fileName);
+  void selectAllItems(int index) {
+    selectedItems.insert(index, fileName[index]);
+
   }
 
   void clearAllItems() {
