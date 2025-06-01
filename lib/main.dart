@@ -1,8 +1,11 @@
 import 'package:filemanager/fileBrowserController.dart';
+import 'package:filemanager/recentFiles.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'fileManageUi.dart';
+final GlobalKey<RecentFilesScreenState> recentFilesKey = GlobalKey<RecentFilesScreenState>();// This key is used to access the state of RecentFilesScreen
+final GlobalKey<FileBrowserScreenState> fileBrowserKey = GlobalKey<FileBrowserScreenState>();// This key is used to access the state of FileBrowserScreen
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Await the permission request properly
@@ -30,7 +33,7 @@ class MyApp extends StatelessWidget {
       themeMode: themeController.themeMode,
       debugShowCheckedModeBanner: false,
       title: 'File Manager',
-      home: FileBrowserScreen(),
+      home: FileBrowserScreen(key: fileBrowserKey,),
     );
   }
 }

@@ -4,9 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ProtectionManager {
   /// Keys for SharedPreferences
   static String _passwordKey(String path) => 'protect_$path';
-
   static String _foodKey(String path) => 'food_$path';
-
   static String _placeKey(String path) => 'place_$path';
 
   /// Show a custom dialog and return a value
@@ -18,9 +16,11 @@ class ProtectionManager {
   }) {
     return showDialog<T>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(title),
-        content: SingleChildScrollView(child: Column(children: contentFields)),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: contentFields),
+        ),
         actions: actions,
       ),
     );
@@ -44,25 +44,29 @@ class ProtectionManager {
         const SizedBox(height: 10),
         TextField(
           controller: foodController,
-          decoration:
-              const InputDecoration(hintText: 'What is your favorite food?'),
+          decoration: const InputDecoration(hintText: 'What is your favorite food?'),
         ),
         const SizedBox(height: 10),
         TextField(
           controller: placeController,
-          decoration:
-              const InputDecoration(hintText: 'What is your favorite place?'),
+          decoration: const InputDecoration(hintText: 'What is your favorite place?'),
         ),
         const SizedBox(height: 10),
         const Text("Enter answer of both questions"),
       ],
       actions: [
-        TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel')),
-        TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Save')),
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+        ),
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Save'),
+          ),
+        ),
       ],
     );
 
@@ -72,20 +76,19 @@ class ProtectionManager {
         placeController.text.isNotEmpty) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_passwordKey(path), passwordController.text);
-      await prefs.setString(
-          _foodKey(path), foodController.text.trim().toLowerCase());
-      await prefs.setString(
-          _placeKey(path), placeController.text.trim().toLowerCase());
+      await prefs.setString(_foodKey(path), foodController.text.trim().toLowerCase());
+      await prefs.setString(_placeKey(path), placeController.text.trim().toLowerCase());
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password and recovery questions set.')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password and recovery questions set.')),
+        );
+      }
     }
   }
 
   /// Validate password or recover it
-  static Future<bool> validatePasswordIfProtected(
-      BuildContext context, String path) async {
+  static Future<bool> validatePasswordIfProtected(BuildContext context, String path) async {
     final prefs = await SharedPreferences.getInstance();
     final storedPassword = prefs.getString(_passwordKey(path));
 
@@ -104,12 +107,18 @@ class ProtectionManager {
         ),
       ],
       actions: [
-        TextButton(
-            onPressed: () => Navigator.pop(context, 'forgot'),
-            child: const Text('Forgot Password?')),
-        TextButton(
-            onPressed: () => Navigator.pop(context, passwordController.text),
-            child: const Text('Unlock')),
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).pop('forgot'),
+            child: const Text('Forgot Password?'),
+          ),
+        ),
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).pop(passwordController.text),
+            child: const Text('Unlock'),
+          ),
+        ),
       ],
     );
 
@@ -118,16 +127,17 @@ class ProtectionManager {
     } else if (result == storedPassword) {
       return true;
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Incorrect password.')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Incorrect password.')),
+        );
+      }
       return false;
     }
   }
 
   /// Recover password by verifying recovery answers
-  static Future<bool> _recoverPassword(
-      BuildContext context, String path) async {
+  static Future<bool> _recoverPassword(BuildContext context, String path) async {
     final foodController = TextEditingController();
     final placeController = TextEditingController();
 
@@ -137,23 +147,27 @@ class ProtectionManager {
       contentFields: [
         TextField(
           controller: foodController,
-          decoration:
-              const InputDecoration(hintText: 'What is your favorite food?'),
+          decoration: const InputDecoration(hintText: 'What is your favorite food?'),
         ),
         const SizedBox(height: 10),
         TextField(
           controller: placeController,
-          decoration:
-              const InputDecoration(hintText: 'What is your favorite place?'),
+          decoration: const InputDecoration(hintText: 'What is your favorite place?'),
         ),
       ],
       actions: [
-        TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel')),
-        TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Submit')),
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+        ),
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Submit'),
+          ),
+        ),
       ],
     );
 
@@ -164,19 +178,22 @@ class ProtectionManager {
 
       if (foodController.text.trim().toLowerCase() == storedFood &&
           placeController.text.trim().toLowerCase() == storedPlace) {
-        // Remove credentials
         await prefs.remove(_passwordKey(path));
         await prefs.remove(_foodKey(path));
         await prefs.remove(_placeKey(path));
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Password removed. Please set a new one.')),
-        );
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Password removed. Please set a new one.')),
+          );
+        }
         return true;
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Incorrect recovery answers.')),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Incorrect recovery answers.')),
+          );
+        }
         return false;
       }
     }

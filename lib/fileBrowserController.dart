@@ -4,7 +4,6 @@ import 'package:archive/archive.dart';
 import 'package:filemanager/selectDestionation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -147,7 +146,6 @@ class FileBrowserController extends GetxController {
       canGoBack.value = _navigationStack.isNotEmpty; // Update back button state
     }
   }
-
   //this is for the Rename Functionality
   Future<void> renameFileOrFolder(
       BuildContext context, FileSystemEntity entity) async {
@@ -280,23 +278,6 @@ class FileBrowserController extends GetxController {
     }
   }
 
-  //For Opening the Files and another folders and directory and Another Materials
-  Future<void> openFile(FileSystemEntity entity, BuildContext context) async {
-    try {
-      if (entity is File) {
-        final result = await OpenFilex.open(entity.path);
-        if (result.type == ResultType.noAppToOpen) {
-          feedBack(context, 'No app found to open this file');
-        } else if (result.type == ResultType.error) {
-          feedBack(context, 'Failed to open file: ${result.message}');
-        }
-      } else {
-        feedBack(context, 'Cannot open a folder');
-      }
-    } catch (e) {
-      feedBack(context, 'Error opening file: $e');
-    }
-  }
 
   //This code is responsible for the Sorting purpose of the files
   void sortFilesByOption(String option) {
@@ -434,23 +415,22 @@ class FileBrowserController extends GetxController {
   List<FileSystemEntity> itemsToCopy = [];
 
   /// ✅ Call this for single item move/copy
-  void initiateMoveOrCopySingle(FileSystemEntity entity, String mode) {
+  void initiateMoveOrCopySingle(FileSystemEntity entity, String mode,BuildContext context) {
     clearSelection(); // clear previous selection
-    initiateMoveOrCopyMultiple([entity], mode); // treat as multi with 1 item
+    initiateMoveOrCopyMultiple([entity], mode,context); // treat as multi with 1 item
   }
 
   void initiateMoveOrCopyMultiple(
-      List<FileSystemEntity> entities, String mode) {
+      List<FileSystemEntity> entities, String mode,BuildContext context) {
     clearSelection();
     if (mode == "copy") {
       itemsToCopy.assignAll(entities); // ✅ this too
     } else if (mode == "move") {
       itemsToMove.assignAll(entities); // ✅ this too
     }
-    Get.bottomSheet(
-      backgroundColor: Colors.white,
-      SelectDestinationSheet(mode: mode),
-    );
+    showModalBottomSheet(context: context, builder:(context){
+      return SelectDestinationSheet(mode: mode);
+    });
   }
 
   /// ✅ Clear old selections

@@ -1,11 +1,17 @@
 import 'dart:io';
-import 'package:intl/intl.dart';
+
+import 'package:filemanager/categoriesScreen.dart';
+import 'package:filemanager/main.dart';
 import 'package:filemanager/passwordProtection.dart';
+import 'package:filemanager/recentFiles.dart';
 import 'package:filemanager/sqfliteDatabase.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'fileBrowserController.dart';
+import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
+
+import 'fileBrowserController.dart';
+
 class FileBrowserScreen extends StatefulWidget {
   FileBrowserScreen({super.key});
 
@@ -20,176 +26,264 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-        child: Scaffold(
-            floatingActionButton: Obx(() {
-              if (!fileController.isSelectionMode.value ||
-                  fileController.selectedItems.isEmpty) {
-                return const SizedBox();
-              }
-               return Padding(
-                padding: const EdgeInsets.only(bottom: 10.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildActionButton(
-                      icon: Icons.copy,
-                      label: "Copy",
-                      heroTag: "copy",
-                      onPressed: () {
-                        fileController.initiateMoveOrCopyMultiple(
-                            fileController.selectedItems, "copy");
-                      },
-                    ),
-                    _buildActionButton(
-                      icon: Icons.drive_file_move,
-                      label: "Move",
-                      heroTag: "move",
-                      onPressed: () {
-                        fileController.initiateMoveOrCopyMultiple(
-                            fileController.selectedItems, "move");
-                      },
-                    ),
-                    _buildActionButton(
-                      icon: Icons.delete,
-                      label: "Delete",
-                      heroTag: "delete",
-                      onPressed: () async {
-                        final confirm = await Get.dialog(AlertDialog(
-                          title: const Text("Delete Selected?"),
-                          content: const Text(
-                              "This will permanently delete selected files/folders."),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Get.back(result: false),
-                              child: const Text("Cancel"),
-                            ),
-                            ElevatedButton(
-                              onPressed: () => Get.back(result: true),
-                              child: const Text("Delete"),
-                            ),
-                          ],
-                        ));
-
-                        if (confirm == true) {
-                          for (final file in fileController.selectedItems) {
-                            try {
-                              if (file.existsSync()) {
-                                file.deleteSync(recursive: true);
-                              }
-                            } catch (e) {
-                              Get.snackbar(
-                                  "Error", "Failed to delete ${file.path}");
-                            }
-                          }
-                          fileController.clearAllItems();
-                          fileController
-                              .listFiles(fileController.currentDirectory.value);
-                          Get.snackbar("Success", "Selected items deleted.");
-                        }
-                      },
-                    ),
-                  ],
+      onWillPop: () async {
+        if (fileController.canGoBack.value) {
+          fileController.goBackDirectory();
+          return false; // Prevent closing app
+        }
+        return true;
+      },
+      child: Scaffold(
+        drawer: buildMainFeaturesDrawer(context),
+        body: mainScreen(fileController, searchController, context),
+        floatingActionButton: Obx(() {
+          if (!fileController.isSelectionMode.value ||
+              fileController.selectedItems.isEmpty) {
+            return const SizedBox.shrink();
+          }
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                FloatingActionButton.extended(
+                  heroTag: "copy",
+                  icon: const Icon(Icons.copy),
+                  label: const Text("Copy"),
+                  onPressed: () {
+                    fileController.initiateMoveOrCopyMultiple(
+                        fileController.selectedItems, "copy", context);
+                  },
                 ),
-              );
-            }),
-            appBar: AppBar(
-              leading: Obx(() => Visibility(
-                    visible: fileController.canGoBack.value,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () {
-                        fileController.goBackDirectory();
-                      },
-                    ),
-                  )),
-              title: const Text("File Manager"),
-              actions: [
-                Obx(
-                  () => mainFeatures(
-                      context, fileController.currentDirectory.value),
-                )
+                FloatingActionButton.extended(
+                  heroTag: "move",
+                  icon: const Icon(Icons.drive_file_move),
+                  label: const Text("Move"),
+                  onPressed: () {
+                    fileController.initiateMoveOrCopyMultiple(
+                        fileController.selectedItems, "move", context);
+                  },
+                ),
+                FloatingActionButton.extended(
+                  heroTag: "delete",
+                  icon: const Icon(Icons.delete),
+                  label: const Text("Delete"),
+                  onPressed: () async {
+                    final confirm = await Get.dialog(AlertDialog(
+                      title: const Text("Delete Selected?"),
+                      content: const Text(
+                          "This will permanently delete selected files/folders."),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Get.back(result: false),
+                          child: const Text("Cancel"),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Get.back(result: true),
+                          child: const Text("Delete"),
+                        ),
+                      ],
+                    ));
+                    if (confirm == true) {
+                      deleteSelectedItems(context);
+                    }
+                  },
+                ),
               ],
             ),
-            body: mainScreen(fileController, searchController, context)),
-        onWillPop: () async {
-          if (fileController.canGoBack.value) {
-            fileController.goBackDirectory();
-            return false; // prevent app from closing
-          }
-          return true;
-        });
+          );
+        }),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      ),
+    );
   }
 
-  //this is the Main Screen  of the App
+  //This is the logic of confirm delete
+  void deleteSelectedItems(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Confirm Deletion"),
+        content:
+            const Text("Are you sure you want to delete the selected items?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      for (final file in fileController.selectedItems) {
+        try {
+          if (file.existsSync()) {
+            file.deleteSync(recursive: true);
+          }
+        } catch (e) {
+          Get.snackbar("Error", "Failed to delete ${file.path}");
+        }
+      }
+
+      fileController.clearAllItems();
+      fileController.listFiles(fileController.currentDirectory.value);
+      Get.snackbar("Success", "Selected items deleted.");
+    }
+  }
+
   Widget mainScreen(FileBrowserController fileController,
       TextEditingController searchController, BuildContext context) {
     return Obx(() {
       final files = fileController.filteredFiles;
-      return Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              controller: searchController,
-              onChanged: (value) {
-                // Implement search functionality here
-                fileController.updateSearch(value);
-              },
-              decoration: InputDecoration(
-                contentPadding: const EdgeInsets.all(8),
-                hintText: 'Search',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    searchController.clear();
-                    fileController.updateSearch('');
-                  },
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(),
+
+      return CustomScrollView(
+        slivers: [
+          // Search Bar
+          SliverToBoxAdapter(
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Builder(
+                  builder: (context) => TextField(
+                    controller: searchController,
+                    onChanged: (value) => fileController.updateSearch(value),
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.all(8),
+                      hintText: 'Search',
+                      prefixIcon: Obx(() {
+                        if (fileController.isSelectionMode.value) {
+                          return IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () {
+                              fileController
+                                  .clearAllItems(); // Clear selected items// Exit selection mode
+                            },
+                          );
+                        }
+                        return IconButton(
+                          icon: const Icon(Icons.menu),
+                          onPressed: () {
+                            Scaffold.of(context).openDrawer();
+                          },
+                        );
+                      }),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          searchController.clear();
+                          fileController.updateSearch('');
+                        },
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-          Container(
-            height: 50,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Obx(() => buildBreadcrumbBar(fileController)),
+          // Breadcrumb Bar
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: buildBreadcrumbBar(fileController),
+            ),
           ),
-          const Divider(),
-          Obx(() {
-            if (fileController.refreshValue.value) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return Expanded(
-              child: fileController.refreshValue.value
-                  ? const Center(child: CircularProgressIndicator())
-                  : files.isEmpty
-                      ? const Center(child: Text("No files found"))
-                      : fileController.isGridView.value
-                          ? GridView.builder(
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                childAspectRatio: 0.8,
-                              ),
-                              itemCount: files.length,
-                              itemBuilder: (context, index) {
-                                return buildFileCardGrid(files[index], context,
-                                    searchController.text);
-                              },
-                            )
-                          : ListView.builder(
-                              itemCount: files.length,
-                              itemBuilder: (context, index) {
-                                return buildFileCard(files[index], context,
-                                    searchController.text, index);
-                              },
-                            ),
-            );
-          })
+          // Recent Files
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 12),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12.0),
+                  child: Text(
+                    "Recent Files",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                    height: 165, child: RecentFilesScreen(key: recentFilesKey)),
+              ],
+            ),
+          ),
+          // Files List or Grid
+          if (fileController.refreshValue.value)
+            const SliverToBoxAdapter(
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (files.isEmpty)
+            const SliverToBoxAdapter(
+              child: Center(
+                  child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Text("No files found"),
+              )),
+            )
+          else if (fileController.isGridView.value)
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              sliver: SliverGrid(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    return buildFileCardGrid(
+                      files[index],
+                      context,
+                      searchController.text,
+                    );
+                  },
+                  childCount: files.length,
+                ),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.8,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                ),
+              ),
+            )
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  return buildFileCard(
+                    files[index],
+                    context,
+                    searchController.text,
+                    index,
+                  );
+                },
+                childCount: files.length,
+              ),
+            ),
+
+          // Categories
+          SliverToBoxAdapter(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.all(5.0),
+                  child: Text("Categories",
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(
+                  height: 7,
+                ),
+                CategoriesScreen(),
+              ],
+            ),
+          ),
         ],
       );
     });
@@ -203,7 +297,7 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
         bool allowed = await ProtectionManager.validatePasswordIfProtected(
             context, entity.path);
         if (allowed) {
-          fileController.openDirectory(entity, context);
+          openFileWithIntent(entity.path, context);
         }
       },
       child: Card(
@@ -250,8 +344,7 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                     mainAxisAlignment: MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text.rich(highlightMatch(
-                         p.basename(entity.path), query)),
+                      Text.rich(highlightMatch(p.basename(entity.path), query)),
                       IconButton(
                           onPressed: () {
                             dbHelper.addFavorite(entity.path);
@@ -277,23 +370,30 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
   }
 
   // Build the file card based on the type of file
-  Widget buildFileCard(dynamic entity, BuildContext context, String query  ,int index ) {
+  Widget buildFileCard(
+      dynamic entity, BuildContext context, String query, int index) {
     final dbHelper = FavoriteDBHelper();
     return Card(
         child: Obx(
       () => GestureDetector(
-        onLongPress:(){
-          fileController.enableSelectionModeIfNeeded(); // don't toggle every time
-          fileController.toggleItemSelection(entity);   // this checks/unchecks correctly
-        } ,
+        onLongPress: () {
+          fileController
+              .enableSelectionModeIfNeeded(); // don't toggle every time
+          fileController
+              .toggleItemSelection(entity); // this checks/unchecks correctly
+        },
         child: ListTile(
             leading: fileController.isSelectionMode.value
                 ? Checkbox(
-                    value: fileController.selectedItems.contains(fileController.fileName[index]),
-                    onChanged: (_) => fileController.toggleItemSelection(entity),
+                    value: fileController.selectedItems
+                        .contains(fileController.fileName[index]),
+                    onChanged: (_) =>
+                        fileController.toggleItemSelection(entity),
                   )
                 : Icon(
-                    entity is Directory ? Icons.folder : Icons.insert_drive_file,
+                    entity is Directory
+                        ? Icons.folder
+                        : Icons.insert_drive_file,
                     color: Colors.blue.shade700),
             title: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -315,16 +415,18 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
               ),
             ),
             subtitle: Text(
-                '	Type:${entity is Directory ? "Folder" : "File"})} ${fileController.getFileSize(entity)} • ${DateFormat('dd-MM-yyyy HH:mm a').format(entity.statSync().modified)}}'),
+                "Modified: ${DateFormat('dd-MM-yyyy HH:mm a').format(entity.statSync().modified)}"),
             onTap: () async {
-              bool allowed = await ProtectionManager.validatePasswordIfProtected(
-                  context, entity.path);
+              bool allowed =
+                  await ProtectionManager.validatePasswordIfProtected(
+                      context, entity.path);
               if (allowed) {
-                fileController.openDirectory(
-                    entity, context); // Your existing open logic
+                openFileWithIntent(
+                    entity.path, context); // Your existing open logic
               }
             },
-            trailing: featuresOption(context, entity) // Handle more options here
+            trailing:
+                featuresOption(context, entity) // Handle more options here
             ),
       ),
     ));
@@ -338,59 +440,97 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
               fileController.clearAllItems();
             },
             icon: Icon(Icons.close))
-        : PopupMenuButton<String>(
-            onSelected: (String value) {
-              if (value == "layout") {;
-                fileController.toggleView(); //This is for toggling of layout of the file manager
-              }
-              if (value == "Sort by") {
-                showSortOptions(context, 'Name A → Z');
-              }
-              if (value == "Create New Folder") {
-                fileController.showCreateFolderDialog(context);
-              }
-              if (value == "theme") {
-                fileController.toggleTheme(); //This is for toggling of theme of the file manager
-              }
-              if (value == "Favorite") {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => FavoriteScreen()));
-              }
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              PopupMenuItem<String>(
-                value: 'layout',
-                child: Obx(() => Text(
-                    '${fileController.isGridView.value ? "Switch to List View" : "Switch to Grid View"}')),
-              ),
-              PopupMenuItem(
-                  value: 'theme',
-                  child: Obx(() => Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(fileController.isDarkTheme.value
-                              ? "Switch to Light"
-                              : "Switch to Dark "),
-                          Icon(fileController.isDarkTheme.value
-                              ? Icons.wb_sunny_outlined
-                              : Icons.nightlight_round),
-                        ],
-                      ))),
-              const PopupMenuItem<String>(
-                value: 'Sort by',
-                child: Text('Sort by'),
-              ),
-              const PopupMenuItem<String>(
-                value: 'Create New Folder',
-                child: Text('Create New Folder'),
-              ),
-              const PopupMenuItem(
-                child: Text('Favorite Files & Folders'),
-                value: 'Favorite',
-              )
-            ],
+        : Builder(
+            builder: (context) => IconButton(
+              icon: Icon(Icons.menu),
+              onPressed: () {
+                buildMainFeaturesDrawer(context);
+              },
+            ),
           );
+  }
+
+  Drawer buildMainFeaturesDrawer(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: Colors.blue,
+            ),
+            child: Text(
+              'File Manager',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+              ),
+            ),
+          ),
+          ListTile(
+            leading: Icon(
+              Icons.view_list,
+              color: Colors.purpleAccent,
+            ),
+            title: Obx(() => Text(
+                '${fileController.isGridView.value ? "Switch to List View" : "Switch to Grid View"}')),
+            onTap: () {
+              fileController.toggleView();
+              Navigator.pop(context);
+            },
+          ),
+          ListTile(
+            leading: Obx(() => Icon(
+                  fileController.isDarkTheme.value
+                      ? Icons.wb_sunny_outlined
+                      : Icons.nightlight_round,
+                  color: fileController.isDarkTheme.value
+                      ? Colors.yellow
+                      : Colors.grey,
+                )),
+            title: Obx(() => Text(fileController.isDarkTheme.value
+                ? "Switch to Light"
+                : "Switch to Dark ")),
+            onTap: () {
+              fileController.toggleTheme();
+              Navigator.pop(context);
+            },
+          ),
+          ListTile(
+            leading: Icon(
+              Icons.sort,
+              color: Colors.blue.shade700,
+            ),
+            title: Text('Sort by'),
+            onTap: () {
+              Navigator.pop(context);
+              showSortOptions(context, 'Name A → Z');
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.create_new_folder, color: Colors.purpleAccent),
+            title: Text('Create New Folder'),
+            onTap: () {
+              Navigator.pop(context);
+              fileController.showCreateFolderDialog(context);
+            },
+          ),
+          ListTile(
+            leading: Icon(
+              Icons.favorite,
+              color: Colors.red,
+            ),
+            title: Text('Favorite Files & Folders'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => FavoriteScreen()),
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   //for the features option Share, copy , delete , rename, properties etc
@@ -407,9 +547,10 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildSheetItem(context, 'Open', Icons.open_in_new, () {
+                _buildSheetItem(context, 'Open', Icons.open_in_new, () async {
                   Navigator.pop(context); // Close sheet
-                  fileController.openFile(entity, context);
+                  openFileWithIntent(entity.path, context); // Open file
+                  insertRecentFile(entity); // Insert recent file
                 }),
                 _buildSheetItem(context, 'Share', Icons.share, () {
                   Navigator.pop(context);
@@ -417,11 +558,13 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                 }),
                 _buildSheetItem(context, 'Copy', Icons.copy, () {
                   Navigator.pop(context);
-                  fileController.initiateMoveOrCopySingle(entity, "copy");
+                  fileController.initiateMoveOrCopySingle(
+                      entity, "copy", context);
                 }),
                 _buildSheetItem(context, 'Move', Icons.drive_file_move, () {
                   Navigator.pop(context);
-                  fileController.initiateMoveOrCopySingle(entity, "move");
+                  fileController.initiateMoveOrCopySingle(
+                      entity, "move", context);
                 }),
                 _buildSheetItem(context, 'Delete', Icons.delete, () {
                   Navigator.pop(context);
@@ -442,19 +585,30 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
       },
     );
   }
+
   /// Helper widget for bottom sheet item and set the  content of bottom sheet
   Widget _buildSheetItem(
-      BuildContext context,
-      String label,
-      IconData icon,
-      VoidCallback onTap,
-      ) {
+    BuildContext context,
+    String label,
+    IconData icon,
+    VoidCallback onTap,
+  ) {
     return ListTile(
       leading: Icon(icon),
       title: Text(label),
       onTap: onTap,
     );
   }
+}
+
+//This is the function Responsible for the Inserting Recent Files
+void insertRecentFile(FileSystemEntity entity) {
+  Map<String, dynamic> fileDetails = {
+    'name': p.basename(entity.path),
+    'path': entity.path,
+    'type': entity is Directory ? 'directory' : 'file',
+  };
+  recentFilesKey.currentState?.insertFile(fileDetails);
 }
 
 //This is for the Showing sort Options for the file manager
@@ -587,20 +741,5 @@ Widget buildBreadcrumbBar(FileBrowserController controller) {
         );
       }),
     ),
-  );
-}
-
-//it is helper class for helping the operation of copy ,move and delete
-Widget _buildActionButton({
-  required IconData icon,
-  required String label,
-  required String heroTag,
-  required VoidCallback onPressed,
-}) {
-  return FloatingActionButton.extended(
-    heroTag: heroTag,
-    icon: Icon(icon),
-    label: Text(label),
-    onPressed: onPressed,
   );
 }
