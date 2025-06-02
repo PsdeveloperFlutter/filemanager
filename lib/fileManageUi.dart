@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:filemanager/categoriesScreen.dart';
 import 'package:filemanager/main.dart';
 import 'package:filemanager/passwordProtection.dart';
@@ -9,12 +8,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
-
 import 'fileBrowserController.dart';
 
 class FileBrowserScreen extends StatefulWidget {
   FileBrowserScreen({super.key});
-
   @override
   State<FileBrowserScreen> createState() => FileBrowserScreenState();
 }
@@ -297,7 +294,13 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
         bool allowed = await ProtectionManager.validatePasswordIfProtected(
             context, entity.path);
         if (allowed) {
-          openFileWithIntent(entity.path, context);
+          if (entity is Directory) {
+            fileController.listFiles(entity); // Update directory
+            insertRecentFile(entity); // Insert recent directory
+          } else {
+            insertRecentFile(entity); // Insert recent file
+          }
+          fileController.clearAllItems(); // Clear selectiontory.value);
         }
       },
       child: Card(

@@ -1,10 +1,10 @@
 import 'dart:io';
-
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
-
+import 'package:mime/mime.dart';
 Future<bool> requestStoragePermission() async {
   final status = await Permission.manageExternalStorage.request();
   return status.isGranted;
@@ -159,44 +159,165 @@ void main() {
 
 //This is for the detailing	of the CategoriesScreen.dart file
 
-class CategoryDetailScreen extends StatelessWidget {
+class CategoryDetailScreen extends StatefulWidget {
   final String path;
   final String categoryName;
 
   CategoryDetailScreen({required this.path, required this.categoryName});
 
   @override
-  Widget build(BuildContext context) {
-    final directory = Directory(path);
-    final files = directory.existsSync()
-        ? directory.listSync().whereType<FileSystemEntity>().toList()
-        : [];
+  State<CategoryDetailScreen> createState() => _CategoryDetailScreenState();
+}
 
+class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
+  List<FileSystemEntity> files = [];
+  List<FileSystemEntity> selectedFiles = [];
+  bool isSelectionMode = false;
+
+  void initState() {
+    super.initState();
+    _loadFiles();
+  }
+
+  void _loadFiles() {
+    final directory = Directory(widget.path);
+    if (directory.existsSync()) {
+      setState(() {
+        files = directory.listSync().whereType<File>().toList();
+      });
+    }
+  }
+
+  void toggleSelectionMode() {
+    setState(() {
+      isSelectionMode = !isSelectionMode;
+      selectedFiles.clear();
+    });
+  }
+
+  void toggleFileSelection(FileSystemEntity file) {
+    setState(() {
+      if (selectedFiles.contains(file)) {
+        selectedFiles.remove(file);
+      } else {
+        selectedFiles.add(file);
+      }
+    });
+  }
+  Future<void> _shareSelectedFiles() async {
+    if (selectedFiles.isEmpty) return;
+    try {
+      List<XFile> xFiles = selectedFiles
+          .map((file) => XFile(file.path, mimeType: lookupMimeType(file.path) ?? 'application/octet-stream'))
+          .toList();
+      if (xFiles.length == 1) {
+        // Safe to add text with single file
+        await Share.shareXFiles(
+          xFiles,
+          text: 'Shared from File Manager',
+          subject: p.basename(xFiles.first.path),
+        );
+      } else {
+        // Multiple file sharing: omit 'text' to avoid crashing
+        await Share.shareXFiles(xFiles);
+      }
+      toggleSelectionMode();
+    } catch (e) {
+      print("Error sharing files: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to share files: $e")),
+      );
+    }
+  }
+
+  void _deleteFile(int index) async {
+    final file = files[index];
+    try {
+      if (await File(file.path).exists()) {
+        await File(file.path).delete();
+        setState(() {
+          files.removeAt(index);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error deleting file: $e")),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('$categoryName')),
-      body: files.isEmpty
-          ? Center(child: Text("No items found in $categoryName"))
-          : ListView.builder(
-              itemCount: files.length,
-              itemBuilder: (context, index) {
-                final file = files[index];
-                return ListTile(
-                  leading: Icon(Icons.insert_drive_file),
-                  title: Text(p.basename(file.path)),
-                  subtitle: Text(file.path),
-                  onTap: () async {
-                    // Open the file or show more options
-                    final result = await OpenFilex.open(file.path);
-                    if (result.type != ResultType.done) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content:
-                                Text('Failed to open file: ${result.message}')),
-                      );
-                    }
+      appBar: AppBar(
+        title: Text('${widget.categoryName}'),
+        actions: isSelectionMode
+            ? [
+                IconButton(
+                  icon: Icon(Icons.share),
+                  onPressed: _shareSelectedFiles,
+                ),
+                IconButton(
+                  icon: Icon(Icons.close),
+                  onPressed: toggleSelectionMode,
+                ),
+                 IconButton(
+                  icon: Icon(Icons.delete, color: Colors.red),
+                  onPressed: () {
+                    setState(() {
+                      for (var file in selectedFiles) {
+                        if (files.contains(file)) {
+                          files.remove(file);
+                          File(file.path).deleteSync();
+                        }
+                      }
+                      selectedFiles.clear();
+                      isSelectionMode = false;
+                    });
                   },
-                );
+                ),
+              ]
+            : null,
+      ),
+      body: files.isEmpty
+          ? Center(child: Text("No items found in ${widget.categoryName}"))
+          : GestureDetector(
+              onLongPress: () {
+                toggleSelectionMode();
               },
+              child: ListView.builder(
+                  itemCount: files.length,
+                  itemBuilder: (context, index) {
+                    final file = files[index];
+                    final isSelected = selectedFiles.contains(file);
+                    return ListTile(
+                      leading: isSelectionMode
+                          ? Checkbox(
+                              value: isSelected,
+                              onChanged: (value) {
+                                toggleFileSelection(file);
+                              },
+                            )
+                          : Icon(Icons.insert_drive_file),
+                      title: Text(p.basename(file.path)),
+                      subtitle: Text(file.path),
+                      trailing: IconButton(
+                        icon: Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _deleteFile(index),
+                      ),
+                      onTap: () async {
+                        // Open the file or show more options
+                        final result = await OpenFilex.open(file.path);
+                        if (result.type != ResultType.done) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text(
+                                    'Failed to open file: ${result.message}')),
+                          );
+                        }
+                      },
+                    );
+                  }),
             ),
     );
   }
