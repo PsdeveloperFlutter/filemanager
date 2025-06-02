@@ -112,9 +112,6 @@ class RecentFilesScreenState extends State<RecentFilesScreen> {
     return FutureBuilder<void>(
       future: _initFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
         if (_recentFiles.isEmpty) {
           return Center(child: Text('No recent files.'));
         }

@@ -1,10 +1,12 @@
 import 'dart:io';
-import 'package:share_plus/share_plus.dart';
+
+import 'package:filemanager/recentFiles.dart';
 import 'package:flutter/material.dart';
-import 'package:open_filex/open_filex.dart';
+import 'package:mime/mime.dart';
 import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
-import 'package:mime/mime.dart';
+import 'package:share_plus/share_plus.dart';
+
 Future<bool> requestStoragePermission() async {
   final status = await Permission.manageExternalStorage.request();
   return status.isGranted;
@@ -204,11 +206,14 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
       }
     });
   }
+
   Future<void> _shareSelectedFiles() async {
     if (selectedFiles.isEmpty) return;
     try {
       List<XFile> xFiles = selectedFiles
-          .map((file) => XFile(file.path, mimeType: lookupMimeType(file.path) ?? 'application/octet-stream'))
+          .map((file) => XFile(file.path,
+              mimeType:
+                  lookupMimeType(file.path) ?? 'application/octet-stream'))
           .toList();
       if (xFiles.length == 1) {
         // Safe to add text with single file
@@ -231,6 +236,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
   }
 
   void _deleteFile(int index) async {
+    // This is the delete function for single
     final file = files[index];
     try {
       if (await File(file.path).exists()) {
@@ -240,9 +246,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error deleting file: $e")),
-      );
+      print("Error deleting file: $e");
     }
   }
 
@@ -251,29 +255,21 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.categoryName}'),
-        actions: isSelectionMode
+        // This is the title of the app bar
+        actions: isSelectionMode // This is the selection mode
             ? [
                 IconButton(
                   icon: Icon(Icons.share),
-                  onPressed: _shareSelectedFiles,
+                  onPressed: _shareSelectedFiles, //This is the share function
                 ),
                 IconButton(
                   icon: Icon(Icons.close),
-                  onPressed: toggleSelectionMode,
+                  onPressed: toggleSelectionMode, //This is the close function
                 ),
-                 IconButton(
+                IconButton(
                   icon: Icon(Icons.delete, color: Colors.red),
                   onPressed: () {
-                    setState(() {
-                      for (var file in selectedFiles) {
-                        if (files.contains(file)) {
-                          files.remove(file);
-                          File(file.path).deleteSync();
-                        }
-                      }
-                      selectedFiles.clear();
-                      isSelectionMode = false;
-                    });
+                    deletion(); //This is the delete function for the Multiple deletion
                   },
                 ),
               ]
@@ -303,22 +299,30 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                       subtitle: Text(file.path),
                       trailing: IconButton(
                         icon: Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _deleteFile(index),
+                        onPressed: () =>
+                            _deleteFile(index), //This is the delete function
                       ),
                       onTap: () async {
                         // Open the file or show more options
-                        final result = await OpenFilex.open(file.path);
-                        if (result.type != ResultType.done) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text(
-                                    'Failed to open file: ${result.message}')),
-                          );
-                        }
+                        openFileWithIntent(file.path, context);
                       },
                     );
                   }),
             ),
     );
+  }
+
+//This is for the deletion of multiple File
+  void deletion() {
+    setState(() {
+      for (var file in selectedFiles) {
+        if (files.contains(file)) {
+          files.remove(file);
+          File(file.path).deleteSync();
+        }
+      }
+      selectedFiles.clear();
+      isSelectionMode = false;
+    });
   }
 }

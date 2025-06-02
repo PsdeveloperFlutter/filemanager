@@ -255,9 +255,9 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                     context,
                     searchController.text,
                     index,
-                  );
+                  );// This is the buildFileCard function
                 },
-                childCount: files.length,
+                childCount: files.length,// This is the childCount function
               ),
             ),
 
@@ -420,19 +420,28 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
             subtitle: Text(
                 "Modified: ${DateFormat('dd-MM-yyyy HH:mm a').format(entity.statSync().modified)}"),
             onTap: () async {
-              bool allowed =
-                  await ProtectionManager.validatePasswordIfProtected(
-                      context, entity.path);
-              if (allowed) {
-                openFileWithIntent(
-                    entity.path, context); // Your existing open logic
-              }
+              updateDirctoriesRecentFiles(entity);
             },
             trailing:
                 featuresOption(context, entity) // Handle more options here
             ),
       ),
     ));
+  }
+
+  //This is the function of opening and updating the directory and add recent file
+  void updateDirctoriesRecentFiles(FileSystemEntity entity)async{
+    bool allowed =
+        await ProtectionManager.validatePasswordIfProtected(
+        context, entity.path);
+    if (allowed) {
+      if (entity is Directory) {
+        fileController.listFiles(entity); // Update directory
+        insertRecentFile(entity); // Insert recent directory
+      } else {
+        insertRecentFile(entity); // Insert recent file
+      }
+    }
   }
 
   //for the features of the file manager
@@ -711,38 +720,41 @@ Widget sortRadioOption(
 
 //This is the Widget of the buildBreadCrumbed
 Widget buildBreadcrumbBar(FileBrowserController controller) {
-  final segments =
-      controller.getPathSegments(controller.currentDirectory.value.path);
-  return SingleChildScrollView(
-    scrollDirection: Axis.horizontal, // Set horizontal scroll
-    child: Row(
-      children: List.generate(segments.length, (index) {
-        final segment = segments[index];
-        return Row(
-          children: [
-            GestureDetector(
-              onTap: () {
-                final targetPath = segment['path'];
-                if (targetPath != null && Directory(targetPath).existsSync()) {
-                  controller.listFiles(Directory(targetPath));
-                } else {
-                  Get.snackbar(
-                      "Error", "Folder does not exist or path is invalid");
-                }
-              },
-              child: Text(
-                segment['name']!,
-                style: const TextStyle(
-                  color: Colors.blue,
-                  fontWeight: FontWeight.bold,
+  return Obx(() {
+    final segments =
+    controller.getPathSegments(controller.currentDirectory.value.path);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal, // Set horizontal scroll
+      child: Row(
+        children: List.generate(segments.length, (index) {
+          final segment = segments[index];
+          return Row(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  final targetPath = segment['path'];
+                  if (targetPath != null && Directory(targetPath).existsSync()) {
+                    controller.currentDirectory.value = Directory(targetPath);
+                    controller.listFiles(Directory(targetPath));
+                  } else {
+                    Get.snackbar(
+                        "Error", "Folder does not exist or path is invalid");
+                  }
+                },
+                child: Text(
+                  segment['name']!,
+                  style: const TextStyle(
+                    color: Colors.blue,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
-            if (index != segments.length - 1)
-              const Icon(Icons.chevron_right, size: 18),
-          ],
-        );
-      }),
-    ),
-  );
+              if (index != segments.length - 1)
+                const Icon(Icons.chevron_right, size: 18),
+            ],
+          );
+        }),
+      ),
+    );
+  });
 }

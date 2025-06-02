@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:filemanager/fileBrowserController.dart';
 import 'package:filemanager/recentFiles.dart';
 import 'package:flutter/material.dart';
