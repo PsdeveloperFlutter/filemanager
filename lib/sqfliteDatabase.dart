@@ -68,10 +68,11 @@ class FavoriteDBHelper {
 
 class FavoriteScreen extends StatefulWidget {
   @override
-  State<FavoriteScreen> createState() => _FavoriteScreenState();
+  const FavoriteScreen({Key? key}) : super(key: key);
+  State<FavoriteScreen> createState() => FavoriteScreenState();
 }
 
-class _FavoriteScreenState extends State<FavoriteScreen> {
+class FavoriteScreenState extends State<FavoriteScreen> {
   List<FileSystemEntity> selectedFiles =
       []; // List to hold selected files for multiple selection
   bool isSelectionMode = false; // Flag to track if selection mode is active

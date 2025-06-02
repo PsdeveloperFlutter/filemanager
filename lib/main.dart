@@ -3,9 +3,11 @@ import 'package:filemanager/recentFiles.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'sqfliteDatabase.dart';
 import 'fileManageUi.dart';
 final GlobalKey<RecentFilesScreenState> recentFilesKey = GlobalKey<RecentFilesScreenState>();// This key is used to access the state of RecentFilesScreen
 final GlobalKey<FileBrowserScreenState> fileBrowserKey = GlobalKey<FileBrowserScreenState>();// This key is used to access the state of FileBrowserScreen
+final GlobalKey<FavoriteScreenState> favoriteScreenKey = GlobalKey<FavoriteScreenState>();// This key is used to access the state of FavoriteScreen
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Await the permission request properly

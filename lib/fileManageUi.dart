@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:filemanager/categoriesScreen.dart';
 import 'package:filemanager/main.dart';
 import 'package:filemanager/passwordProtection.dart';
@@ -8,10 +9,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
+
 import 'fileBrowserController.dart';
 
 class FileBrowserScreen extends StatefulWidget {
   FileBrowserScreen({super.key});
+
   @override
   State<FileBrowserScreen> createState() => FileBrowserScreenState();
 }
@@ -255,9 +258,9 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                     context,
                     searchController.text,
                     index,
-                  );// This is the buildFileCard function
+                  ); // This is the buildFileCard function
                 },
-                childCount: files.length,// This is the childCount function
+                childCount: files.length, // This is the childCount function
               ),
             ),
 
@@ -348,14 +351,17 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text.rich(highlightMatch(p.basename(entity.path), query)),
-                      IconButton(
-                          onPressed: () {
-                            dbHelper.addFavorite(entity.path);
-                          },
-                          icon: Icon(
-                            Icons.favorite,
-                            color: Colors.red,
-                          ))
+                      if (favoriteScreenKey.currentState?.favorites
+                              .contains(entity) ==
+                          false)
+                        IconButton(
+                            onPressed: () {
+
+                            },
+                            icon: Icon(
+                              Icons.favorite,
+                              color: Colors.red,
+                            ))
                     ],
                   ),
                 ),
@@ -430,9 +436,8 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
   }
 
   //This is the function of opening and updating the directory and add recent file
-  void updateDirctoriesRecentFiles(FileSystemEntity entity)async{
-    bool allowed =
-        await ProtectionManager.validatePasswordIfProtected(
+  void updateDirctoriesRecentFiles(FileSystemEntity entity) async {
+    bool allowed = await ProtectionManager.validatePasswordIfProtected(
         context, entity.path);
     if (allowed) {
       if (entity is Directory) {
@@ -536,7 +541,9 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => FavoriteScreen()),
+                MaterialPageRoute(
+                    builder: (context) =>
+                        FavoriteScreen(key: favoriteScreenKey)),
               );
             },
           ),
@@ -559,37 +566,49 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildSheetItem(context, 'Open', Icons.open_in_new, () async {
+                _buildSheetItem(context, 'Open', Icons.open_in_new, Colors.blue,
+                    () async {
                   Navigator.pop(context); // Close sheet
                   openFileWithIntent(entity.path, context); // Open file
                   insertRecentFile(entity); // Insert recent file
                 }),
-                _buildSheetItem(context, 'Share', Icons.share, () {
+                _buildSheetItem(context, 'Share', Icons.share, Colors.green,
+                    () {
                   Navigator.pop(context);
                   fileController.shareFile(context, entity);
                 }),
-                _buildSheetItem(context, 'Copy', Icons.copy, () {
+                _buildSheetItem(context, 'Copy', Icons.copy, Colors.yellow, () {
                   Navigator.pop(context);
                   fileController.initiateMoveOrCopySingle(
                       entity, "copy", context);
                 }),
-                _buildSheetItem(context, 'Move', Icons.drive_file_move, () {
+                _buildSheetItem(
+                    context, 'Move', Icons.drive_file_move, Colors.blue, () {
                   Navigator.pop(context);
                   fileController.initiateMoveOrCopySingle(
                       entity, "move", context);
                 }),
-                _buildSheetItem(context, 'Delete', Icons.delete, () {
+                _buildSheetItem(context, 'Delete', Icons.delete, Colors.red,
+                    () {
                   Navigator.pop(context);
                   fileController.showDeleteDialog(context, entity);
                 }),
-                _buildSheetItem(context, 'Rename', Icons.edit, () {
+                _buildSheetItem(
+                    context, 'Rename', Icons.edit, Colors.purpleAccent, () {
                   Navigator.pop(context);
                   fileController.renameFileOrFolder(context, entity);
                 }),
-                _buildSheetItem(context, 'Protection', Icons.lock, () async {
+                _buildSheetItem(context, 'Protection', Icons.lock, Colors.green,
+                    () async {
                   Navigator.pop(context);
                   await ProtectionManager.setPassword(context, entity.path);
                 }),
+                _buildSheetItem(context, "Add to Favorites",Icons.favorite, Colors.red, (){
+                  Navigator.pop(context);
+                  final dbHelper = FavoriteDBHelper();
+                  dbHelper.addFavorite(entity.path);
+                  Get.snackbar("Success", "Added to favorites");
+                })
               ],
             );
           },
@@ -603,6 +622,7 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
     BuildContext context,
     String label,
     IconData icon,
+    Color value,
     VoidCallback onTap,
   ) {
     return ListTile(
@@ -722,7 +742,7 @@ Widget sortRadioOption(
 Widget buildBreadcrumbBar(FileBrowserController controller) {
   return Obx(() {
     final segments =
-    controller.getPathSegments(controller.currentDirectory.value.path);
+        controller.getPathSegments(controller.currentDirectory.value.path);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal, // Set horizontal scroll
       child: Row(
@@ -733,7 +753,8 @@ Widget buildBreadcrumbBar(FileBrowserController controller) {
               GestureDetector(
                 onTap: () {
                   final targetPath = segment['path'];
-                  if (targetPath != null && Directory(targetPath).existsSync()) {
+                  if (targetPath != null &&
+                      Directory(targetPath).existsSync()) {
                     controller.currentDirectory.value = Directory(targetPath);
                     controller.listFiles(Directory(targetPath));
                   } else {
