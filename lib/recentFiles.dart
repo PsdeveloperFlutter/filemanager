@@ -67,15 +67,14 @@ class RecentDbHelper {
 //This is the UI logic of the Recent files
 
 class RecentFilesScreen extends StatefulWidget {
-  const RecentFilesScreen({super.key});
-
+  const RecentFilesScreen({Key? key}) : super(key: key);
   @override
   State<RecentFilesScreen> createState() => RecentFilesScreenState();
 }
 
 class RecentFilesScreenState extends State<RecentFilesScreen> {
   late Future<void> _initFuture;
-  List<Map<String, dynamic>> _recentFiles = [];
+  List<Map<String, dynamic>> recentFiles = [];
   bool _isSelectionMode = false; // Controls the appearance of checkboxes
   List<String> _selectedFiles = []; // Tracks selected files
 
@@ -87,7 +86,7 @@ class RecentFilesScreenState extends State<RecentFilesScreen> {
 
   Future<void> _loadRecentFilesOnce() async {
     final files = await RecentDbHelper().getRecentFiles();
-    _recentFiles = files;
+    recentFiles = files;
   }
 
   Future<void> insertFile(Map<String, dynamic> file) async {
@@ -100,8 +99,8 @@ class RecentFilesScreenState extends State<RecentFilesScreen> {
   Future<void> _deleteFile(String path) async {
     await RecentDbHelper().deleteRecentFile(path);
     setState(() {
-      _recentFiles = List<Map<String, dynamic>>.from(_recentFiles);
-      _recentFiles.removeWhere((f) => f['path'] == path);
+      recentFiles = List<Map<String, dynamic>>.from(recentFiles);
+      recentFiles.removeWhere((f) => f['path'] == path);
     });
   }
 
@@ -130,20 +129,15 @@ class RecentFilesScreenState extends State<RecentFilesScreen> {
     return FutureBuilder<void>(
       future: _initFuture,
       builder: (context, snapshot) {
-
-        if (_recentFiles.isEmpty) {
-          return Center(child: Text('No recent files.'));
-        }
-
         return GestureDetector(
           onLongPress: (){
             _toggleSelectionMode();// This will toggle the selection mode when a long press is detected
           },
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: _recentFiles.length,
+            itemCount: recentFiles.length,
             itemBuilder: (context, index) {
-              final file = _recentFiles[index];
+              final file = recentFiles[index];
               return SingleChildScrollView(
                 child: Container(
                   width: 150,

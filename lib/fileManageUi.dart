@@ -344,27 +344,7 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text.rich(highlightMatch(p.basename(entity.path), query)),
-                      if (favoriteScreenKey.currentState?.favorites
-                              .contains(entity) ==
-                          false)
-                        IconButton(
-                            onPressed: () {
-
-                            },
-                            icon: Icon(
-                              Icons.favorite,
-                              color: Colors.red,
-                            ))
-                    ],
-                  ),
-                ),
+                Text.rich(highlightMatch(p.basename(entity.path), query)),
                 const SizedBox(height: 6),
                 Text("Type: ${entity is Directory ? "Folder" : "File"}"),
                 Text("Size: ${fileController.getFileSize(entity)}"),
@@ -412,14 +392,6 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                     highlightMatch(p.basename(entity.path), query),
                     style: const TextStyle(fontSize: 16),
                   ),
-                  IconButton(
-                      onPressed: () {
-                        dbHelper.addFavorite(entity.path);
-                      },
-                      icon: Icon(
-                        Icons.favorite,
-                        color: Colors.red.shade700,
-                      ))
                 ],
               ),
             ),
