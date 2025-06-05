@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:filemanager/fileBrowserController.dart';
 import 'package:filemanager/recentFiles.dart';
 import 'package:flutter/material.dart';
@@ -69,6 +70,7 @@ class FavoriteDBHelper {
 class FavoriteScreen extends StatefulWidget {
   @override
   const FavoriteScreen({Key? key}) : super(key: key);
+
   State<FavoriteScreen> createState() => FavoriteScreenState();
 }
 
@@ -104,7 +106,6 @@ class FavoriteScreenState extends State<FavoriteScreen> {
     favorites.remove(path); // Remove from local list only
     setState(() {});
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -117,19 +118,35 @@ class FavoriteScreenState extends State<FavoriteScreen> {
                   if (selectedFiles.isEmpty) return;
 
                   try {
-                    List<XFile> xFiles = selectedFiles
-                        .whereType<File>()
-                        .map((file) => XFile(file.path,
-                            mimeType: lookupMimeType(file.path) ??
-                                'application/octet-stream'))
-                        .toList();
+                    // Ensure all selected files are valid
+                    // Ensure all selected files are valid
+                    List<XFile> xFiles = [];
+                    for (var file in selectedFiles.whereType<File>()) {
+                      if (file.existsSync()) {
+                        xFiles.add(XFile(
+                          file.path,
+                          mimeType: lookupMimeType(file.path) ?? 'application/octet-stream',
+                        ));
+                      } else {
+                        print("File does not exist: ${file.path}");
+                      }
+                    }
+
+                    if (xFiles.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("No valid files to share")),
+                      );
+                      return;
+                    }
+
                     if (xFiles.length != selectedFiles.length) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text(
-                                "Folders are not supported and were skipped.")),
+                            content:
+                                Text("Some files were invalid and skipped.")),
                       );
                     }
+
                     if (xFiles.length == 1) {
                       await Share.shareXFiles(
                         xFiles,
@@ -149,7 +166,7 @@ class FavoriteScreenState extends State<FavoriteScreen> {
                   } catch (e) {
                     print("Error sharing files: $e");
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Failed to share files")),
+                      SnackBar(content: Text("Failed to share files: $e")),
                     );
                   }
                 },
@@ -163,28 +180,31 @@ class FavoriteScreenState extends State<FavoriteScreen> {
                     shareValue = false; // Disable share icon
                     selectedFiles.clear(); // Clear selection
                   });
-
                 },
-                icon: Icon(Icons.cancel),
+                icon: Icon(Icons.close),
               ),
             if (shareValue)
               IconButton(
                   onPressed: () {
-                    setState(() {
-                      for (var file in selectedFiles) {
-                        if (favorites.contains(file)) {
-                          favorites.remove(file);
-                          File(file.path).deleteSync();
-                        }
-                      }
-                      selectedFiles.clear();
-                      isSelectionMode = false;
-                    });
+                   multipleDeletion();
                   },
                   icon: Icon(
                     Icons.delete,
                     color: Colors.red,
                   )),
+            if (shareValue)
+              IconButton(
+                  onPressed: () async{
+                    final targetPath = await _selectTargetDirectory();
+                    if (targetPath != null) {
+                      await moveSelectedFiles(targetPath,context);
+                    }
+                  },
+                  icon: Icon(
+                    Icons.move_to_inbox,
+                    color: Colors.blue,
+                  )),
+
           ],
         ),
         body: isLoading
@@ -238,61 +258,104 @@ class FavoriteScreenState extends State<FavoriteScreen> {
                               : File(path);
                           final isSelected =
                               selectedFiles.any((file) => file.path == path);
-                          return ListTile(
-                            // Multiple Selections
-                            onLongPress: () {
-                              setState(() {
-                                isSelectionMode = true;
-                                shareValue = true; // Enable share icon
-                              });
-                            },
-                            onTap: () {
-                              if (shareValue) {
-                                // Toggle selection on tap if in selection mode
+                          return Card(
+                            child: ListTile(
+                              // Multiple Selections
+                              onLongPress: () {
                                 setState(() {
-                                  if (isSelected) {
-                                    selectedFiles.removeWhere(
-                                        (file) => file.path == path);
-                                  } else {
-                                    selectedFiles.add(File(path));
-                                  }
+                                  isSelectionMode = true;
+                                  shareValue = true; // Enable share icon
                                 });
-                              } else {
-                                openFileWithIntent(entity.path, context);
-                              }
-                            },
-                            leading: shareValue
-                                ? Checkbox(
-                                    value: isSelected,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        if (value == true && !isSelected) {
-                                          selectedFiles.add(File(path));
-                                        } else {
-                                          selectedFiles.removeWhere(
-                                              (file) => file.path == path);
-                                        }
-                                      });
-                                    },
-                                  )
-                                : Icon(
-                                    entity is Directory
-                                        ? Icons.folder
-                                        : Icons.insert_drive_file,
-                                    color: Colors.blue.shade700,
-                                  ),
-                            title: Text(path.split('/').last),
-                            subtitle: Text(path),
-                            trailing: IconButton(
-                              icon: Icon(Icons.delete),
-                              onPressed: () {
-                                // Optionally allow tap delete in addition to swipe
-                                deleteFavorite(path);
                               },
+                              onTap: () {
+                                if (shareValue) {
+                                  // Toggle selection on tap if in selection mode
+                                  setState(() {
+                                    if (isSelected) {
+                                      selectedFiles.removeWhere(
+                                          (file) => file.path == path);
+                                    } else {
+                                      selectedFiles.add(File(path));
+                                    }
+                                  });
+                                } else {
+                                  openFileWithIntent(entity.path, context);
+                                }
+                              },
+                              leading: shareValue
+                                  ? Checkbox(
+                                      value: isSelected,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          if (value == true && !isSelected) {
+                                            selectedFiles.add(File(path));
+                                          } else {
+                                            selectedFiles.removeWhere(
+                                                (file) => file.path == path);
+                                          }
+                                        });
+                                      },
+                                    )
+                                  : Icon(
+                                      entity is Directory
+                                          ? Icons.folder
+                                          : Icons.insert_drive_file,
+                                      color: Colors.blue.shade700,
+                                    ),
+                              title: Text(path.split('/').last),
+                              subtitle: Text(path),
+                              trailing: IconButton(
+                                icon: Icon(Icons.delete, color: Colors.red),
+                                onPressed: () {
+                                  // Optionally allow tap delete in addition to swipe
+                                  deleteFavorite(path);
+                                },
+                              ),
                             ),
                           );
                         },
                       ));
+  }
+  Future<String?> _selectTargetDirectory() async {
+    // Example implementation using file_picker
+    try {
+      String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+      return selectedDirectory;
+    } catch (e) {
+      print("Error selecting directory: $e");
+      return null;
+    }
+  }
+  Future<void> moveSelectedFiles(String targetPath,BuildContext context) async {
+    try {
+      for (var file in selectedFiles.whereType<File>()) {
+        final newPath = p.join(targetPath, p.basename(file.path));
+        await file.rename(newPath);
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Files moved successfully")),
+      );
+      setState(() {
+        isSelectionMode = false;
+        shareValue = false;
+        selectedFiles.clear();
+      });
+    } catch (e) {
+      print("Error moving files: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to move files: $e")),
+      );
+    }
+  }
+  void multipleDeletion() { // This is for the deletion of multiple files
+    for (var file in selectedFiles) {
+      deleteFavorite(file.path);
+    }
+    setState(() {
+      isSelectionMode = false;
+      shareValue = false; // Disable share icon
+      selectedFiles.clear(); // Clear selection
+    });
   }
 }
 

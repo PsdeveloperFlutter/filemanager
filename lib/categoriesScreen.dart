@@ -1,5 +1,5 @@
 import 'dart:io';
-
+import 'package:file_picker/file_picker.dart';
 import 'package:filemanager/recentFiles.dart';
 import 'package:flutter/material.dart';
 import 'package:mime/mime.dart';
@@ -23,9 +23,8 @@ const Map<String, String> categoryPaths = {
 class Category {
   final String name;
   final String path;
-  final int count;
 
-  Category({required this.name, required this.path, required this.count});
+  Category({required this.name, required this.path});
 }
 
 Future<int> getFileCount(String path) async {
@@ -40,7 +39,7 @@ Future<List<Category>> loadCategories() async {
   List<Category> list = [];
   for (final entry in categoryPaths.entries) {
     final count = await getFileCount(entry.value);
-    list.add(Category(name: entry.key, path: entry.value, count: count));
+    list.add(Category(name: entry.key, path: entry.value));
   }
   return list;
 }
@@ -117,8 +116,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           style: TextStyle(
                               fontSize: 12, fontWeight: FontWeight.bold),
                         ),
-                        Text('${cat.count} items',
-                            style: TextStyle(color: Colors.grey[600])),
                       ],
                     ),
                   ),
@@ -272,6 +269,15 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                     deletion(); //This is the delete function for the Multiple deletion
                   },
                 ),
+                IconButton(
+                  onPressed: () async {
+                    final targetPath = await _selectTargetDirectory();
+                    if (targetPath != null) {
+                      await moveSelectedFiles(targetPath);
+                    }
+                  },
+                  icon: Icon(Icons.drive_file_move, color: Colors.blue),
+                ),
               ]
             : null,
       ),
@@ -286,26 +292,28 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                   itemBuilder: (context, index) {
                     final file = files[index];
                     final isSelected = selectedFiles.contains(file);
-                    return ListTile(
-                      leading: isSelectionMode
-                          ? Checkbox(
-                              value: isSelected,
-                              onChanged: (value) {
-                                toggleFileSelection(file);
-                              },
-                            )
-                          : Icon(Icons.insert_drive_file),
-                      title: Text(p.basename(file.path)),
-                      subtitle: Text(file.path),
-                      trailing: IconButton(
-                        icon: Icon(Icons.delete, color: Colors.red),
-                        onPressed: () =>
-                            _deleteFile(index), //This is the delete function
+                    return Card(
+                      child: ListTile(
+                        leading: isSelectionMode
+                            ? Checkbox(
+                                value: isSelected,
+                                onChanged: (value) {
+                                  toggleFileSelection(file);
+                                },
+                              )
+                            : Icon(Icons.insert_drive_file),
+                        title: Text(p.basename(file.path)),
+                        subtitle: Text(file.path),
+                        trailing: IconButton(
+                          icon: Icon(Icons.delete, color: Colors.red),
+                          onPressed: () =>
+                              _deleteFile(index), //This is the delete function
+                        ),
+                        onTap: () async {
+                          // Open the file or show more options
+                          openFileWithIntent(file.path, context);
+                        },
                       ),
-                      onTap: () async {
-                        // Open the file or show more options
-                        openFileWithIntent(file.path, context);
-                      },
                     );
                   }),
             ),
@@ -324,5 +332,40 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
       selectedFiles.clear();
       isSelectionMode = false;
     });
+  }
+  Future<String?> _selectTargetDirectory()async{// This function is used to select the target directory for moving files
+    try{
+      String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+      if (selectedDirectory != null) {
+        return selectedDirectory;
+      } else {
+        return null;
+      }
+    }catch(e){
+     print("Error selecting directory: $e");
+    }
+  }
+  Future<void> moveSelectedFiles(String targetPath) async { //
+    try{
+      for(var file in selectedFiles){
+        final fileName=p.basename(file.path);
+        final newpath=p.join(targetPath,fileName);
+        await File(file.path).rename(newpath);
+        setState(() {
+          files.removeWhere((file)=>selectedFiles.contains(file));
+          selectedFiles.clear();
+          isSelectionMode = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Files moved successfully")),
+        );
+      }
+    }catch(e){
+        print("Error moving files: $e");
+        setState(() {
+          selectedFiles.clear(); // Clear the list to avoid concurrent modification
+          isSelectionMode = false;
+        });
+    }
   }
 }

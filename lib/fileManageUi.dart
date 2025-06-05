@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fileBrowserController.dart';
 
@@ -23,6 +24,16 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
   final fileController = Get.put(FileBrowserController());
   final TextEditingController searchController = TextEditingController();
 
+  void initState() {
+    super.initState();
+    // Load initial files
+    fileController.listFiles(fileController.currentDirectory.value);
+    // Load sort option from SharedPreferences
+    fileController.loadSortOption();
+    fileController.loadLayoutFromPrefs();
+    RecentFilesScreen(key: recentFilesKey);
+
+  }
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -34,8 +45,9 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
         return true;
       },
       child: Scaffold(
-        drawer: buildMainFeaturesDrawer(context),
+        drawer: buildMainFeaturesDrawer(context, fileController),
         body: mainScreen(fileController, searchController, context),
+        //This is code of Main Screen
         floatingActionButton: Obx(() {
           if (!fileController.isSelectionMode.value ||
               fileController.selectedItems.isEmpty) {
@@ -85,7 +97,7 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                       ],
                     ));
                     if (confirm == true) {
-                      deleteSelectedItems(context);
+                      deleteSelectedItems(context, fileController);
                     }
                   },
                 ),
@@ -93,54 +105,17 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
             ),
           );
         }),
+        //This is the code of the floating action button FOR COPY MOVE AND DELETE
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
     );
   }
 
-  //This is the logic of confirm delete
-  void deleteSelectedItems(BuildContext context) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Confirm Deletion"),
-        content:
-            const Text("Are you sure you want to delete the selected items?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Delete"),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      for (final file in fileController.selectedItems) {
-        try {
-          if (file.existsSync()) {
-            file.deleteSync(recursive: true);
-          }
-        } catch (e) {
-          Get.snackbar("Error", "Failed to delete ${file.path}");
-        }
-      }
-
-      fileController.clearAllItems();
-      fileController.listFiles(fileController.currentDirectory.value);
-      Get.snackbar("Success", "Selected items deleted.");
-    }
-  }
-
+  //This is the Mainscreen
   Widget mainScreen(FileBrowserController fileController,
       TextEditingController searchController, BuildContext context) {
     return Obx(() {
       final files = fileController.filteredFiles;
-
       return CustomScrollView(
         slivers: [
           // Search Bar
@@ -191,8 +166,8 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
           // Breadcrumb Bar
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: buildBreadcrumbBar(fileController),
+              padding: const EdgeInsets.symmetric(vertical: 12.0),
+              child: Center(child: buildBreadcrumbBar(fileController)),
             ),
           ),
           // Recent Files
@@ -209,8 +184,7 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                SizedBox(
-                    height: 165, child: RecentFilesScreen(key: recentFilesKey)),
+                RecentFilesScreen(key: recentFilesKey),
               ],
             ),
           ),
@@ -237,6 +211,7 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                       files[index],
                       context,
                       searchController.text,
+                      fileController, // Pass the controller to the grid card
                     );
                   },
                   childCount: files.length,
@@ -258,6 +233,7 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                     context,
                     searchController.text,
                     index,
+                    fileController,
                   ); // This is the buildFileCard function
                 },
                 childCount: files.length, // This is the childCount function
@@ -289,253 +265,283 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
     });
   }
 
-// This is for the Grid View
-  Widget buildFileCardGrid(dynamic entity, BuildContext context, String query) {
-    final dbHelper = FavoriteDBHelper();
-    return GestureDetector(
-      onTap: () async {
-        bool allowed = await ProtectionManager.validatePasswordIfProtected(
-            context, entity.path);
-        if (allowed) {
-          if (entity is Directory) {
-            fileController.listFiles(entity); // Update directory
-            insertRecentFile(entity); // Insert recent directory
-          } else {
-            insertRecentFile(entity); // Insert recent file
-          }
-          fileController.clearAllItems(); // Clear selectiontory.value);
-        }
-      },
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+//This is the logic of confirm delete
+  void deleteSelectedItems(
+      BuildContext context, FileBrowserController fileController) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Confirm Deletion"),
+        content:
+        const Text("Are you sure you want to delete the selected items?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
           ),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Obx(
-                  () => Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      fileController.isSelectionMode.value
-                          ? Checkbox(
-                              value:
-                                  fileController.selectedItems.contains(entity),
-                              onChanged: (_) =>
-                                  fileController.toggleItemSelection(entity),
-                            )
-                          : Icon(
-                              entity is Directory
-                                  ? Icons.folder
-                                  : Icons.insert_drive_file,
-                              size: 48,
-                              color: Colors.blueAccent),
-                      featuresOption(context, entity),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text.rich(highlightMatch(p.basename(entity.path), query)),
-                const SizedBox(height: 6),
-                Text("Type: ${entity is Directory ? "Folder" : "File"}"),
-                Text("Size: ${fileController.getFileSize(entity)}"),
-                Text(
-                    "Modified: ${DateFormat('dd-MM-yyyy HH:mm a').format(entity.statSync().modified)}"),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Build the file card based on the type of file
-  Widget buildFileCard(
-      dynamic entity, BuildContext context, String query, int index) {
-    final dbHelper = FavoriteDBHelper();
-    return Card(
-        child: Obx(
-      () => GestureDetector(
-        onLongPress: () {
-          fileController
-              .enableSelectionModeIfNeeded(); // don't toggle every time
-          fileController
-              .toggleItemSelection(entity); // this checks/unchecks correctly
-        },
-        child: ListTile(
-            leading: fileController.isSelectionMode.value
-                ? Checkbox(
-                    value: fileController.selectedItems
-                        .contains(fileController.fileName[index]),
-                    onChanged: (_) =>
-                        fileController.toggleItemSelection(entity),
-                  )
-                : Icon(
-                    entity is Directory
-                        ? Icons.folder
-                        : Icons.insert_drive_file,
-                    color: Colors.blue.shade700),
-            title: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  Text.rich(
-                    highlightMatch(p.basename(entity.path), query),
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ],
-              ),
-            ),
-            subtitle: Text(
-                "Modified: ${DateFormat('dd-MM-yyyy HH:mm a').format(entity.statSync().modified)}"),
-            onTap: () async {
-              updateDirctoriesRecentFiles(entity);
-            },
-            trailing:
-                featuresOption(context, entity) // Handle more options here
-            ),
-      ),
-    ));
-  }
-
-  //This is the function of opening and updating the directory and add recent file
-  void updateDirctoriesRecentFiles(FileSystemEntity entity) async {
-    bool allowed = await ProtectionManager.validatePasswordIfProtected(
-        context, entity.path);
-    if (allowed) {
-      if (entity is Directory) {
-        fileController.listFiles(entity); // Update directory
-        insertRecentFile(entity); // Insert recent directory
-      } else {
-        insertRecentFile(entity); // Insert recent file
-      }
-    }
-  }
-
-  //for the features of the file manager
-  Widget mainFeatures(BuildContext context, FileSystemEntity entity) {
-    return fileController.isSelectionMode.value
-        ? IconButton(
-            onPressed: () {
-              fileController.clearAllItems();
-            },
-            icon: Icon(Icons.close))
-        : Builder(
-            builder: (context) => IconButton(
-              icon: Icon(Icons.menu),
-              onPressed: () {
-                buildMainFeaturesDrawer(context);
-              },
-            ),
-          );
-  }
-
-  Drawer buildMainFeaturesDrawer(BuildContext context) {
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          DrawerHeader(
-            decoration: BoxDecoration(
-              color: Colors.blue,
-            ),
-            child: Text(
-              'File Manager',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-              ),
-            ),
-          ),
-          ListTile(
-            leading: Icon(
-              Icons.view_list,
-              color: Colors.purpleAccent,
-            ),
-            title: Obx(() => Text(
-                '${fileController.isGridView.value ? "Switch to List View" : "Switch to Grid View"}')),
-            onTap: () {
-              fileController.toggleView();
-              Navigator.pop(context);
-            },
-          ),
-          ListTile(
-            leading: Obx(() => Icon(
-                  fileController.isDarkTheme.value
-                      ? Icons.wb_sunny_outlined
-                      : Icons.nightlight_round,
-                  color: fileController.isDarkTheme.value
-                      ? Colors.yellow
-                      : Colors.grey,
-                )),
-            title: Obx(() => Text(fileController.isDarkTheme.value
-                ? "Switch to Light"
-                : "Switch to Dark ")),
-            onTap: () {
-              fileController.toggleTheme();
-              Navigator.pop(context);
-            },
-          ),
-          ListTile(
-            leading: Icon(
-              Icons.sort,
-              color: Colors.blue.shade700,
-            ),
-            title: Text('Sort by'),
-            onTap: () {
-              Navigator.pop(context);
-              showSortOptions(context, 'Name A → Z');
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.create_new_folder, color: Colors.purpleAccent),
-            title: Text('Create New Folder'),
-            onTap: () {
-              Navigator.pop(context);
-              fileController.showCreateFolderDialog(context);
-            },
-          ),
-          ListTile(
-            leading: Icon(
-              Icons.favorite,
-              color: Colors.red,
-            ),
-            title: Text('Favorite Files & Folders'),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) =>
-                        FavoriteScreen(key: favoriteScreenKey)),
-              );
-            },
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Delete"),
           ),
         ],
       ),
     );
-  }
 
-  //for the features option Share, copy , delete , rename, properties etc
-  Widget featuresOption(BuildContext context, FileSystemEntity entity) {
-    return IconButton(
-      icon: const Icon(Icons.more_vert),
-      onPressed: () {
-        showModalBottomSheet(
-          context: context,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    if (confirm == true) {
+      for (final file in fileController.selectedItems) {
+        try {
+          if (file.existsSync()) {
+            file.deleteSync(recursive: true);
+          }
+        } catch (e) {
+          Get.snackbar("Error", "Failed to delete ${file.path}");
+        }
+      }
+
+      fileController.clearAllItems();
+      fileController.listFiles(fileController.currentDirectory.value);
+      Get.snackbar("Success", "Selected items deleted.");
+    }
+  } 
+}
+
+
+// This is for the Grid View
+Widget buildFileCardGrid(dynamic entity, BuildContext context, String query,
+    FileBrowserController fileController) {
+  return GestureDetector(
+    onLongPress: () {
+      fileController.enableSelectionModeIfNeeded(); // Enable selection mode
+      fileController.toggleItemSelection(entity); // Toggle selection
+    },
+    onTap: () async {
+      //This code is for when the user tap so the validation
+      bool allowed = await ProtectionManager.validatePasswordIfProtected(
+          context, entity.path);
+      if (allowed) {
+        if (entity is Directory) {
+          fileController.listFiles(entity); // Update directory
+          insertRecentFile(entity); // Insert recent directory
+        } else {
+          insertRecentFile(entity); // Insert recent file
+        }
+        fileController.clearAllItems(); // Clear selectiontory.value);
+      }
+    },
+    child: Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Obx(
+                () => Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    fileController.isSelectionMode.value
+                        ? Checkbox(
+                            value:
+                                fileController.selectedItems.contains(entity),
+                            onChanged: (_) =>
+                                fileController.toggleItemSelection(entity),
+                          )
+                        : Icon(
+                            entity is Directory
+                                ? Icons.folder
+                                : Icons.insert_drive_file,
+                            size: 48,
+                            color: Colors.blueAccent),
+                    featuresOption(context, entity, fileController),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text.rich(highlightMatch(p.basename(entity.path), query)),
+              const SizedBox(height: 6),
+              Text("Type: ${entity is Directory ? "Folder" : "File"}"),
+              Text("Size: ${fileController.getFileSize(entity)}"),
+              Text(
+                  "Modified: ${DateFormat('dd-MM-yyyy HH:mm a').format(entity.statSync().modified)}"),
+            ],
           ),
-          builder: (BuildContext context) {
-            return Column(
+        ),
+      ),
+    ),
+  );
+}
+
+// Build the file card based on the type of file
+Widget buildFileCard(dynamic entity, BuildContext context, String query,
+    int index, FileBrowserController fileController) {
+  return Card(
+      child: Obx(
+    () => GestureDetector(
+      onLongPress: () {
+        fileController.enableSelectionModeIfNeeded(); // don't toggle every time
+        fileController
+            .toggleItemSelection(entity); // this checks/unchecks correctly
+      },
+      child: ListTile(
+          leading: fileController.isSelectionMode.value
+              ? Checkbox(
+                  value: fileController.selectedItems
+                      .contains(fileController.fileName[index]),
+                  onChanged: (_) => fileController.toggleItemSelection(entity),
+                )
+              : Icon(
+                  entity is Directory ? Icons.folder : Icons.insert_drive_file,
+                  color: Colors.blue.shade700),
+          title: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                Text.rich(
+                  highlightMatch(p.basename(entity.path), query),
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ],
+            ),
+          ),
+          subtitle: Text(
+              "Modified: ${DateFormat('dd-MM-yyyy HH:mm a').format(entity.statSync().modified)}"),
+          onTap: () async {
+            updateDirctoriesRecentFiles(entity, fileController, context);
+          },
+          trailing: featuresOption(
+              context, entity, fileController) // Handle more options here
+          ),
+    ),
+  ));
+}
+
+//This is the function of opening and updating the directory and add recent file
+void updateDirctoriesRecentFiles(FileSystemEntity entity,
+    FileBrowserController fileController, BuildContext context) async {
+  bool allowed =
+      await ProtectionManager.validatePasswordIfProtected(context, entity.path);
+  if (allowed) {
+    if (entity is Directory) {
+      fileController.listFiles(entity); // Update directory
+      insertRecentFile(entity); // Insert recent directory
+    } else {
+      insertRecentFile(entity); // Insert recent file
+    }
+  }
+}
+
+//This is the code for the main features drawer
+Drawer buildMainFeaturesDrawer(
+    BuildContext context, FileBrowserController fileController) {
+  return Drawer(
+    child: ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        DrawerHeader(
+          decoration: BoxDecoration(
+            color: Colors.blue,
+          ),
+          child: Text(
+            'File Manager',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+            ),
+          ),
+        ),
+        ListTile(
+          leading: Icon(
+            Icons.view_list,
+            color: Colors.purpleAccent,
+          ),
+          title: Obx(() => Text(
+              '${fileController.isGridView.value ? "Switch to List View" : "Switch to Grid View"}')),
+          onTap: () {
+            fileController.toggleView();
+            Navigator.pop(context);
+          },
+        ),
+        ListTile(
+          leading: Obx(() => Icon(
+                fileController.isDarkTheme.value
+                    ? Icons.wb_sunny_outlined
+                    : Icons.nightlight_round,
+                color: fileController.isDarkTheme.value
+                    ? Colors.yellow
+                    : Colors.grey,
+              )),
+          title: Obx(() => Text(fileController.isDarkTheme.value
+              ? "Switch to Light"
+              : "Switch to Dark ")),
+          onTap: () {
+            fileController.toggleTheme();
+            Navigator.pop(context);
+          },
+        ),
+        ListTile(
+          leading: Icon(
+            Icons.sort,
+            color: Colors.blue.shade700,
+          ),
+          title: Text('Sort by'),
+          onTap: () {
+            Navigator.pop(context);
+            showSortOptions(context, fileController.currentSortOption);
+          },
+        ),
+        ListTile(
+          leading: Icon(Icons.create_new_folder, color: Colors.purpleAccent),
+          title: Text('Create New Folder'),
+          onTap: () {
+            Navigator.pop(context);
+            fileController.showCreateFolderDialog(context);
+          },
+        ),
+        ListTile(
+          leading: Icon(
+            Icons.favorite,
+            color: Colors.red,
+          ),
+          title: Text('Favorite Files & Folders'),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => FavoriteScreen(key: favoriteScreenKey)),
+            );
+          },
+        ),
+      ],
+    ),
+  );
+}
+
+//for the features option Share, copy , delete , rename, properties etc
+Widget featuresOption(
+  BuildContext context,
+  FileSystemEntity entity,
+  FileBrowserController fileController,
+) {
+  return IconButton(
+    icon: const Icon(Icons.more_vert),
+    onPressed: () {
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (BuildContext context) {
+          return SingleChildScrollView(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 _buildSheetItem(context, 'Open', Icons.open_in_new, Colors.blue,
@@ -575,34 +581,35 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                   Navigator.pop(context);
                   await ProtectionManager.setPassword(context, entity.path);
                 }),
-                _buildSheetItem(context, "Add to Favorites",Icons.favorite, Colors.red, (){
+                _buildSheetItem(
+                    context, "Add to Favorites", Icons.favorite, Colors.red,
+                    () {
                   Navigator.pop(context);
                   final dbHelper = FavoriteDBHelper();
                   dbHelper.addFavorite(entity.path);
-                  Get.snackbar("Success", "Added to favorites");
                 })
               ],
-            );
-          },
-        );
-      },
-    );
-  }
+            ),
+          );
+        },
+      );
+    },
+  );
+}
 
-  /// Helper widget for bottom sheet item and set the  content of bottom sheet
-  Widget _buildSheetItem(
-    BuildContext context,
-    String label,
-    IconData icon,
-    Color value,
-    VoidCallback onTap,
-  ) {
-    return ListTile(
-      leading: Icon(icon),
-      title: Text(label),
-      onTap: onTap,
-    );
-  }
+/// Helper widget for bottom sheet item and set the  content of bottom sheet
+Widget _buildSheetItem(
+  BuildContext context,
+  String label,
+  IconData icon,
+  Color value,
+  VoidCallback onTap,
+) {
+  return ListTile(
+    leading: Icon(icon, color: value),
+    title: Text(label),
+    onTap: onTap,
+  );
 }
 
 //This is the function Responsible for the Inserting Recent Files
@@ -628,60 +635,24 @@ void showSortOptions(BuildContext context, String selectedOption) {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  sortRadioOption(
+                  for (final option in [
                     'Name A → Z',
-                    selectedOption,
-                    (value) {
-                      setState(() => selectedOption = value);
-                      fileController.sortFilesByOption(value);
-                      Navigator.pop(context); // Close modal immediately
-                    },
-                  ),
-                  sortRadioOption(
                     'Name Z → A',
-                    selectedOption,
-                    (value) {
-                      setState(() => selectedOption = value);
-                      fileController.sortFilesByOption(value);
-                      Navigator.pop(context);
-                    },
-                  ),
-                  sortRadioOption(
                     'Largest first',
-                    selectedOption,
-                    (value) {
-                      setState(() => selectedOption = value);
-                      fileController.sortFilesByOption(value);
-                      Navigator.pop(context);
-                    },
-                  ),
-                  sortRadioOption(
                     'Smallest first',
-                    selectedOption,
-                    (value) {
-                      setState(() => selectedOption = value);
-                      fileController.sortFilesByOption(value);
-                      Navigator.pop(context);
-                    },
-                  ),
-                  sortRadioOption(
                     'Newest date first',
-                    selectedOption,
-                    (value) {
-                      setState(() => selectedOption = value);
-                      fileController.sortFilesByOption(value);
-                      Navigator.pop(context);
-                    },
-                  ),
-                  sortRadioOption(
                     'Oldest date first',
-                    selectedOption,
-                    (value) {
+                  ])
+                    sortRadioOption(option, selectedOption, (value) async {
                       setState(() => selectedOption = value);
                       fileController.sortFilesByOption(value);
+
+                      // ✅ Save to SharedPreferences
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString('sort_option', value);
+
                       Navigator.pop(context);
-                    },
-                  ),
+                    }),
                 ],
               ),
             ),
@@ -692,7 +663,7 @@ void showSortOptions(BuildContext context, String selectedOption) {
   );
 }
 
-//This is the Widget of the sortRadioOption
+//This is the Widget of the sortRadioOption ans UI
 Widget sortRadioOption(
   String option,
   String selectedOption,

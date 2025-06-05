@@ -11,7 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class FileBrowserController extends GetxController {
-  // At the top
+  var currentSortOption = 'Name A → Z'; // default option
   var isSelectionMode = false.obs;  //this for the selection process for the Select all features
   var selectedItems = <FileSystemEntity>[].obs; //This is for the selected items by user
   // Holds copied item (file or folder)
@@ -81,11 +81,20 @@ class FileBrowserController extends GetxController {
   void updateSearch(query) {
     searchQuery.value = query;
   }
+   void loadSortOption()async{
+    final prefs=await SharedPreferences.getInstance();
+    final savedOption=prefs.getString('sort_option');
+    if(savedOption!=null){
+      currentSortOption=savedOption;
+      sortFilesByOption(savedOption);
+    }
+   }
 
   @override
   void onInit() {
     super.onInit();
     _initStorage();
+    loadSortOption(); // Load saved sort option
     clearAllItems();
   }
   // This is for the initialization of the storage and listing files
