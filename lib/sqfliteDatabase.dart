@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:filemanager/fileBrowserController.dart';
+import 'package:filemanager/fileManageUi.dart';
 import 'package:filemanager/recentFiles.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -231,16 +232,12 @@ class FavoriteScreenState extends State<FavoriteScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(
-                                    entity is Directory
-                                        ? Icons.folder
-                                        : Icons.insert_drive_file,
-                                    color: Colors.blue.shade700),
+                                setIcon(entity),
                                 SizedBox(height: 8),
                                 Text(path.split('/').last),
                                 SizedBox(height: 8),
                                 IconButton(
-                                  icon: Icon(Icons.delete),
+                                  icon: Icon(Icons.delete,color:Colors.red),
                                   onPressed: () => deleteFavorite(path),
                                 ),
                               ],
@@ -296,12 +293,7 @@ class FavoriteScreenState extends State<FavoriteScreen> {
                                         });
                                       },
                                     )
-                                  : Icon(
-                                      entity is Directory
-                                          ? Icons.folder
-                                          : Icons.insert_drive_file,
-                                      color: Colors.blue.shade700,
-                                    ),
+                                  : setIcon(entity),
                               title: Text(path.split('/').last),
                               subtitle: Text(path),
                               trailing: IconButton(

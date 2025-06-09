@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:filemanager/categoriesScreen.dart';
 import 'package:filemanager/main.dart';
 import 'package:filemanager/passwordProtection.dart';
@@ -335,12 +334,7 @@ Widget buildFileCardGrid(dynamic entity, BuildContext context, String query,
                             onChanged: (_) =>
                                 fileController.toggleItemSelection(entity),
                           )
-                        : Icon(
-                            entity is Directory
-                                ? Icons.folder
-                                : Icons.insert_drive_file,
-                            size: 48,
-                            color: Colors.blueAccent),
+                        : setIcon(entity),
                     featuresOption(context, entity, fileController),
                   ],
                 ),
