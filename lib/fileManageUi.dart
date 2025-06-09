@@ -10,9 +10,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'fileBrowserController.dart';
-
 class FileBrowserScreen extends StatefulWidget {
   FileBrowserScreen({super.key});
 
@@ -380,9 +378,7 @@ Widget buildFileCard(dynamic entity, BuildContext context, String query,
                       .contains(fileController.fileName[index]),
                   onChanged: (_) => fileController.toggleItemSelection(entity),
                 )
-              : Icon(
-                  entity is Directory ? Icons.folder : Icons.insert_drive_file,
-                  color: Colors.blue.shade700),
+              : setIcon(entity),//This is for the set Icon based on type
           title: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -404,6 +400,22 @@ Widget buildFileCard(dynamic entity, BuildContext context, String query,
           ),
     ),
   ));
+}
+
+Widget setIcon(FileSystemEntity entity) {
+  return Icon(
+    entity is Directory
+        ? Icons.folder
+        : p.extension(entity.path).toLowerCase() == '.jpg' || p.extension(entity.path).toLowerCase() == '.png'
+        ? Icons.image
+        : p.extension(entity.path).toLowerCase() == '.pdf'
+        ? Icons.picture_as_pdf
+        : p.extension(entity.path).toLowerCase() == '.mp3'
+        ? Icons.music_note
+        : p.extension(entity.path).toLowerCase() == '.mp4'
+        ? Icons.video_library
+        : Icons.insert_drive_file,color: Colors.blue.shade700,
+  );
 }
 
 //This is the function of opening and updating the directory and add recent file
