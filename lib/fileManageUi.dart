@@ -32,8 +32,8 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
     fileController.loadSortOption();
     fileController.loadLayoutFromPrefs();
     RecentFilesScreen(key: recentFilesKey);
-
   }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -81,24 +81,7 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
                   icon: const Icon(Icons.delete),
                   label: const Text("Delete"),
                   onPressed: () async {
-                    final confirm = await Get.dialog(AlertDialog(
-                      title: const Text("Delete Selected?"),
-                      content: const Text(
-                          "This will permanently delete selected files/folders."),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Get.back(result: false),
-                          child: const Text("Cancel"),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => Get.back(result: true),
-                          child: const Text("Delete"),
-                        ),
-                      ],
-                    ));
-                    if (confirm == true) {
-                      deleteSelectedItems(context, fileController);
-                    }
+                    deleteSelectedItems(context, fileController);
                   },
                 ),
               ],
@@ -273,7 +256,7 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
       builder: (context) => AlertDialog(
         title: const Text("Confirm Deletion"),
         content:
-        const Text("Are you sure you want to delete the selected items?"),
+            const Text("Are you sure you want to delete the selected items?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -302,9 +285,8 @@ class FileBrowserScreenState extends State<FileBrowserScreen> {
       fileController.listFiles(fileController.currentDirectory.value);
       Get.snackbar("Success", "Selected items deleted.");
     }
-  } 
+  }
 }
-
 
 // This is for the Grid View
 Widget buildFileCardGrid(dynamic entity, BuildContext context, String query,
@@ -458,67 +440,66 @@ Drawer buildMainFeaturesDrawer(
             ),
           ),
         ),
-        ListTile(
-          leading: Icon(
-            Icons.view_list,
-            color: Colors.purpleAccent,
-          ),
-          title: Obx(() => Text(
-              '${fileController.isGridView.value ? "Switch to List View" : "Switch to Grid View"}')),
-          onTap: () {
-            fileController.toggleView();
-            Navigator.pop(context);
-          },
-        ),
-        ListTile(
-          leading: Obx(() => Icon(
-                fileController.isDarkTheme.value
-                    ? Icons.wb_sunny_outlined
-                    : Icons.nightlight_round,
-                color: fileController.isDarkTheme.value
-                    ? Colors.yellow
-                    : Colors.grey,
-              )),
-          title: Obx(() => Text(fileController.isDarkTheme.value
-              ? "Switch to Light"
-              : "Switch to Dark ")),
-          onTap: () {
-            fileController.toggleTheme();
-            Navigator.pop(context);
-          },
-        ),
-        ListTile(
-          leading: Icon(
-            Icons.sort,
-            color: Colors.blue.shade700,
-          ),
-          title: Text('Sort by'),
-          onTap: () {
-            Navigator.pop(context);
-            showSortOptions(context, fileController.currentSortOption);
-          },
-        ),
-        ListTile(
-          leading: Icon(Icons.create_new_folder, color: Colors.purpleAccent),
-          title: Text('Create New Folder'),
-          onTap: () {
-            Navigator.pop(context);
-            fileController.showCreateFolderDialog(context);
-          },
-        ),
-        ListTile(
-          leading: Icon(
-            Icons.favorite,
-            color: Colors.red,
-          ),
-          title: Text('Favorite Files & Folders'),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => FavoriteScreen(key: favoriteScreenKey)),
-            );
-          },
+        Column(
+          children: [
+            AppOptionTile(
+              leading: const Icon(Icons.view_list, color: Colors.purpleAccent),
+              title: Obx(() => Text(fileController.isGridView.value
+                  ? "Switch to List View"
+                  : "Switch to Grid View")),
+              onTap: () {
+                fileController.toggleView();
+                Navigator.pop(context);
+              },
+            ),
+            AppOptionTile(
+              leading: Obx(() => Icon(
+                    fileController.isDarkTheme.value
+                        ? Icons.wb_sunny_outlined
+                        : Icons.nightlight_round,
+                    color: fileController.isDarkTheme.value
+                        ? Colors.yellow
+                        : Colors.grey,
+                  )),
+              title: Obx(() => Text(fileController.isDarkTheme.value
+                  ? "Switch to Light"
+                  : "Switch to Dark")),
+              onTap: () {
+                fileController.toggleTheme();
+                Navigator.pop(context);
+              },
+            ),
+            AppOptionTile(
+              leading: Icon(Icons.sort, color: Colors.blue.shade700),
+              title: const Text('Sort by'),
+              onTap: () {
+                Navigator.pop(context);
+                showSortOptions(context, fileController.currentSortOption);
+              },
+            ),
+            AppOptionTile(
+              leading: const Icon(Icons.create_new_folder,
+                  color: Colors.purpleAccent),
+              title: const Text('Create New Folder'),
+              onTap: () {
+                Navigator.pop(context);
+                fileController.showCreateFolderDialog(context);
+              },
+            ),
+            AppOptionTile(
+              leading: const Icon(Icons.favorite, color: Colors.red),
+              title: const Text('Favorite Files & Folders'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        FavoriteScreen(key: favoriteScreenKey),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
       ],
     ),
@@ -721,4 +702,27 @@ Widget buildBreadcrumbBar(FileBrowserController controller) {
       ),
     );
   });
+}
+
+//This is for feature of the app and set an another class of the feature of app
+class AppOptionTile extends StatelessWidget {
+  final Widget leading;
+  final Widget title;
+  final VoidCallback onTap;
+
+  const AppOptionTile({
+    Key? key,
+    required this.leading,
+    required this.title,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: leading,
+      title: title,
+      onTap: onTap,
+    );
+  }
 }
