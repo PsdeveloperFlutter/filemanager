@@ -1,3 +1,4 @@
+import 'package:filemanager/fileManageUi.dart';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart';
@@ -126,13 +127,7 @@ class RecentFilesScreenState extends State<RecentFilesScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          file['type'] == 'directory'
-                              ? Icons.folder
-                              : Icons.insert_drive_file,
-                          size: 50,
-                          color: Colors.blue.shade700,
-                        ),
+                       setIcons(file['type']),
                         const SizedBox(height: 8),
                         Text(
                           file['name'],
@@ -178,6 +173,31 @@ class RecentFilesScreenState extends State<RecentFilesScreen> {
         );
       },
     );
+  }
+
+  Widget setIcons(String type) {
+    switch (type.toLowerCase()) {
+      case 'pdf':
+        return const Icon(Icons.picture_as_pdf, color: Colors.red);
+      case 'image':
+        return const Icon(Icons.image, color: Colors.blue);
+      case 'video':
+        return const Icon(Icons.video_library, color: Colors.green);
+      case 'directory':
+        return const Icon(Icons.folder, color: Colors.orange);
+      case 'file':
+        return const Icon(Icons.insert_drive_file, color: Colors.blue);
+      case 'txt':
+        return const Icon(Icons.text_fields, color: Colors.purple);
+      case 'audio':
+        return const Icon(Icons.audiotrack, color: Colors.pink);
+      case 'zip':
+        return const Icon(Icons.archive, color: Colors.brown);
+      case 'jpg':
+        return const Icon(Icons.image, color: Colors.blue);
+      default:
+        return const Icon(Icons.help_outline, color: Colors.black);
+    }
   }
 }
 

@@ -414,7 +414,18 @@ Widget setIcon(FileSystemEntity entity) {
         ? Icons.music_note
         : p.extension(entity.path).toLowerCase() == '.mp4'
         ? Icons.video_library
-        : Icons.insert_drive_file,color: Colors.blue.shade700,
+        : Icons.insert_drive_file,
+    color: entity is Directory
+        ? Colors.orange
+        : p.extension(entity.path).toLowerCase() == '.jpg' || p.extension(entity.path).toLowerCase() == '.png'
+        ? Colors.green
+        : p.extension(entity.path).toLowerCase() == '.pdf'
+        ? Colors.red
+        : p.extension(entity.path).toLowerCase() == '.mp3'
+        ? Colors.purple
+        : p.extension(entity.path).toLowerCase() == '.mp4'
+        ? Colors.blue
+        : Colors.purple.shade700,
   );
 }
 

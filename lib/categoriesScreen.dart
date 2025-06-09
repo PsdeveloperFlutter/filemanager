@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:filemanager/fileManageUi.dart';
 import 'package:filemanager/recentFiles.dart';
 import 'package:flutter/material.dart';
 import 'package:mime/mime.dart';
@@ -301,7 +302,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                                   toggleFileSelection(file);
                                 },
                               )
-                            : Icon(Icons.insert_drive_file),
+                            : setIcon(file), // This is the setIcon function
                         title: Text(p.basename(file.path)),
                         subtitle: Text(file.path),
                         trailing: IconButton(
