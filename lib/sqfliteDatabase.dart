@@ -238,7 +238,7 @@ class FavoriteScreenState extends State<FavoriteScreen> {
                                 SizedBox(height: 8),
                                 IconButton(
                                   icon: Icon(Icons.delete,color:Colors.red),
-                                  onPressed: () => deleteFavorite(path),
+                                  onPressed: () => deleteConfirmation(context,path),
                                 ),
                               ],
                             ),
@@ -299,8 +299,7 @@ class FavoriteScreenState extends State<FavoriteScreen> {
                               trailing: IconButton(
                                 icon: Icon(Icons.delete, color: Colors.red),
                                 onPressed: () {
-                                  // Optionally allow tap delete in addition to swipe
-                                  deleteFavorite(path);
+                                  deleteConfirmation(context, path);
                                 },
                               ),
                             ),
@@ -349,6 +348,31 @@ class FavoriteScreenState extends State<FavoriteScreen> {
       selectedFiles.clear(); // Clear selection
     });
   }
+
+  void deleteConfirmation(BuildContext context,	String path) async{
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text("Confirm Deletion"),
+            content: Text("Are you sure you want to delete this favorite?"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text("Cancel"),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text("Delete"),
+              ),
+            ],
+          );
+        },
+      );
+      if (confirm == true) {
+        deleteFavorite(path);
+      }
+    }
 }
 
 //This for the Highlighting the text in the search bar

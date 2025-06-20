@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:filemanager/fileManageUi.dart';
 import 'package:filemanager/recentFiles.dart';
@@ -7,12 +8,10 @@ import 'package:mime/mime.dart';
 import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
-
 Future<bool> requestStoragePermission() async {
   final status = await Permission.manageExternalStorage.request();
   return status.isGranted;
 }
-
 const Map<String, String> categoryPaths = {
   'Downloads': '/storage/emulated/0/Download',
   'Images': '/storage/emulated/0/Pictures',
@@ -302,14 +301,16 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                                   toggleFileSelection(file);
                                 },
                               )
-                            : setIcon(file), // This is the setIcon function
+                            : setIcon(file),
+                        // This is the setIcon function
                         title: Text(p.basename(file.path)),
                         subtitle: Text(file.path),
                         trailing: IconButton(
-                          icon: Icon(Icons.delete, color: Colors.red),
-                          onPressed: () =>
-                              _deleteFile(index), //This is the delete function
-                        ),
+                            icon: Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                              deleteConfirmation();
+                            } //This is the delete function
+                            ),
                         onTap: () async {
                           // Open the file or show more options
                           openFileWithIntent(file.path, context);
@@ -334,26 +335,30 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
       isSelectionMode = false;
     });
   }
-  Future<String?> _selectTargetDirectory()async{// This function is used to select the target directory for moving files
-    try{
+
+  Future<String?> _selectTargetDirectory() async {
+    // This function is used to select the target directory for moving files
+    try {
       String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
       if (selectedDirectory != null) {
         return selectedDirectory;
       } else {
         return null;
       }
-    }catch(e){
-     print("Error selecting directory: $e");
+    } catch (e) {
+      print("Error selecting directory: $e");
     }
   }
-  Future<void> moveSelectedFiles(String targetPath) async { //
-    try{
-      for(var file in selectedFiles){
-        final fileName=p.basename(file.path);
-        final newpath=p.join(targetPath,fileName);
+
+  Future<void> moveSelectedFiles(String targetPath) async {
+    //
+    try {
+      for (var file in selectedFiles) {
+        final fileName = p.basename(file.path);
+        final newpath = p.join(targetPath, fileName);
         await File(file.path).rename(newpath);
         setState(() {
-          files.removeWhere((file)=>selectedFiles.contains(file));
+          files.removeWhere((file) => selectedFiles.contains(file));
           selectedFiles.clear();
           isSelectionMode = false;
         });
@@ -361,12 +366,46 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
           SnackBar(content: Text("Files moved successfully")),
         );
       }
-    }catch(e){
-        print("Error moving files: $e");
-        setState(() {
-          selectedFiles.clear(); // Clear the list to avoid concurrent modification
-          isSelectionMode = false;
-        });
+    } catch (e) {
+      print("Error moving files: $e");
+      setState(() {
+        selectedFiles
+            .clear(); // Clear the list to avoid concurrent modification
+        isSelectionMode = false;
+      });
     }
+  }
+
+  // This function is used to set the icon for the file
+  Widget deleteConfirmation() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Delete Files"),
+          content: Text("Are you sure you want to delete the selected files?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                if (selectedFiles.isNotEmpty) {
+                  for (var file in selectedFiles) {
+                    _deleteFile(files.indexOf(file));
+                  }
+                }
+                Navigator.of(context).pop();
+              },
+              child: Text("Delete"),
+            ),
+          ],
+        );
+      },
+    );
+    return SizedBox.shrink(); // Return an empty widget as the dialog is shown directly
   }
 }
