@@ -47,6 +47,8 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   permission_handler: ^11.0.0
   google_fonts: ^6.2.1
+  local_auth: ^2.3.0
+  flutter_secure_storage: ^9.0.0
   path_provider: ^2.1.1
   file_picker: ^6.1.1
   archive: ^4.0.7
