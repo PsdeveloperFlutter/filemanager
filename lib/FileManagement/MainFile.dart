@@ -1,14 +1,15 @@
 import 'dart:io';
 
 import 'package:filemanager/FileManagement/AuthService.dart';
-import 'package:filemanager/FileManagement/SetPinScreen.dart';
 import 'package:filemanager/FileManagement/LockScreen.dart';
+import 'package:filemanager/FileManagement/SetPinScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'AppLockSettingsScreen.dart';
+import 'Setting.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -39,7 +40,7 @@ class MyApp extends StatelessWidget {
           print("PIN: $pin");
           print("isAppLockEnabled: $isAppLockEnabled");
           if (pin == null) {
-            return SetPinScreen();
+            return FileManagerScreen();
           }
 
           if (!isAppLockEnabled) {
@@ -47,13 +48,11 @@ class MyApp extends StatelessWidget {
           }
 
           // ✅ Use callback to unlock
-          return LockScreen(
-          );
+          return LockScreen();
         },
       ),
     );
   }
-
 }
 
 class FileManagerScreen extends StatefulWidget {
@@ -61,8 +60,9 @@ class FileManagerScreen extends StatefulWidget {
   State<FileManagerScreen> createState() => _FileManagerScreenState();
 }
 
-class _FileManagerScreenState extends State<FileManagerScreen> with WidgetsBindingObserver{
-  bool shouldLock=false;
+class _FileManagerScreenState extends State<FileManagerScreen>
+    with WidgetsBindingObserver {
+  bool shouldLock = false;
   List<FileSystemEntity> allItems = [];
 
   @override
@@ -71,21 +71,24 @@ class _FileManagerScreenState extends State<FileManagerScreen> with WidgetsBindi
     requestPermissionAndFetch();
     WidgetsBinding.instance.addObserver(this);
   }
+
   @override
-  void dispose(){
+  void dispose() {
     super.dispose();
     WidgetsBinding.instance.removeObserver(this);
   }
+
   @override
-  void 	didChangeAppLifeCycleState(AppLifecycleState state){
-    if(state==AppLifecycleState.paused){
-      shouldLock=true;
+  void didChangeAppLifeCycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      shouldLock = true;
     }
-    if(state==AppLifecycleState.resumed && shouldLock){
-     	shouldLock=false;
-       _lockapp(context as BuildContext);
+    if (state == AppLifecycleState.resumed && shouldLock) {
+      shouldLock = false;
+      _lockapp(context as BuildContext);
     }
   }
+
   _lockapp(BuildContext context) {
     Navigator.pushReplacement(
       context,
@@ -118,16 +121,15 @@ class _FileManagerScreenState extends State<FileManagerScreen> with WidgetsBindi
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("File Manager"),
-        actions:[
-          IconButton(onPressed: (){
-            Navigator.push(context,MaterialPageRoute(builder: (_){
-              return AppLockSettingsScreen();
-            }));
-          },icon:Icon(Icons.settings))
-        ]
-      ),
+      appBar: AppBar(title: Text("File Manager"), actions: [
+        IconButton(
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) {
+                return MyHomePage();//AppLockSettingsScreen();
+              }));
+            },
+            icon: Icon(Icons.settings))
+      ]),
       body: ListView.builder(
           itemCount: allItems.length,
           itemBuilder: (context, index) {
@@ -140,9 +142,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> with WidgetsBindi
                     isFolder ? Icons.folder : Icons.insert_drive_file,
                     color: Colors.green,
                   ),
-                  title: Text(item.path
-                      .split("/")
-                      .last),
+                  title: Text(item.path.split("/").last),
                   subtitle: Text(isFolder ? "Folder" : "File"),
                   onTap: () {
                     if (!isFolder) {
@@ -172,6 +172,8 @@ class FileManagerScreenSub extends StatefulWidget {
 }
 
 class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
+  List<FileSystemEntity> currentlyDraggingItems = [];
+
   List<FileSystemEntity> allItems = [];
   String? hoverTargetPath;
   bool isGridView = false;
@@ -201,9 +203,10 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
     }
   }
 
-  Future<void> handleDrop(String targetPath, List<FileSystemEntity> draggedItem,
-      BuildContext context) async {
-    await Future.wait(draggedItem.map((item) async {
+  Future<void> handleDrop(String targetPath,
+      List<FileSystemEntity> draggedItems, BuildContext context) async {
+
+    await Future.wait(draggedItems.map((item) async {
       final newPath = '$targetPath/${basename(item.path)}';
       try {
         if (await FileSystemEntity.type(newPath) ==
@@ -211,14 +214,11 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
           await item.rename(newPath);
         }
       } catch (e) {
-        print(e.toString());
+        print("Error moving file: $e");
       }
     }));
-    selectedItems.clear();
     fetchFolderContent();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Moved ${draggedItem.length} item(s)")),
-    );
+
   }
 
   @override
@@ -233,9 +233,7 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
           ),
         ),
         appBar: AppBar(
-          title: Text("${widget.path
-              .split("/")
-              .last}"),
+          title: Text("${widget.path.split("/").last}"),
           actions: [
             IconButton(
                 onPressed: () {
@@ -247,27 +245,25 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
           ],
         ),
         body: LayoutBuilder(builder: (context, constraints) {
-          final isLandScape = MediaQuery
-              .of(context)
-              .orientation == Orientation.landscape;
+          final isLandScape =
+              MediaQuery.of(context).orientation == Orientation.landscape;
           return isGridView
               ? GridView.builder(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: isLandScape ? 4 : 2,
-                childAspectRatio: 1.2,
-                crossAxisSpacing: 5,
-                mainAxisSpacing: 5,
-              ),
-              itemCount: allItems.length,
-              itemBuilder: (context, index) =>
-                  buildDraggableItems(index, context))
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: isLandScape ? 4 : 2,
+                    childAspectRatio: 1.2,
+                    crossAxisSpacing: 5,
+                    mainAxisSpacing: 5,
+                  ),
+                  itemCount: allItems.length,
+                  itemBuilder: (context, index) =>
+                      buildDraggableItems(index, context))
               : ListView.builder(
-            itemCount: allItems.length,
-            itemBuilder: (context, index) =>
-                buildDraggableItems(index, context),
-          );
-        })
-    );
+                  itemCount: allItems.length,
+                  itemBuilder: (context, index) =>
+                      buildDraggableItems(index, context),
+                );
+        }));
   }
 
   void CreateFolder(BuildContext context) {
@@ -321,99 +317,92 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
     final isSelected = selectedItems.contains(item);
 
     return DragTarget<List<FileSystemEntity>>(
-        onWillAccept: (draggedItems) {
-          if (isFolder && !draggedItems!.contains(item)) {
+      onWillAccept: (draggedItems) {
+        if (isFolder && draggedItems != null && !draggedItems.contains(item)) {
+          setState(() => hoverTargetPath = item.path);
+          return true;
+        }
+        return false;
+      },
+      onLeave: (_) => setState(() => hoverTargetPath = null),
+
+      // ✅ Accept the draggedItems passed from Draggable
+      onAcceptWithDetails: (draggedItems) {
+        setState(() => hoverTargetPath = null);
+        final itemsToDrop = List<FileSystemEntity>.from(draggedItems.data);
+        handleDrop(item.path, itemsToDrop, context);
+      },
+
+      builder: (context, candidateData, rejectedData) {
+        return GestureDetector(
+          onTap: () {
             setState(() {
-              hoverTargetPath = item.path;
+              isSelected ? selectedItems.remove(item) : selectedItems.add(item);
             });
-            return true;
-          }
-          return false;
-        },
-        onLeave: (_) => setState(() => hoverTargetPath = null),
-        onAccept: (dragged) {
-          setState(() => hoverTargetPath = null);
-          handleDrop(item.path, dragged, context);
-        },
-        builder: (context, candidateData, rejectedData) {
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                if (isSelected) {
-                  selectedItems.remove(item);
-                } else {
-                  selectedItems.add(item);
-                }
-              });
-            },
-            child: LongPressDraggable(
-              data: selectedItems.isEmpty ? [item] : selectedItems.toList(),
-              feedback: Material(
-                color: Colors.transparent,
-                child: Container(
-                  padding: EdgeInsets.all(8),
-                  color: Colors.grey.withOpacity(0.7),
-                  child: Text(
-                      selectedItems.length > 1
-                          ? "${selectedItems.length} items"
-                          : itemName,
-                      style: TextStyle(color: Colors.white)),
-                ),
-              ),
-              onDragStarted: () {
-                setState(() {
-                  if (selectedItems.isEmpty) selectedItems.add(item);
-                  isDragging = true;
-                });
-              },
-              onDraggableCanceled: (velocity, offset) {
-                setState(() {
-                  isDragging = false;
-                });
-              },
-              onDragEnd: (_) {
-                setState(() {
-                  isDragging = false;
-                });
-              },
+          },
+          child: LongPressDraggable<List<FileSystemEntity>>(
+            // ✅ Actually pass selected items (or single)
+            data: selectedItems.isEmpty ? [item] : selectedItems.toList(),
+            feedback: Material(
+              color: Colors.transparent,
               child: Container(
-                height: isGridView ? 50 : 85,
-                color: hoverTargetPath == item.path
-                    ? Colors.blue.withOpacity(0.2)
-                    : isSelected
-                    ? Colors.green.withOpacity(0.4)
-                    : null,
-                child: Card(
-                  elevation: 2,
-                  child: SingleChildScrollView(
-                    child: ListTile(
-                      leading: Icon(
-                          isFolder ? Icons.folder : Icons.insert_drive_file,
-                          color: Colors.green),
-                      title: Text(itemName
-                          .split("/")
-                          .last),
-                      subtitle: Text(isFolder ? "Folder" : "File"),
-                      onTap: () {
-                        if (!isFolder) {
-                          OpenFilex.open(item.path);
-                        }
-                        if (isFolder) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  FileManagerScreenSub(path: item.path),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ),
+                padding: EdgeInsets.all(8),
+                color: Colors.black87,
+                child: Text(
+                  selectedItems.length > 1
+                      ? "${selectedItems.length} items"
+                      : itemName,
+                  style: TextStyle(color: Colors.white),
                 ),
               ),
             ),
-          );
-        });
+            onDragStarted: () {
+              setState(() {
+                if (selectedItems.isEmpty) selectedItems.add(item);
+                isDragging = true;
+              });
+            },
+            onDragEnd: (_) {
+              setState(() => isDragging = false);
+            },
+            onDraggableCanceled: (_, __) {
+              setState(() => isDragging = false);
+            },
+            child: Container(
+              height: isGridView ? 50 : 85,
+              color: hoverTargetPath == item.path
+                  ? Colors.blue.withOpacity(0.2)
+                  : isSelected
+                  ? Colors.green.withOpacity(0.4)
+                  : null,
+              child: Card(
+                elevation: 2,
+                child: ListTile(
+                  leading: Icon(
+                    isFolder ? Icons.folder : Icons.insert_drive_file,
+                    color: Colors.green,
+                  ),
+                  title: Text(itemName),
+                  subtitle: Text(isFolder ? "Folder" : "File"),
+                  onTap: () {
+                    if (isFolder) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FileManagerScreenSub(path: item.path),
+                        ),
+                      );
+                    } else {
+                      OpenFilex.open(item.path);
+                    }
+                  },
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -6,10 +8,12 @@ class AuthService {
   final _auth = LocalAuthentication();
   static const _localKey="APP_LOCK_ENABLED";
   //This Code is For set Pin
-  Future<void> SetPin(String pin) async {
-    await _storage.write(key: "app_pin", value: pin);
+  Future<void> SetPin(Map<String,dynamic> pin) async {
+    await _storage.write(key: "app_pin", value: pin['password']);
+    String jsonString=jsonEncode(pin); //Convert the map to json format
+    await _storage.write(key: "app_pin_details", value: jsonString);//store the jsonString to the flutter secure storage
     await _storage.write(key: _localKey, value: true.toString());
-    print("\n $pin Pin set successfully");
+    print("\n $pin Pin set successfully $jsonString");
   }
 
   //This Code is For get Pin
@@ -23,6 +27,14 @@ class AuthService {
     return StoredPin == pin;
   }
 
+  //This Code is For Get Pin Details from flutter secure storage
+  Future<Map<String, dynamic>> GetPinDetails()async{
+    final jsonString=await _storage.read(key:"app_pin_details");
+    if(jsonString!=null){
+      return jsonDecode(jsonString);
+    }
+    return {};
+  }
   //This Code is For Check Biometric
   Future<bool> isBiometricAvailable() async {
     return await _auth.canCheckBiometrics && await _auth.isDeviceSupported();

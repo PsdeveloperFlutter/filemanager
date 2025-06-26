@@ -131,7 +131,7 @@ class _LookScreenState extends State<LockScreen> {
     if (success && mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => SetPinScreen()),
+        MaterialPageRoute(builder: (_) =>FileManagerScreen()),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
