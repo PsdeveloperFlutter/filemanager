@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'AuthService.dart';
 
 class PasswordScreen extends StatefulWidget {
+  final String passwordValue;
+  PasswordScreen({ required this.passwordValue});
   @override
   State<PasswordScreen> createState() => _PasswordScreenState();
 }
@@ -36,52 +38,67 @@ class _PasswordScreenState extends State<PasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Set Password")),
+      appBar: AppBar(title: Text("${widget.passwordValue}"),
+
+      leading: IconButton(onPressed: (){
+        Navigator.pop(context,false);
+      }, icon: Icon(Icons.arrow_back)),),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const SizedBox(height: 40),
-            buildTextField('Enter 4 digit Password', passwordController, false),
+            buildTextField('Enter 4 digit Password', passwordController, false,true),
             buildTextField(
-                'Confirm Password', confirmPasswordController, false),
+                'Confirm Password', confirmPasswordController, false,true),
             const SizedBox(height: 30),
             Text("Security Questions",
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
-            Text(
-              "These questions will help you when you forget your password.\nAll your security answers will be encrypted and stored only on the local device.",
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                "These questions will help you when you forget your password.\nAll your security answers will be encrypted and stored only on the local device.",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14),
+              ),
             ),
             const SizedBox(height: 20),
 
             /// First Question + Answer
             buildQuestionWithPopup(questionController1),
             const SizedBox(height: 10),
-            buildTextField('Answer', answerController1, false),
+            buildTextField('Answer', answerController1, false,false),
             const SizedBox(height: 20),
 
             /// Second Question + Answer
             buildQuestionWithPopup(questionController2),
             const SizedBox(height: 10),
-            buildTextField('Answer', answerController2, false),
+            buildTextField('Answer', answerController2, false,false),
             const SizedBox(height: 30),
 
-            ElevatedButton(
-              onPressed: () {
-                // Save logic here
+            SizedBox(
 
-                InsertUserPassword(
-                    passwordController,
-                    confirmPasswordController,
-                    questionController1,
-                    questionController2,
-                    answerController1,
-                    answerController2);
-              },
-              child: Text("Save"),
+              width: 340,
+              child: ElevatedButton(
+
+                style: ButtonStyle(
+                  backgroundColor:MaterialStateProperty.all(Colors.orangeAccent.shade200),
+                ),
+                onPressed: () {
+                  // Save logic here
+
+                  InsertUserPassword(
+                      passwordController,
+                      confirmPasswordController,
+                      questionController1,
+                      questionController2,
+                      answerController1,
+                      answerController2);
+                },
+                child: Text("Save",style: TextStyle(color: Colors.black),),
+              ),
             ),
             const SizedBox(height: 20),
           ],
@@ -92,10 +109,11 @@ class _PasswordScreenState extends State<PasswordScreen> {
 
   /// Builds a regular or read-only text field
   Widget buildTextField(
-      String label, TextEditingController controller, bool readOnly) {
+      String label, TextEditingController controller, bool readOnly,bool keyboardtype) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextField(
+        keyboardType: keyboardtype==true?TextInputType.number:TextInputType.name,
         controller: controller,
         readOnly: readOnly,
         obscureText: false,
@@ -111,12 +129,13 @@ class _PasswordScreenState extends State<PasswordScreen> {
 
   /// Builds a read-only question field with a popup selector inside it
   Widget buildQuestionWithPopup(TextEditingController controller) {
-    return Stack(
-      alignment: Alignment.centerRight,
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        buildTextField("Select Question", controller, true),
-        Positioned(
-          right: 12,
+        Container(
+          width: 200,
+          height: 80,
           child: PopupMenuButton<String>(
             icon: Icon(Icons.arrow_drop_down),
             onSelected: (value) {
@@ -132,6 +151,8 @@ class _PasswordScreenState extends State<PasswordScreen> {
             },
           ),
         ),
+        buildTextField("Select Question", controller, true,false),
+
       ],
     );
   }
@@ -170,6 +191,7 @@ class _PasswordScreenState extends State<PasswordScreen> {
       };
       final auth=AuthService();
       auth.SetPin(userPasswordDetails);
+      Navigator.pop(context,true);//Navigate to Previous Screen
     }
   }
 }

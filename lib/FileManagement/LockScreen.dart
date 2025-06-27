@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-
 import 'AuthService.dart';
 import 'MainFile.dart';
-import 'SetPinScreen.dart';
 
 class LockScreen extends StatefulWidget {
   const LockScreen();
