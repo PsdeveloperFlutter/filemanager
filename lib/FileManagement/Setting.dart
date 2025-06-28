@@ -32,9 +32,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final TextEditingController question2 = TextEditingController();
   final TextEditingController enterPin = TextEditingController();
   bool? pinstatus;
-
   bool? biometricstatus;
-
   bool? isAppLockEnabled;
 
   final authService = AuthService(); // Create an instance of AuthService
@@ -49,6 +47,7 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+// This Function help to get the Value of the AppLock
   void getValueOfAppLock() async {
     bool result = await authService.isAppLockEnabled();
     print('\n AppLock available ${result}');
@@ -57,6 +56,7 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  //Fetch the Pin
   void pinFetch() async {
     String? result = await authService.GetPin();
     if (result != null) {
@@ -68,6 +68,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  //Load the Biometric Toggle
   void loadBiometricToggle() async {
     bool enabled = await authService.isBiometricToggleEnabled();
     print("\n Biometric Stauts ${enabled}");
@@ -75,7 +76,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
 // Fetch Biometric Availability
-
+  @override
   void initState() {
     super.initState();
     getBiometricAvilablity(); //Get the Availability Biometric
@@ -108,68 +109,7 @@ class _MyHomePageState extends State<MyHomePage> {
               const SizedBox(height: 20),
               ListTile(
                 onTap: () async {
-                  final pin = await authService.GetPin();
-                  // Define `val` as a placeholder or pass it as a parameter
-                  bool val = !(isAppLockEnabled ?? false);
-                  final appLockEnabled = await authService.isAppLockEnabled();
-
-                  // Case 1: PIN exists and app lock is enabled → verify user
-                  if (pin != null && appLockEnabled == true) {
-                    verifyUserPin(
-                        context, enterPin, val); // your existing logic
-                  }
-
-                  // Case 2: PIN exists but app lock is disabled → just enable
-                  else if (pin != null && appLockEnabled == false) {
-                    if (val == true) {
-                      final result = await Navigator.push<bool>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              PasswordScreen(passwordValue: "Set Password"),
-                        ),
-                      );
-
-                      if (result == true) {
-                        // User set password successfully
-                        setState(() => isAppLockEnabled = true);
-                        authService.setAppLockEnabled(true);
-                      } else {
-                        // User cancelled setting password → revert switch
-                        setState(() => isAppLockEnabled = false);
-                      }
-                    } else {
-                      // Toggling OFF when no password exists
-                      setState(() => isAppLockEnabled = false);
-                      authService.setAppLockEnabled(false);
-                    }
-                  }
-
-                  // Case 3: No PIN set → navigate to password screen
-                  else {
-                    if (val == true) {
-                      final result = await Navigator.push<bool>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              PasswordScreen(passwordValue: "Set Password"),
-                        ),
-                      );
-
-                      if (result == true) {
-                        // User set password successfully
-                        setState(() => isAppLockEnabled = true);
-                        authService.setAppLockEnabled(true);
-                      } else {
-                        // User cancelled setting password → revert switch
-                        setState(() => isAppLockEnabled = false);
-                      }
-                    } else {
-                      // Toggling OFF when no password exists
-                      setState(() => isAppLockEnabled = false);
-                      authService.setAppLockEnabled(false);
-                    }
-                  }
+                  setPinFunctionality(context); //set the Functionality of the Pin
                 },
                 title: Text("Enable App Lock"),
                 subtitle: Text("Set the App Lock Setting to Protect your app"),
@@ -186,67 +126,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       activeColor: Colors.green,
                       inactiveColor: Colors.grey,
                       onToggle: (val) async {
-                        final pin = await authService.GetPin();
-                        final appLockEnabled =
-                            await authService.isAppLockEnabled();
-
-                        // Case 1: PIN exists and app lock is enabled → verify user
-                        if (pin != null && appLockEnabled == true) {
-                          verifyUserPin(
-                              context, enterPin, val); // your existing logic
-                        }
-
-                        // Case 2: PIN exists but app lock is disabled → just enable
-                        else if (pin != null && appLockEnabled == false) {
-                          if (val == true) {
-                            final result = await Navigator.push<bool>(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => PasswordScreen(
-                                    passwordValue: "Set Password"),
-                              ),
-                            );
-
-                            if (result == true) {
-                              // User set password successfully
-                              setState(() => isAppLockEnabled = true);
-                              authService.setAppLockEnabled(true);
-                            } else {
-                              // User cancelled setting password → revert switch
-                              setState(() => isAppLockEnabled = false);
-                            }
-                          } else {
-                            // Toggling OFF when no password exists
-                            setState(() => isAppLockEnabled = false);
-                            authService.setAppLockEnabled(false);
-                          }
-                        }
-
-                        // Case 3: No PIN set → navigate to password screen
-                        else {
-                          if (val == true) {
-                            final result = await Navigator.push<bool>(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => PasswordScreen(
-                                    passwordValue: "Set Password"),
-                              ),
-                            );
-
-                            if (result == true) {
-                              // User set password successfully
-                              setState(() => isAppLockEnabled = true);
-                              authService.setAppLockEnabled(true);
-                            } else {
-                              // User cancelled setting password → revert switch
-                              setState(() => isAppLockEnabled = false);
-                            }
-                          } else {
-                            // Toggling OFF when no password exists
-                            setState(() => isAppLockEnabled = false);
-                            authService.setAppLockEnabled(false);
-                          }
-                        }
+                        enableAndDisableAppLock(val, context);
                       }),
                 ),
               ),
@@ -262,29 +142,9 @@ class _MyHomePageState extends State<MyHomePage> {
                       onTap: ()
                           //set the Functionality of the Toggle functionality
                           async {
-                        if (await authService.isAppLockEnabled() == false) {
-                          Flushbar(
-                            message: "First Enable App Lock",
-                            duration: Duration(seconds: 3),
-                            backgroundColor: Colors.orange,
-                            margin: EdgeInsets.all(8),
-                            borderRadius: BorderRadius.circular(8),
-                            icon: Icon(
-                              Icons.warning_amber_rounded,
-                              color: Colors.white,
-                            ),
-                          ).show(context);
-                        } else {
-                          bool newValue = !(biometricstatus ?? false);
-                          bool result =
-                              await authService.setBiometricToggle(newValue);
-                          if (result) {
-                            setState(() {
-                              biometricstatus = newValue;
-                            });
-                          }
-                        }
-                      },
+                         bool newvalue=!(biometricstatus??false);
+                         enableBiometric(newvalue, context);
+                         },
                       title: Text("Enable Biometric"),
                       subtitle:
                           Text("Click to enable your FingerPrint Verification"),
@@ -301,27 +161,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           activeColor: Colors.green,
                           inactiveColor: Colors.grey,
                           onToggle: (val) async {
-                            if (await authService.isAppLockEnabled() == false) {
-                              Flushbar(
-                                message: "First Enable App Lock",
-                                duration: Duration(seconds: 3),
-                                backgroundColor: Colors.orange,
-                                margin: EdgeInsets.all(8),
-                                borderRadius: BorderRadius.circular(8),
-                                icon: Icon(
-                                  Icons.warning_amber_rounded,
-                                  color: Colors.white,
-                                ),
-                              ).show(context);
-                            } else {
-                              bool result =
-                                  await authService.setBiometricToggle(val);
-                              if (result) {
-                                setState(() {
-                                  biometricstatus = val;
-                                });
-                              }
-                            }
+                            enableBiometric(val, context);//set the Functionality of the Toggle functionality
                           },
                         ),
                       ),
@@ -334,6 +174,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+//This is Code For Password Dialog Box
   void PasswordDialogBox(BuildContext context) {
     showDialog(
       context: context,
@@ -426,11 +267,15 @@ class _MyHomePageState extends State<MyHomePage> {
                 children: [
                   TextButton(
                       onPressed: () {
+                        question1.clear();
+                        question2.clear();
                         Navigator.pop(context);
                       },
                       child: Text("Cancel")),
                   TextButton(
                       onPressed: () {
+                        question2.clear();
+                        question1.clear();
                         Navigator.pop(context);
                         validateSecurityAnswers(context, question1, question2,
                             passwordData); //Here we call the validateSecurityAnswers function
@@ -443,24 +288,15 @@ class _MyHomePageState extends State<MyHomePage> {
         });
   }
 
-  //Validate the Security Answers
+//Validate the Security Answers
   void validateSecurityAnswers(
       BuildContext context,
       TextEditingController question1,
       TextEditingController question2,
       Map<String, dynamic> passwordData) {
     if (question1.text.isEmpty || question2.text.isEmpty) {
-      Flushbar(
-        message: "Please Answer Both Questions",
-        duration: Duration(seconds: 3),
-        backgroundColor: Colors.orange,
-        margin: EdgeInsets.all(8),
-        borderRadius: BorderRadius.circular(8),
-        icon: Icon(
-          Icons.warning_amber_rounded,
-          color: Colors.white,
-        ),
-      ).show(context);
+      FlushBarWidget(
+          "Please Answer Both Questions", context, Icons.warning_amber_rounded);
     } else if (question1.text == passwordData['answer1'] &&
         question2.text == passwordData['answer2']) {
       Navigator.push(context, MaterialPageRoute(builder: (context) {
@@ -469,17 +305,7 @@ class _MyHomePageState extends State<MyHomePage> {
         );
       }));
     } else {
-      Flushbar(
-        message: "Wrong Answers",
-        duration: Duration(seconds: 3),
-        backgroundColor: Colors.redAccent,
-        margin: EdgeInsets.all(8),
-        borderRadius: BorderRadius.circular(8),
-        icon: Icon(
-          Icons.error_outline,
-          color: Colors.white,
-        ),
-      ).show(context);
+      FlushBarWidget("Wrong Answers", context, Icons.error_outline);
     }
     question1.clear();
     question2.clear();
@@ -494,57 +320,27 @@ class _MyHomePageState extends State<MyHomePage> {
       }));
       return true;
     } else if (text.isEmpty) {
-      Flushbar(
-        message: "Please Enter Password",
-        duration: Duration(seconds: 3),
-        backgroundColor: Colors.redAccent,
-        margin: EdgeInsets.all(8),
-        borderRadius: BorderRadius.circular(8),
-        icon: Icon(
-          Icons.error_outline,
-          color: Colors.white,
-        ),
-      ).show(context);
+      FlushBarWidget("Please Enter Password", context, Icons.error_outline);
       return false;
     } else {
-      Flushbar(
-        message: "Wrong Pin",
-        duration: Duration(seconds: 3),
-        backgroundColor: Colors.redAccent,
-        margin: EdgeInsets.all(8),
-        borderRadius: BorderRadius.circular(8),
-        icon: Icon(
-          Icons.error_outline,
-          color: Colors.white,
-        ),
-      ).show(context);
+      FlushBarWidget("Wrong Pin", context, Icons.error_outline);
     }
     _password.clear();
     return false;
   }
 
-  //Check the Pin is set or not
+//Check the Pin is set or not
   void passwordSetOrNot(BuildContext context) async {
     final pin = await authService.GetPin(); // Fetch the PIN using AuthService
     if (pin != null && pin.isNotEmpty) {
       // If the PIN is set, show the password dialog box
       PasswordDialogBox(context);
     } else {
-      Flushbar(
-        message: "First Set Pin",
-        duration: Duration(seconds: 3),
-        backgroundColor: Colors.redAccent,
-        margin: EdgeInsets.all(8),
-        borderRadius: BorderRadius.circular(8),
-        icon: Icon(
-          Icons.pin,
-          color: Colors.white,
-        ),
-      ).show(context);
+      FlushBarWidget("First Set Pin", context, Icons.pin);
     }
   }
 
-  //This is for the Verification of the UserPin
+//This is for the Verification of the UserPin
   Future verifyUserPin(
       BuildContext context, TextEditingController enterPin, dynamic val) {
     return showDialog(
@@ -567,9 +363,11 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
               Row(
                 children: [
-                  TextButton(onPressed: (){
-                    forgetPasswordDialogBox(context);
-                  }, child: Text("Forget")),
+                  TextButton(
+                      onPressed: () {
+                        forgetPasswordDialogBox(context); //For Forget Password
+                      },
+                      child: Text("Forget")),
                   TextButton(
                       onPressed: () {
                         enterPin.clear();
@@ -578,50 +376,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       child: Text("Cancel")),
                   TextButton(
                       onPressed: () async {
-                        if (enterPin.text.isEmpty) {
-                          Flushbar(
-                            message: "Please Enter Pin",
-                            duration: Duration(seconds: 3),
-                            backgroundColor: Colors.redAccent,
-                            margin: EdgeInsets.all(8),
-                            borderRadius: BorderRadius.circular(8),
-                            icon: Icon(
-                              Icons.error_outline,
-                              color: Colors.white,
-                            ),
-                          ).show(context);
-                          return;
-                        }
-                        String? result = await authService.GetPin();
-                        if (result == enterPin.text.toString()) {
-                          setState(() {
-                            isAppLockEnabled = val;
-                          });
-                          authService
-                              .setAppLockEnabled(isAppLockEnabled ?? false);
-                          //This Below Code Help to disable Biometric with App Lock
-                          if (!isAppLockEnabled!) {
-                            setState(() {
-                              biometricstatus = false;
-                            });
-                            authService.setBiometricToggle(false);
-                          }
-                          enterPin.clear();
-                          Navigator.pop(context);
-                        } else {
-                          Flushbar(
-                            message: "Wrong Pin",
-                            duration: Duration(seconds: 3),
-                            backgroundColor: Colors.orange,
-                            margin: EdgeInsets.all(8),
-                            borderRadius: BorderRadius.circular(8),
-                            icon: Icon(
-                              Icons.warning_amber_rounded,
-                              color: Colors.white,
-                            ),
-                          ).show(context);
-                        }
-                        enterPin.clear();
+                        verifyPinLogic(val);
                       },
                       child: Text("Verify")),
                 ],
@@ -629,5 +384,181 @@ class _MyHomePageState extends State<MyHomePage> {
             ],
           );
         });
+  }
+
+//This is for the FlushBar
+  Future FlushBarWidget(String message, BuildContext context, Iconsvalue) {
+    return Flushbar(
+        message: message,
+        duration: Duration(seconds: 3),
+        backgroundColor: Colors.orange,
+        margin: EdgeInsets.all(8),
+        borderRadius: BorderRadius.circular(8),
+        icon: Icon(
+          Iconsvalue,
+          color: Colors.white,
+        )).show(context);
+  }
+
+//Set Pin Functionality and Pin Logic Here
+  void setPinFunctionality(BuildContext context) async {
+    final pin = await authService.GetPin();
+    // Define `val` as a placeholder or pass it as a parameter
+    bool val = !(isAppLockEnabled ?? false);
+    final appLockEnabled = await authService.isAppLockEnabled();
+    // Case 1: PIN exists and app lock is enabled → verify user
+    if (pin != null && appLockEnabled == true) {
+      verifyUserPin(context, enterPin, val); // your existing logic
+    }
+    // Case 2: PIN exists but app lock is disabled → just enable
+    else if (pin != null && appLockEnabled == false) {
+      if (val == true) {
+        final result = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PasswordScreen(passwordValue: "Set Password"),
+          ),
+        );
+
+        if (result == true) {
+          // User set password successfully
+          setState(() => isAppLockEnabled = true);
+          authService.setAppLockEnabled(true);
+        } else {
+          // User cancelled setting password → revert switch
+          setState(() => isAppLockEnabled = false);
+        }
+      } else {
+        // Toggling OFF when no password exists
+        setState(() => isAppLockEnabled = false);
+        authService.setAppLockEnabled(false);
+      }
+    }
+    // Case 3: No PIN set → navigate to password screen
+    else {
+      if (val == true) {
+        final result = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PasswordScreen(passwordValue: "Set Password"),
+          ),
+        );
+
+        if (result == true) {
+          // User set password successfully
+          setState(() => isAppLockEnabled = true);
+          authService.setAppLockEnabled(true);
+        } else {
+          // User cancelled setting password → revert switch
+          setState(() => isAppLockEnabled = false);
+        }
+      } else {
+        // Toggling OFF when no password exists
+        setState(() => isAppLockEnabled = false);
+        authService.setAppLockEnabled(false);
+      }
+    }
+  }
+
+  void verifyPinLogic(val) async {
+    if (enterPin.text.isEmpty) {
+      FlushBarWidget("Please Enter Pin", context, Icons.error_outline);
+      return;
+    }
+    String? result = await authService.GetPin();
+    if (result == enterPin.text.toString()) {
+      setState(() {
+        isAppLockEnabled = val;
+      });
+      authService.setAppLockEnabled(isAppLockEnabled ?? false);
+      //This Below Code Help to disable Biometric with App Lock
+      if (!isAppLockEnabled!) {
+        setState(() {
+          biometricstatus = false;
+        });
+        authService.setBiometricToggle(false);
+      }
+      enterPin.clear();
+      Navigator.pop(context);
+    } else {
+      FlushBarWidget("Wrong Pin", context, Icons.warning_amber_rounded);
+    }
+    enterPin.clear();
+  }
+
+  //This Enable and Disable App Lock
+  void enableAndDisableAppLock(bool val, BuildContext context) async {
+    final pin = await authService.GetPin();
+    final appLockEnabled = await authService.isAppLockEnabled();
+
+    // Case 1: PIN exists and app lock is enabled → verify user
+    if (pin != null && appLockEnabled == true) {
+      verifyUserPin(context, enterPin, val); // your existing logic
+    }
+
+    // Case 2: PIN exists but app lock is disabled → just enable
+    else if (pin != null && appLockEnabled == false) {
+      if (val == true) {
+        final result = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PasswordScreen(passwordValue: "Set Password"),
+          ),
+        );
+
+        if (result == true) {
+          // User set password successfully
+          setState(() => isAppLockEnabled = true);
+          authService.setAppLockEnabled(true);
+        } else {
+          // User cancelled setting password → revert switch
+          setState(() => isAppLockEnabled = false);
+        }
+      } else {
+        // Toggling OFF when no password exists
+        setState(() => isAppLockEnabled = false);
+        authService.setAppLockEnabled(false);
+      }
+    }
+
+    // Case 3: No PIN set → navigate to password screen
+    else {
+      if (val == true) {
+        final result = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PasswordScreen(passwordValue: "Set Password"),
+          ),
+        );
+
+        if (result == true) {
+          // User set password successfully
+          setState(() => isAppLockEnabled = true);
+          authService.setAppLockEnabled(true);
+        } else {
+          // User cancelled setting password → revert switch
+          setState(() => isAppLockEnabled = false);
+        }
+      } else {
+        // Toggling OFF when no password exists
+        setState(() => isAppLockEnabled = false);
+        authService.setAppLockEnabled(false);
+      }
+    }
+  }
+
+  //Enable Biometric
+  void enableBiometric(bool val, BuildContext context) async {
+    if (await authService.isAppLockEnabled() == false) {
+      FlushBarWidget(
+          "First Enable App Lock", context, Icons.warning_amber_rounded);
+    } else {
+      bool result = await authService.setBiometricToggle(val);
+      if (result) {
+        setState(() {
+          biometricstatus = val;
+        });
+      }
+    }
   }
 }
