@@ -2,13 +2,11 @@ import 'dart:io';
 
 import 'package:filemanager/FileManagement/AuthService.dart';
 import 'package:filemanager/FileManagement/LockScreen.dart';
-import 'package:filemanager/FileManagement/SetPinScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import 'AppLockSettingsScreen.dart';
 import 'Setting.dart';
 
 void main() {
@@ -125,7 +123,7 @@ class _FileManagerScreenState extends State<FileManagerScreen>
         IconButton(
             onPressed: () {
               Navigator.push(context, MaterialPageRoute(builder: (_) {
-                return MyHomePage();//AppLockSettingsScreen();
+                return MyHomePage(); //AppLockSettingsScreen();
               }));
             },
             icon: Icon(Icons.settings))
@@ -172,12 +170,13 @@ class FileManagerScreenSub extends StatefulWidget {
 }
 
 class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
+  bool isSelectionMode = false;
+  Set<FileSystemEntity> selectedItems = {};
   List<FileSystemEntity> currentlyDraggingItems = [];
 
   List<FileSystemEntity> allItems = [];
   String? hoverTargetPath;
   bool isGridView = false;
-  Set<FileSystemEntity> selectedItems = {};
   bool isDragging = false;
 
   void initState() {
@@ -203,23 +202,26 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
     }
   }
 
-  Future<void> handleDrop(String targetPath,
-      List<FileSystemEntity> draggedItems, BuildContext context) async {
+    Future<void> handleDrop(String targetPath,
+        List<FileSystemEntity> draggedItems, BuildContext context) async {
+      await Future.wait(draggedItems.map((item) async {
+        final newPath = '$targetPath/${basename(item.path)}';
+        try {
+          if (await FileSystemEntity.type(newPath) ==
+              FileSystemEntityType.notFound) {
+            await item.rename(newPath);
 
-    await Future.wait(draggedItems.map((item) async {
-      final newPath = '$targetPath/${basename(item.path)}';
-      try {
-        if (await FileSystemEntity.type(newPath) ==
-            FileSystemEntityType.notFound) {
-          await item.rename(newPath);
+          }
+        } catch (e) {
+          print("Error moving file: $e");
         }
-      } catch (e) {
-        print("Error moving file: $e");
-      }
-    }));
-    fetchFolderContent();
-
-  }
+      }));
+      fetchFolderContent();
+      setState(() {
+        selectedItems.clear();
+        isSelectionMode=false;
+      });
+    }
 
   @override
   Widget build(BuildContext context) {
@@ -310,99 +312,110 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
         });
   }
 
+  static const double gridItemHeight = 50.0;
+  static const double listItemHeight = 85.0;
+
   Widget buildDraggableItems(int index, BuildContext context) {
     final item = allItems[index];
     final isFolder = item is Directory;
     final itemName = basename(item.path);
-    final isSelected = selectedItems.contains(item);
+    final isSelected = selectedItems.any((e) => e.path == item.path);
 
     return DragTarget<List<FileSystemEntity>>(
       onWillAccept: (draggedItems) {
-        if (isFolder && draggedItems != null && !draggedItems.contains(item)) {
+        if (isFolder && draggedItems != null && !draggedItems.any((e) => e.path == item.path)) {
           setState(() => hoverTargetPath = item.path);
           return true;
         }
         return false;
       },
       onLeave: (_) => setState(() => hoverTargetPath = null),
-
-      // ✅ Accept the draggedItems passed from Draggable
       onAcceptWithDetails: (draggedItems) {
         setState(() => hoverTargetPath = null);
         final itemsToDrop = List<FileSystemEntity>.from(draggedItems.data);
         handleDrop(item.path, itemsToDrop, context);
       },
-
       builder: (context, candidateData, rejectedData) {
-        return GestureDetector(
-          onTap: () {
+        return LongPressDraggable<List<FileSystemEntity>>(
+          data: selectedItems.isEmpty ? [item] : selectedItems.toList(),
+          feedback: _buildDragFeedback(itemName),
+          onDragStarted: () {
             setState(() {
-              isSelected ? selectedItems.remove(item) : selectedItems.add(item);
+              if (selectedItems.isEmpty) selectedItems.add(item);
+              isDragging = true;
             });
           },
-          child: LongPressDraggable<List<FileSystemEntity>>(
-            // ✅ Actually pass selected items (or single)
-            data: selectedItems.isEmpty ? [item] : selectedItems.toList(),
-            feedback: Material(
-              color: Colors.transparent,
-              child: Container(
-                padding: EdgeInsets.all(8),
-                color: Colors.black87,
-                child: Text(
-                  selectedItems.length > 1
-                      ? "${selectedItems.length} items"
-                      : itemName,
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-            onDragStarted: () {
-              setState(() {
-                if (selectedItems.isEmpty) selectedItems.add(item);
-                isDragging = true;
-              });
-            },
-            onDragEnd: (_) {
-              setState(() => isDragging = false);
-            },
-            onDraggableCanceled: (_, __) {
-              setState(() => isDragging = false);
-            },
-            child: Container(
-              height: isGridView ? 50 : 85,
-              color: hoverTargetPath == item.path
-                  ? Colors.blue.withOpacity(0.2)
-                  : isSelected
-                  ? Colors.green.withOpacity(0.4)
-                  : null,
-              child: Card(
-                elevation: 2,
-                child: ListTile(
-                  leading: Icon(
-                    isFolder ? Icons.folder : Icons.insert_drive_file,
-                    color: Colors.green,
-                  ),
-                  title: Text(itemName),
-                  subtitle: Text(isFolder ? "Folder" : "File"),
-                  onTap: () {
-                    if (isFolder) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => FileManagerScreenSub(path: item.path),
-                        ),
-                      );
-                    } else {
-                      OpenFilex.open(item.path);
-                    }
-                  },
-                ),
-              ),
-            ),
+          onDragEnd: (_) {
+            setState(() => isDragging = false);
+          },
+          onDraggableCanceled: (_, __) {
+            setState(() => isDragging = false);
+          },
+          child: GestureDetector(
+            onTap: () => _toggleSelection(item),
+            child: _buildDraggableTile(item, isFolder, itemName, isSelected,context),
           ),
         );
       },
     );
+  }
 
+  void _toggleSelection(FileSystemEntity item) {
+    setState(() {
+      final exists = selectedItems.any((e) => e.path == item.path);
+      if (exists) {
+        selectedItems.removeWhere((e) => e.path == item.path);
+      } else {
+        selectedItems.add(item);
+      }
+    });
+  }
+
+  Widget _buildDragFeedback(String itemName) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        padding: EdgeInsets.all(8),
+        color: Colors.black87,
+        child: Text(
+          selectedItems.length > 1 ? "${selectedItems.length} items" : itemName,
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDraggableTile(FileSystemEntity item, bool isFolder, String itemName, bool isSelected,BuildContext context) {
+    return Container(
+      height: isGridView ? gridItemHeight : listItemHeight,
+      color: hoverTargetPath == item.path
+          ? Colors.blue.withOpacity(0.2)
+          : isSelected
+          ? Colors.green.withOpacity(0.4)
+          : null,
+      child: Card(
+        elevation: 2,
+        child: ListTile(
+          leading: Icon(
+            isFolder ? Icons.folder : Icons.insert_drive_file,
+            color: Colors.green,
+          ),
+          title: Text(itemName),
+          subtitle: Text(isFolder ? "Folder" : "File"),
+          onTap: () {
+            if (isFolder) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FileManagerScreenSub(path: item.path),
+                ),
+              );
+            } else {
+              OpenFilex.open(item.path);
+            }
+          },
+        ),
+      ),
+    );
   }
 }

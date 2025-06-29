@@ -109,7 +109,8 @@ class _MyHomePageState extends State<MyHomePage> {
               const SizedBox(height: 20),
               ListTile(
                 onTap: () async {
-                  setPinFunctionality(context); //set the Functionality of the Pin
+                  setPinFunctionality(
+                      context); //set the Functionality of the Pin
                 },
                 title: Text("Enable App Lock"),
                 subtitle: Text("Set the App Lock Setting to Protect your app"),
@@ -142,9 +143,9 @@ class _MyHomePageState extends State<MyHomePage> {
                       onTap: ()
                           //set the Functionality of the Toggle functionality
                           async {
-                         bool newvalue=!(biometricstatus??false);
-                         enableBiometric(newvalue, context);
-                         },
+                        bool newvalue = !(biometricstatus ?? false);
+                        enableBiometric(newvalue, context);
+                      },
                       title: Text("Enable Biometric"),
                       subtitle:
                           Text("Click to enable your FingerPrint Verification"),
@@ -161,7 +162,8 @@ class _MyHomePageState extends State<MyHomePage> {
                           activeColor: Colors.green,
                           inactiveColor: Colors.grey,
                           onToggle: (val) async {
-                            enableBiometric(val, context);//set the Functionality of the Toggle functionality
+                            enableBiometric(val,
+                                context); //set the Functionality of the Toggle functionality
                           },
                         ),
                       ),
@@ -377,6 +379,8 @@ class _MyHomePageState extends State<MyHomePage> {
                   TextButton(
                       onPressed: () async {
                         verifyPinLogic(val);
+                        enterPin.clear();
+                        Navigator.pop(context);
                       },
                       child: Text("Verify")),
                 ],
@@ -470,6 +474,7 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() {
         isAppLockEnabled = val;
       });
+      authService.resetPin();
       authService.setAppLockEnabled(isAppLockEnabled ?? false);
       //This Below Code Help to disable Biometric with App Lock
       if (!isAppLockEnabled!) {
@@ -478,8 +483,6 @@ class _MyHomePageState extends State<MyHomePage> {
         });
         authService.setBiometricToggle(false);
       }
-      enterPin.clear();
-      Navigator.pop(context);
     } else {
       FlushBarWidget("Wrong Pin", context, Icons.warning_amber_rounded);
     }
