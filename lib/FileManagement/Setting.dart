@@ -109,14 +109,15 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
               const SizedBox(height: 20),
               Card(
-                elevation:1,
+                elevation: 1,
                 child: ListTile(
                   onTap: () async {
                     setPinFunctionality(
                         context); //set the Functionality of the Pin
                   },
                   title: Text("Enable App Lock"),
-                  subtitle: Text("Set the App Lock Setting to Protect your app"),
+                  subtitle:
+                      Text("Set the App Lock Setting to Protect your app"),
                   trailing: SizedBox(
                     width: 55,
                     child: FlutterSwitch(
@@ -147,8 +148,8 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
               Biometric == true
                   ? Card(
-                    elevation: 1,
-                    child: ListTile(
+                      elevation: 1,
+                      child: ListTile(
                         onTap: ()
                             //set the Functionality of the Toggle functionality
                             async {
@@ -156,8 +157,8 @@ class _MyHomePageState extends State<MyHomePage> {
                           enableBiometric(newvalue, context);
                         },
                         title: Text("Enable Biometric"),
-                        subtitle:
-                            Text("Click to enable your FingerPrint Verification"),
+                        subtitle: Text(
+                            "Click to enable your FingerPrint Verification"),
                         trailing: SizedBox(
                           width: 55,
                           child: FlutterSwitch(
@@ -177,7 +178,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           ),
                         ),
                       ),
-                  )
+                    )
                   : Container(),
             ],
           ),
@@ -192,14 +193,35 @@ class _MyHomePageState extends State<MyHomePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Enter Password'),
-          content: TextField(
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              border: OutlineInputBorder(),
-              labelText: 'Password',
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 8,
+          title: Text(
+            'Enter Pin',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+              color: Colors.blueAccent,
             ),
-            controller: _password,
+          ),
+          content: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: TextField(
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                labelStyle: TextStyle(color: Colors.grey[700]),
+                prefixIcon: Icon(Icons.lock_outline),
+                fillColor: Colors.grey[200],
+                filled: true,
+                labelText: 'Pin',
+              ),
+              controller: _password,
+            ),
           ),
           actions: [
             Row(
@@ -207,29 +229,37 @@ class _MyHomePageState extends State<MyHomePage> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 TextButton(
-                  child: Text('Forget?'),
+                  style:
+                      TextButton.styleFrom(foregroundColor: Colors.redAccent),
                   onPressed: () {
                     _password.clear();
                     Navigator.pop(context);
                     forgetPasswordDialogBox(
                         context); //Here we call the ForgetPasswordDialogBox function
                   },
+                  child: Text('Forget?'),
                 ),
                 TextButton(
-                  child: Text('Cancel'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.grey),
                   onPressed: () {
                     _password.clear();
                     Navigator.of(context).pop();
                   },
+                  child: Text('Cancel'),
                 ),
                 TextButton(
-                  child: Text('OK'),
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                   onPressed: () {
                     validatePassword(context,
                         _password.text); //Check if password valid or not
                     _password.clear(); //Clear text Fields
                     Navigator.of(context).pop();
                   },
+                  child: Text('Verify'),
                 ),
               ],
             ),
@@ -243,58 +273,110 @@ class _MyHomePageState extends State<MyHomePage> {
     final Map<String, dynamic> passwordData = await authService.GetPinDetails();
 
     showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text("Forget Password"),
-            contentPadding: EdgeInsets.all(10),
-            content: Text(
-                "Forget your Password? No issue just answer the security the security questions correctly and you can reset your password "),
-            actions: [
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 10,
+          title: Text(
+            "Forgot Password",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+              color: Colors.blueAccent,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Padding(
-                padding: const EdgeInsets.all(18.0),
+                padding: const EdgeInsets.only(bottom: 14.0),
+                child: Text(
+                  "Forgot your password? No issue! Just answer the security questions correctly and you can reset your password.",
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: TextField(
                   controller: question1,
                   decoration: InputDecoration(
+                    prefixIcon: Icon(Icons.question_answer_outlined),
                     labelText: passwordData['question1'],
                     hintText: passwordData['question1'],
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: Colors.grey[700]),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(18.0),
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: TextField(
                   controller: question2,
                   decoration: InputDecoration(
+                    prefixIcon: Icon(Icons.question_answer_outlined),
                     labelText: passwordData['question2'],
                     hintText: passwordData['question2'],
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: Colors.grey[700]),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  TextButton(
-                      onPressed: () {
-                        question1.clear();
-                        question2.clear();
-                        Navigator.pop(context);
-                      },
-                      child: Text("Cancel")),
-                  TextButton(
-                      onPressed: () {
-                        validateSecurityAnswers(context, question1, question2,
-                            passwordData); //Here we call the validateSecurityAnswers function
-                      },
-                      child: Text("Ok"))
-                ],
-              )
             ],
-          );
-        });
+          ),
+          actionsPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    question1.clear();
+                    question2.clear();
+                    Navigator.pop(context);
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.grey,
+                    textStyle: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  child: Text("Cancel"),
+                ),
+                SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    validateSecurityAnswers(context, question1, question2, passwordData);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueAccent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    textStyle: TextStyle(fontWeight: FontWeight.bold),
+                    elevation: 0,
+                  ),
+                  child: Text("OK"),
+                ),
+              ],
+            )
+          ],
+        );
+      },
+    );
   }
 
 //Validate the Security Answers
@@ -311,9 +393,9 @@ class _MyHomePageState extends State<MyHomePage> {
       question1.clear();
       question2.clear();
       await authService.resetPin();
-      await authService.setAppLockEnabled(isAppLockEnabled??false);
+      await authService.setAppLockEnabled(isAppLockEnabled ?? false);
       setState(() {
-        biometricstatus=false;
+        biometricstatus = false;
       });
       Navigator.pop(context);
       Navigator.push(context, MaterialPageRoute(builder: (context) {
@@ -332,9 +414,23 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<bool> validatePassword(BuildContext context, String text) async {
     final Map<String, dynamic> passwordData = await authService.GetPinDetails();
     if (passwordData['password'] == text) {
+      authService.resetPin();//for reset Pin
+      print('\n isAppLockEnabled ${isAppLockEnabled}');
+      print('\n biometricstatus ${biometricstatus}');
+      authService.setAppLockEnabled(false);
+      authService.setBiometricToggle(false);
+      final newStatus=await authService.isAppLockEnabled();
+      final newBiometricStatus=await authService.isBiometricToggleEnabled();
+      setState(() {
+        biometricstatus = newBiometricStatus;//New Status Will Be False definitely
+        isAppLockEnabled=newStatus;//New Status Will Be False definitely
+      });
+      print('\n isAppLockEnabled ${isAppLockEnabled}');
+      print('\n biometricstatus ${biometricstatus}');
       Navigator.push(context, MaterialPageRoute(builder: (context) {
         return PasswordScreen(passwordValue: "Change Password");
       }));
+
       return true;
     } else if (text.isEmpty) {
       FlushBarWidget("Please Enter Password", context, Icons.error_outline);
@@ -364,7 +460,18 @@ class _MyHomePageState extends State<MyHomePage> {
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: Text("Enter Pin"),
+            title: Text(
+              "Enter Pin",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 22,
+                color: Colors.blueAccent,
+              ),
+            ),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            backgroundColor: Colors.white,
+            elevation: 10,
             actions: [
               Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -372,9 +479,15 @@ class _MyHomePageState extends State<MyHomePage> {
                   keyboardType: TextInputType.number,
                   controller: enterPin,
                   decoration: InputDecoration(
+                    prefixIcon: Icon(Icons.lock_outline),
                     hintText: "Enter Pin",
                     labelText: "Enter Pin",
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: Colors.grey[700]),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
               ),
@@ -384,18 +497,32 @@ class _MyHomePageState extends State<MyHomePage> {
                       onPressed: () {
                         forgetPasswordDialogBox(context); //For Forget Password
                       },
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.redAccent,
+                        textStyle: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       child: Text("Forget")),
                   TextButton(
                       onPressed: () {
                         enterPin.clear();
                         Navigator.pop(context);
                       },
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey,
+                        textStyle: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       child: Text("Cancel")),
                   TextButton(
                       onPressed: () async {
-                        verifyPinLogic(val,context);
-
+                        verifyPinLogic(val, context);
                       },
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        textStyle: TextStyle(fontWeight: FontWeight.bold),
+                        elevation: 0,
+                      ),
                       child: Text("Verify")),
                 ],
               )
@@ -478,7 +605,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void verifyPinLogic(val,BuildContext context) async {
+  void verifyPinLogic(val, BuildContext context) async {
     if (enterPin.text.isEmpty) {
       FlushBarWidget("Please Enter Pin", context, Icons.error_outline);
       return;
@@ -497,7 +624,7 @@ class _MyHomePageState extends State<MyHomePage> {
         });
         authService.setBiometricToggle(false);
       }
-      Navigator.pop(context);//For Navigate Back
+      Navigator.pop(context); //For Navigate Back
     } else {
       FlushBarWidget("Wrong Pin", context, Icons.warning_amber_rounded);
     }

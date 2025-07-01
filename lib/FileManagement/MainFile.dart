@@ -272,6 +272,13 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
           ],
         ),
         body: LayoutBuilder(builder: (context, constraints) {
+          if (allItems.isEmpty) {
+            return Center(
+                child: Text(
+              "No Files or Folder Available ",
+              style: TextStyle(fontSize: 18, color: Colors.grey),
+            ));
+          }
           final isLandScape =
               MediaQuery.of(context).orientation == Orientation.landscape;
           return isGridView
