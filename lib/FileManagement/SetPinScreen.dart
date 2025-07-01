@@ -1,12 +1,14 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:path/path.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:path/path.dart';
 
 class FileManagerPage extends StatefulWidget {
   final String initialPath;
 
-  const FileManagerPage({Key? key, required this.initialPath}) : super(key: key);
+  const FileManagerPage({Key? key, required this.initialPath})
+      : super(key: key);
 
   @override
   State<FileManagerPage> createState() => _FileManagerPageState();
@@ -33,7 +35,8 @@ class _FileManagerPageState extends State<FileManagerPage> {
     });
   }
 
-  Future<void> moveFilesToFolder(List<FileSystemEntity> files, Directory targetFolder) async {
+  Future<void> moveFilesToFolder(
+      List<FileSystemEntity> files, Directory targetFolder) async {
     for (final file in files) {
       try {
         final fileName = basename(file.path);
@@ -91,21 +94,24 @@ class _FileManagerPageState extends State<FileManagerPage> {
                 children: [
                   selectionMode
                       ? Checkbox(
-                    value: isSelected,
-                    onChanged: (checked) {
-                      setState(() {
-                        if (checked == true) {
-                          selectedItems.add(item);
-                        } else {
-                          selectedItems.removeWhere((e) => e.path == item.path);
-                        }
-                      });
-                    },
-                  )
+                          value: isSelected,
+                          onChanged: (checked) {
+                            setState(() {
+                              if (checked == true) {
+                                selectedItems.add(item);
+                              } else {
+                                selectedItems
+                                    .removeWhere((e) => e.path == item.path);
+                              }
+                            });
+                          },
+                        )
                       : Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Icon(isFolder ? Icons.folder : Icons.insert_drive_file),
-                  ),
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Icon(isFolder
+                              ? Icons.folder
+                              : Icons.insert_drive_file),
+                        ),
                   Expanded(
                     child: Draggable<List<FileSystemEntity>>(
                       data: selectedItems.isEmpty ? [item] : selectedItems,
@@ -125,7 +131,8 @@ class _FileManagerPageState extends State<FileManagerPage> {
                           if (selectionMode) {
                             setState(() {
                               if (isSelected) {
-                                selectedItems.removeWhere((e) => e.path == item.path);
+                                selectedItems
+                                    .removeWhere((e) => e.path == item.path);
                               } else {
                                 selectedItems.add(item);
                               }
@@ -134,7 +141,8 @@ class _FileManagerPageState extends State<FileManagerPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => FileManagerPage(initialPath: item.path),
+                                builder: (_) =>
+                                    FileManagerPage(initialPath: item.path),
                               ),
                             );
                           } else {
@@ -144,7 +152,8 @@ class _FileManagerPageState extends State<FileManagerPage> {
                         onLongPress: () {
                           setState(() {
                             selectionMode = true;
-                            if (!selectedItems.any((e) => e.path == item.path)) {
+                            if (!selectedItems
+                                .any((e) => e.path == item.path)) {
                               selectedItems.add(item);
                             }
                           });
@@ -168,6 +177,8 @@ class _FileManagerPageState extends State<FileManagerPage> {
 
 void main() {
   runApp(MaterialApp(
-    home: FileManagerPage(initialPath: "/storage/emulated/0"), // Set to a valid directory for your platform
+    home: FileManagerPage(
+        initialPath:
+            "/storage/emulated/0"), // Set to a valid directory for your platform
   ));
 }

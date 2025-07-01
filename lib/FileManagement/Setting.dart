@@ -96,6 +96,7 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
@@ -107,67 +108,76 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ),
               const SizedBox(height: 20),
-              ListTile(
-                onTap: () async {
-                  setPinFunctionality(
-                      context); //set the Functionality of the Pin
-                },
-                title: Text("Enable App Lock"),
-                subtitle: Text("Set the App Lock Setting to Protect your app"),
-                trailing: SizedBox(
-                  width: 55,
-                  child: FlutterSwitch(
-                      width: 55.0,
-                      height: 25.0,
-                      valueFontSize: 12.0,
-                      toggleSize: 18.0,
-                      value: isAppLockEnabled ?? false,
-                      borderRadius: 30.0,
-                      padding: 4.0,
-                      activeColor: Colors.green,
-                      inactiveColor: Colors.grey,
-                      onToggle: (val) async {
-                        enableAndDisableAppLock(val, context);
-                      }),
+              Card(
+                elevation:1,
+                child: ListTile(
+                  onTap: () async {
+                    setPinFunctionality(
+                        context); //set the Functionality of the Pin
+                  },
+                  title: Text("Enable App Lock"),
+                  subtitle: Text("Set the App Lock Setting to Protect your app"),
+                  trailing: SizedBox(
+                    width: 55,
+                    child: FlutterSwitch(
+                        width: 55.0,
+                        height: 25.0,
+                        valueFontSize: 12.0,
+                        toggleSize: 18.0,
+                        value: isAppLockEnabled ?? false,
+                        borderRadius: 30.0,
+                        padding: 4.0,
+                        activeColor: Colors.green,
+                        inactiveColor: Colors.grey,
+                        onToggle: (val) async {
+                          enableAndDisableAppLock(val, context);
+                        }),
+                  ),
                 ),
               ),
-              ListTile(
-                onTap: () {
-                  passwordSetOrNot(context); //Check the Pin set or not
-                },
-                title: Text("Change Password"),
-                subtitle: Text("Click to update your existing password"),
+              Card(
+                elevation: 1,
+                child: ListTile(
+                  onTap: () {
+                    passwordSetOrNot(context); //Check the Pin set or not
+                  },
+                  title: Text("Change Password"),
+                  subtitle: Text("Click to update your existing password"),
+                ),
               ),
               Biometric == true
-                  ? ListTile(
-                      onTap: ()
-                          //set the Functionality of the Toggle functionality
-                          async {
-                        bool newvalue = !(biometricstatus ?? false);
-                        enableBiometric(newvalue, context);
-                      },
-                      title: Text("Enable Biometric"),
-                      subtitle:
-                          Text("Click to enable your FingerPrint Verification"),
-                      trailing: SizedBox(
-                        width: 55,
-                        child: FlutterSwitch(
-                          width: 55.0,
-                          height: 25.0,
-                          valueFontSize: 12.0,
-                          toggleSize: 18.0,
-                          value: biometricstatus ?? false,
-                          borderRadius: 30.0,
-                          padding: 4.0,
-                          activeColor: Colors.green,
-                          inactiveColor: Colors.grey,
-                          onToggle: (val) async {
-                            enableBiometric(val,
-                                context); //set the Functionality of the Toggle functionality
-                          },
+                  ? Card(
+                    elevation: 1,
+                    child: ListTile(
+                        onTap: ()
+                            //set the Functionality of the Toggle functionality
+                            async {
+                          bool newvalue = !(biometricstatus ?? false);
+                          enableBiometric(newvalue, context);
+                        },
+                        title: Text("Enable Biometric"),
+                        subtitle:
+                            Text("Click to enable your FingerPrint Verification"),
+                        trailing: SizedBox(
+                          width: 55,
+                          child: FlutterSwitch(
+                            width: 55.0,
+                            height: 25.0,
+                            valueFontSize: 12.0,
+                            toggleSize: 18.0,
+                            value: biometricstatus ?? false,
+                            borderRadius: 30.0,
+                            padding: 4.0,
+                            activeColor: Colors.green,
+                            inactiveColor: Colors.grey,
+                            onToggle: (val) async {
+                              enableBiometric(val,
+                                  context); //set the Functionality of the Toggle functionality
+                            },
+                          ),
                         ),
                       ),
-                    )
+                  )
                   : Container(),
             ],
           ),
@@ -276,9 +286,6 @@ class _MyHomePageState extends State<MyHomePage> {
                       child: Text("Cancel")),
                   TextButton(
                       onPressed: () {
-                        question2.clear();
-                        question1.clear();
-                        Navigator.pop(context);
                         validateSecurityAnswers(context, question1, question2,
                             passwordData); //Here we call the validateSecurityAnswers function
                       },
@@ -291,16 +298,24 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
 //Validate the Security Answers
-  void validateSecurityAnswers(
+  Future<void> validateSecurityAnswers(
       BuildContext context,
       TextEditingController question1,
       TextEditingController question2,
-      Map<String, dynamic> passwordData) {
+      Map<String, dynamic> passwordData) async {
     if (question1.text.isEmpty || question2.text.isEmpty) {
       FlushBarWidget(
           "Please Answer Both Questions", context, Icons.warning_amber_rounded);
     } else if (question1.text == passwordData['answer1'] &&
         question2.text == passwordData['answer2']) {
+      question1.clear();
+      question2.clear();
+      await authService.resetPin();
+      await authService.setAppLockEnabled(isAppLockEnabled??false);
+      setState(() {
+        biometricstatus=false;
+      });
+      Navigator.pop(context);
       Navigator.push(context, MaterialPageRoute(builder: (context) {
         return PasswordScreen(
           passwordValue: "Change password",
@@ -378,9 +393,8 @@ class _MyHomePageState extends State<MyHomePage> {
                       child: Text("Cancel")),
                   TextButton(
                       onPressed: () async {
-                        verifyPinLogic(val);
-                        enterPin.clear();
-                        Navigator.pop(context);
+                        verifyPinLogic(val,context);
+
                       },
                       child: Text("Verify")),
                 ],
@@ -464,7 +478,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void verifyPinLogic(val) async {
+  void verifyPinLogic(val,BuildContext context) async {
     if (enterPin.text.isEmpty) {
       FlushBarWidget("Please Enter Pin", context, Icons.error_outline);
       return;
@@ -483,6 +497,7 @@ class _MyHomePageState extends State<MyHomePage> {
         });
         authService.setBiometricToggle(false);
       }
+      Navigator.pop(context);//For Navigate Back
     } else {
       FlushBarWidget("Wrong Pin", context, Icons.warning_amber_rounded);
     }

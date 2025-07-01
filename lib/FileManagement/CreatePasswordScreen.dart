@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-
+import 'package:another_flushbar/flushbar.dart';
 import 'AuthService.dart';
 
 class PasswordScreen extends StatefulWidget {
   final String passwordValue;
-  PasswordScreen({ required this.passwordValue});
+
+  PasswordScreen({required this.passwordValue});
+
   @override
   State<PasswordScreen> createState() => _PasswordScreenState();
 }
@@ -12,10 +14,7 @@ class PasswordScreen extends StatefulWidget {
 class _PasswordScreenState extends State<PasswordScreen> {
   // Controllers
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController =
-      TextEditingController();
-  final TextEditingController questionController1 = TextEditingController();
-  final TextEditingController questionController2 = TextEditingController();
+  final TextEditingController confirmPasswordController = TextEditingController();
   final TextEditingController answerController1 = TextEditingController();
   final TextEditingController answerController2 = TextEditingController();
 
@@ -28,76 +27,91 @@ class _PasswordScreenState extends State<PasswordScreen> {
     "What was your childhood nickname?",
   ];
 
+  String selectedQuestion1 = "";
+  String selectedQuestion2 = "";
+
   @override
   void initState() {
     super.initState();
-    questionController1.text = recoveryQuestions[0];
-    questionController2.text = recoveryQuestions[1];
+    selectedQuestion1 = recoveryQuestions[0];
+    selectedQuestion2 = recoveryQuestions[1];
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("${widget.passwordValue}"),
-
-      leading: IconButton(onPressed: (){
-        Navigator.pop(context,false);
-      }, icon: Icon(Icons.arrow_back)),),
+      appBar: AppBar(
+        title: Text(widget.passwordValue),
+        leading: IconButton(
+            onPressed: () {
+              Navigator.pop(context, false);
+            },
+            icon: Icon(Icons.arrow_back)),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const SizedBox(height: 40),
-            buildTextField('Enter 4 digit Password', passwordController, false,true),
-            buildTextField(
-                'Confirm Password', confirmPasswordController, false,true),
+            buildTextField('Enter 4 digit Password', passwordController, false, true, false),
+            buildTextField('Confirm Password', confirmPasswordController, false, true, false),
             const SizedBox(height: 30),
-            Text("Security Questions",
-                style: Theme.of(context).textTheme.titleMedium),
+            Text("Security Questions", style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(12.0),
               child: Text(
-                "These questions will help you when you forget your password.\nAll your security answers will be encrypted and stored only on the local device.",
+                "These questions will help you when you forget your password. All your security answers will be encrypted and stored only on the local device.",
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14),
               ),
             ),
-            const SizedBox(height: 20),
-
-            /// First Question + Answer
-            buildQuestionWithPopup(questionController1),
+            const SizedBox(height: 18),
+            // First Question + Answer
+            QuestionSelector(
+              label: "Select Question 1",
+              questions: recoveryQuestions,
+              selectedQuestion: selectedQuestion1,
+              onChanged: (q) {
+                setState(() {
+                  selectedQuestion1 = q;
+                });
+              },
+            ),
             const SizedBox(height: 10),
-            buildTextField('Answer', answerController1, false,false),
+            buildTextField('Answer', answerController1, false, false, true),
             const SizedBox(height: 20),
-
-            /// Second Question + Answer
-            buildQuestionWithPopup(questionController2),
+            // Second Question + Answer
+            QuestionSelector(
+              label: "Select Question 2",
+              questions: recoveryQuestions,
+              selectedQuestion: selectedQuestion2,
+              onChanged: (q) {
+                setState(() {
+                  selectedQuestion2 = q;
+                });
+              },
+            ),
             const SizedBox(height: 10),
-            buildTextField('Answer', answerController2, false,false),
+            buildTextField('Answer', answerController2, false, false, true),
             const SizedBox(height: 30),
-
-            SizedBox(
-
+            Container(
               width: 340,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12)
+              ),
               child: ElevatedButton(
-
                 style: ButtonStyle(
-                  backgroundColor:MaterialStateProperty.all(Colors.orangeAccent.shade200),
+                  backgroundColor: MaterialStateProperty.all(Colors.orangeAccent.shade200),
                 ),
                 onPressed: () {
-                  // Save logic here
-
-                  InsertUserPassword(
-                      passwordController,
-                      confirmPasswordController,
-                      questionController1,
-                      questionController2,
-                      answerController1,
-                      answerController2);
+                  InsertUserPassword();
                 },
-                child: Text("Save",style: TextStyle(color: Colors.black),),
+                child: Text(
+                  "Save",
+                  style: TextStyle(color: Colors.black),
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -108,90 +122,139 @@ class _PasswordScreenState extends State<PasswordScreen> {
   }
 
   /// Builds a regular or read-only text field
-  Widget buildTextField(
-      String label, TextEditingController controller, bool readOnly,bool keyboardtype) {
+  Widget buildTextField(String label, TextEditingController controller, bool readOnly, bool isNumber, bool isAnswer) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextField(
-        keyboardType: keyboardtype==true?TextInputType.number:TextInputType.name,
+        maxLength: isAnswer ? 100 : 4,
+        textAlign: TextAlign.left,
+        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         controller: controller,
         readOnly: readOnly,
         obscureText: false,
         decoration: InputDecoration(
+          focusColor: Colors.grey.shade200,
+          fillColor: Colors.green,
           labelText: label,
-          border: OutlineInputBorder(),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(10)),
+            borderSide: BorderSide(color: Colors.grey),
+            gapPadding: 10,
+          ),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.all(Radius.circular(10)),
+              borderSide: BorderSide(color: Colors.grey),
+              gapPadding: 10),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.all(Radius.circular(10)),
+              borderSide: BorderSide(color: Colors.grey),
+              gapPadding: 10),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
       ),
     );
   }
 
-  /// Builds a read-only question field with a popup selector inside it
-  Widget buildQuestionWithPopup(TextEditingController controller) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 200,
-          height: 80,
-          child: PopupMenuButton<String>(
-            icon: Icon(Icons.arrow_drop_down),
-            onSelected: (value) {
-              controller.text = value;
-            },
-            itemBuilder: (context) {
-              return recoveryQuestions.map((question) {
-                return PopupMenuItem<String>(
-                  value: question,
-                  child: Text(question),
-                );
-              }).toList();
-            },
-          ),
-        ),
-        buildTextField("Select Question", controller, true,false),
-
-      ],
-    );
-  }
-
-  //Insert User Password
-  void InsertUserPassword(
-    TextEditingController passwordController,
-    TextEditingController confirmPasswordController,
-    TextEditingController questionController1,
-    TextEditingController questionController2,
-    TextEditingController answerController1,
-    TextEditingController answerController2,
-  ) {
+  // Insert User Password
+  void InsertUserPassword() {
     if (passwordController.text.isEmpty ||
         confirmPasswordController.text.isEmpty ||
-        questionController1.text.isEmpty ||
-        questionController2.text.isEmpty ||
+        selectedQuestion1.isEmpty ||
+        selectedQuestion2.isEmpty ||
         answerController1.text.isEmpty ||
         answerController2.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Please Fill all Fields")),
       );
-    }
-    else if(confirmPasswordController.text!=passwordController.text){
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Password and Confirm Password does not match ")));
-    }
-    else {
-
-      Map<String ,dynamic>userPasswordDetails={
-        "password":passwordController.text,
-        "confirmpassword":confirmPasswordController.text,
-        "question1":questionController1.text,
-        "question2":questionController2.text,
-        "answer1":answerController1.text,
-        "answer2":answerController2.text,
+    } else if (confirmPasswordController.text != passwordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Password and Confirm Password does not match ")));
+    } else {
+      Map<String, dynamic> userPasswordDetails = {
+        "password": passwordController.text.trim(),
+        "confirmpassword": confirmPasswordController.text.trim(),
+        "question1": selectedQuestion1.trim(),
+        "question2": selectedQuestion2.trim(),
+        "answer1": answerController1.text.trim(),
+        "answer2": answerController2.text.trim(),
       };
-      final auth=AuthService();
+      final auth = AuthService();
       auth.SetPin(userPasswordDetails);
-      Navigator.pop(context,true);//Navigate to Previous Screen
+      Flushbar(
+        title: "Successfully",
+        message: "Pin Set Successfully",
+        duration: Duration(seconds: 2),
+        icon: Icon(Icons.check, color: Colors.black),
+        backgroundColor: Colors.orangeAccent,
+      ).show(context).then((value) => Navigator.pop(context, true)); //Navigate to Previous Screen
     }
+  }
+}
+//This Class for Question Selection
+class QuestionSelector extends StatelessWidget {
+  final String label;
+  final List<String> questions;
+  final String selectedQuestion;
+  final ValueChanged<String> onChanged;
+
+  const QuestionSelector({
+    Key? key,
+    required this.label,
+    required this.questions,
+    required this.selectedQuestion,
+    required this.onChanged,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () async {
+        final RenderBox box = context.findRenderObject() as RenderBox;
+        final Offset position = box.localToGlobal(Offset.zero);
+        final selected = await showMenu<String>(
+          context: context,
+          // Dynamically position the menu under the field
+          position: RelativeRect.fromLTRB(
+            position.dx,
+            position.dy + box.size.height,
+            position.dx + box.size.width,
+            position.dy,
+          ),
+          items: questions
+              .map(
+                (q) => PopupMenuItem<String>(
+              value: q,
+              child: Text(
+                q,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          )
+              .toList(),
+          color: Colors.grey[800],
+        );
+        if (selected != null) onChanged(selected);
+      },
+      child: AbsorbPointer(
+        child: TextField(
+          controller: TextEditingController(text: selectedQuestion),
+          readOnly: true,
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: "Select Question",
+            hintStyle: const TextStyle(color: Colors.grey),
+            filled: true,
+            fillColor: Colors.grey.shade200,
+            suffixIcon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+          ),
+          style: TextStyle(
+            color: selectedQuestion.isEmpty ? Colors.grey : Colors.black,
+            fontSize: 16,
+          ),
+        ),
+      ),
+    );
   }
 }
