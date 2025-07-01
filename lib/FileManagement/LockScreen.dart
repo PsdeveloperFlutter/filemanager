@@ -46,7 +46,8 @@ class _LookScreenState extends State<LockScreen> {
     _authRunning = true;
 
     try {
-      final available = await _authService.isBiometricAvailable();
+      final available = await _authService.isBiometricToggleEnabled();
+      print('\n Biometric toggle is enabled: $available');
       if (available) {
         final success = await _authService.authenticateWithBiometric();
         if (success && mounted) {
