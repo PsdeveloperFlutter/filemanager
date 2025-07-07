@@ -395,16 +395,12 @@ class _MyHomePageState extends State<MyHomePage> {
       question2.clear();
       await authService.resetPin();
       await authService.setAppLockEnabled(false);
+      await authService.setBiometricToggle(false);
       setState(() {
         biometricstatus = false;
         isAppLockEnabled = false;
       });
       Navigator.pop(context);
-      Navigator.push(context, MaterialPageRoute(builder: (context) {
-        return PasswordScreen(
-          passwordValue: "Change password",
-        );
-      }));
     }
 
     else if (question1.text == passwordData['answer1'] &&

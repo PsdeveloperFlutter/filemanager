@@ -17,7 +17,8 @@ class _PasswordScreenState extends State<PasswordScreen> {
   final TextEditingController confirmPasswordController = TextEditingController();
   final TextEditingController answerController1 = TextEditingController();
   final TextEditingController answerController2 = TextEditingController();
-
+  bool _isPasswordObscured = true; // Initially, the password is hidden
+  bool _isConfirmPasswordObscured = true; // Initially, confirm password is hidden
   final List<String> recoveryQuestions = [
     "What is your mother's maiden name?",
     "What was the name of your first pet?",
@@ -54,8 +55,16 @@ class _PasswordScreenState extends State<PasswordScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const SizedBox(height: 40),
-            buildTextField('Enter 4 digit Password', passwordController, false, true, false),
-            buildTextField('Confirm Password', confirmPasswordController, false, true, false),
+            buildTextField('Enter 4 digit Password', passwordController, false, true, false,_isPasswordObscured,true,(){
+              setState(() {
+                _isPasswordObscured = !_isPasswordObscured;
+              });
+            }),
+            buildTextField('Confirm Password', confirmPasswordController, false, true, false,_isConfirmPasswordObscured,true,(){
+              setState(() {
+                _isConfirmPasswordObscured = !_isConfirmPasswordObscured;
+              });
+            }),
             const SizedBox(height: 30),
             Text("Security Questions", style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
@@ -80,7 +89,7 @@ class _PasswordScreenState extends State<PasswordScreen> {
               },
             ),
             const SizedBox(height: 10),
-            buildTextField('Answer', answerController1, false, false, true),
+            buildTextField('Answer', answerController1, false, false, true,false,false,null),
             const SizedBox(height: 20),
             // Second Question + Answer
             QuestionSelector(
@@ -94,7 +103,7 @@ class _PasswordScreenState extends State<PasswordScreen> {
               },
             ),
             const SizedBox(height: 10),
-            buildTextField('Answer', answerController2, false, false, true),
+            buildTextField('Answer', answerController2, false, false, true,false,false,null),
             const SizedBox(height: 30),
             Container(
               width: 340,
@@ -122,7 +131,16 @@ class _PasswordScreenState extends State<PasswordScreen> {
   }
 
   /// Builds a regular or read-only text field
-  Widget buildTextField(String label, TextEditingController controller, bool readOnly, bool isNumber, bool isAnswer) {
+  Widget buildTextField(
+      String label,
+      TextEditingController controller,
+      bool readOnly,
+      bool isNumber,
+      bool isAnswer,
+      bool obscure,
+      bool showSuffixIcon, // New parameter
+      VoidCallback? onSuffixIconTap // Made nullable to match usage
+      ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextField(
@@ -131,10 +149,21 @@ class _PasswordScreenState extends State<PasswordScreen> {
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         controller: controller,
         readOnly: readOnly,
-        obscureText: false,
+        obscureText: obscure,
+        obscuringCharacter: "*",
         decoration: InputDecoration(
+          // Conditionally show the suffixIcon
+          suffixIcon: showSuffixIcon
+              ? IconButton(
+            icon: Icon(
+              // Change icon based on the 'obscure' state
+              obscure ? Icons.visibility_off : Icons.visibility,
+            ),
+            onPressed: onSuffixIconTap, // Call this function when tapped
+          )
+              : null,
           focusColor: Colors.grey.shade200,
-          fillColor: Colors.green,
+          fillColor: Colors.green, // You might want to make this dynamic or remove if not needed for all fields
           labelText: label,
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.all(Radius.circular(10)),
@@ -154,7 +183,6 @@ class _PasswordScreenState extends State<PasswordScreen> {
       ),
     );
   }
-
   // Insert User Password
   void InsertUserPassword() {
     if (passwordController.text.isEmpty ||
