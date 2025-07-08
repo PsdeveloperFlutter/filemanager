@@ -234,8 +234,8 @@ class _MyHomePageState extends State<MyHomePage> {
                   onPressed: () {
                     _password.clear();
                     Navigator.pop(context);
-                    forgetPasswordDialogBox(
-                        context,"change"); //Here we call the ForgetPasswordDialogBox function
+                    forgetPasswordDialogBox(context,
+                        "change"); //Here we call the ForgetPasswordDialogBox function
                   },
                   child: Text('Forget?'),
                 ),
@@ -269,7 +269,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   } //PasswordDialogBox for Changing the password
 
-  void forgetPasswordDialogBox(BuildContext context,String value) async {
+  void forgetPasswordDialogBox(BuildContext context, String value) async {
     final Map<String, dynamic> passwordData = await authService.GetPinDetails();
 
     showDialog(
@@ -339,7 +339,8 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ],
           ),
-          actionsPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          actionsPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           actions: [
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -359,7 +360,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: () {
-                    validateSecurityAnswers(context, question1, question2, passwordData, value);
+                    validateSecurityAnswers(
+                        context, question1, question2, passwordData, value);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blueAccent,
@@ -384,13 +386,14 @@ class _MyHomePageState extends State<MyHomePage> {
       BuildContext context,
       TextEditingController question1,
       TextEditingController question2,
-      Map<String, dynamic> passwordData,String value) async {
+      Map<String, dynamic> passwordData,
+      String value) async {
     if (question1.text.isEmpty || question2.text.isEmpty) {
       FlushBarWidget(
           "Please Answer Both Questions", context, Icons.warning_amber_rounded);
-    }
-    else if (question1.text == passwordData['answer1'] &&
-        question2.text == passwordData['answer2'] && value=="enable") {
+    } else if (question1.text == passwordData['answer1'] &&
+        question2.text == passwordData['answer2'] &&
+        value == "enable") {
       question1.clear();
       question2.clear();
       await authService.resetPin();
@@ -401,10 +404,9 @@ class _MyHomePageState extends State<MyHomePage> {
         isAppLockEnabled = false;
       });
       Navigator.pop(context);
-    }
-
-    else if (question1.text == passwordData['answer1'] &&
-        question2.text == passwordData['answer2'] && value=="change") {
+    } else if (question1.text == passwordData['answer1'] &&
+        question2.text == passwordData['answer2'] &&
+        value == "change") {
       question1.clear();
       question2.clear();
       Navigator.pop(context);
@@ -413,10 +415,7 @@ class _MyHomePageState extends State<MyHomePage> {
           passwordValue: "Change password",
         );
       }));
-    }
-
-
-    else {
+    } else {
       FlushBarWidget("Wrong Answers", context, Icons.error_outline);
     }
     question1.clear();
@@ -427,18 +426,9 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<bool> validatePassword(BuildContext context, String text) async {
     final Map<String, dynamic> passwordData = await authService.GetPinDetails();
     if (passwordData['password'] == text) {
-      //authService.resetPin();//for reset Pin
       print('\n isAppLockEnabled ${isAppLockEnabled}');
       print('\n biometricstatus ${biometricstatus}');
-      // authService.setAppLockEnabled(false);
-      // authService.setBiometricToggle(false);
-      // final newStatus=await authService.isAppLockEnabled();
-      // final newBiometricStatus=await authService.isBiometricToggleEnabled();
-      // setState(() {
-      //   biometricstatus = newBiometricStatus;//New Status Will Be False definitely
-      //   isAppLockEnabled=newStatus;//New Status Will Be False definitely
-      // });
-       print('\n isAppLockEnabled ${isAppLockEnabled}');
+      print('\n isAppLockEnabled ${isAppLockEnabled}');
       print('\n biometricstatus ${biometricstatus}');
       Navigator.push(context, MaterialPageRoute(builder: (context) {
         return PasswordScreen(passwordValue: "Change Password");
@@ -508,7 +498,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 children: [
                   TextButton(
                       onPressed: () {
-                        forgetPasswordDialogBox(context,"enable"); //For Forget Password
+                        forgetPasswordDialogBox(
+                            context, "enable"); //For Forget Password
                       },
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.redAccent,
@@ -604,20 +595,32 @@ class _MyHomePageState extends State<MyHomePage> {
 
         if (result == true) {
           // User set password successfully
-          setState(() => isAppLockEnabled = true);
+          setState(() {
+            isAppLockEnabled = true;
+            biometricstatus = true;
+          });
           authService.setAppLockEnabled(true);
+          authService.setBiometricToggle(true);
         } else {
           // User cancelled setting password → revert switch
-          setState(() => isAppLockEnabled = false);
+          setState(() {
+            isAppLockEnabled = false;
+            biometricstatus = false;
+          });
         }
       } else {
         // Toggling OFF when no password exists
-        setState(() => isAppLockEnabled = false);
+        setState(() {
+          isAppLockEnabled = false;
+          biometricstatus = false;
+        });
         authService.setAppLockEnabled(false);
+        authService.setBiometricToggle(false);
       }
     }
   }
 
+  //This Code when the User Disable and Verfiy the Pin code and after that User pin will reset
   void verifyPinLogic(val, BuildContext context) async {
     if (enterPin.text.isEmpty) {
       FlushBarWidget("Please Enter Pin", context, Icons.error_outline);
@@ -627,9 +630,11 @@ class _MyHomePageState extends State<MyHomePage> {
     if (result == enterPin.text.toString()) {
       setState(() {
         isAppLockEnabled = val;
+        biometricstatus = val;
       });
       authService.resetPin();
       authService.setAppLockEnabled(isAppLockEnabled ?? false);
+      //authService.setBiometricToggle(biometricstatus??false);
       //This Below Code Help to disable Biometric with App Lock
       if (!isAppLockEnabled!) {
         setState(() {
@@ -666,16 +671,27 @@ class _MyHomePageState extends State<MyHomePage> {
 
         if (result == true) {
           // User set password successfully
-          setState(() => isAppLockEnabled = true);
+          setState(() {
+            isAppLockEnabled = true;
+            biometricstatus = true;
+          });
           authService.setAppLockEnabled(true);
+          authService.setBiometricToggle(true);
         } else {
           // User cancelled setting password → revert switch
-          setState(() => isAppLockEnabled = false);
+          setState(() {
+            isAppLockEnabled = false;
+            biometricstatus = false;
+          });
         }
       } else {
         // Toggling OFF when no password exists
-        setState(() => isAppLockEnabled = false);
+        setState(() {
+          isAppLockEnabled = false;
+          biometricstatus = false;
+        });
         authService.setAppLockEnabled(false);
+        authService.setBiometricToggle(false);
       }
     }
 
@@ -691,16 +707,27 @@ class _MyHomePageState extends State<MyHomePage> {
 
         if (result == true) {
           // User set password successfully
-          setState(() => isAppLockEnabled = true);
+          setState(() {
+            isAppLockEnabled = true;
+            biometricstatus = true;
+          });
           authService.setAppLockEnabled(true);
+          authService.setBiometricToggle(true);
         } else {
           // User cancelled setting password → revert switch
-          setState(() => isAppLockEnabled = false);
+          setState(() {
+            isAppLockEnabled = false;
+            biometricstatus = false;
+          });
         }
       } else {
         // Toggling OFF when no password exists
-        setState(() => isAppLockEnabled = false);
+        setState(() {
+          isAppLockEnabled = false;
+          biometricstatus = false;
+        });
         authService.setAppLockEnabled(false);
+        authService.setBiometricToggle(false);
       }
     }
   }
