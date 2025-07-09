@@ -5,6 +5,7 @@ import 'package:filemanager/FileManagement/AuthService.dart';
 import 'package:filemanager/FileManagement/LockScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -101,28 +102,94 @@ class _FileManagerScreenState extends State<FileManagerScreen>
     );
   }
 
+  //User Allow Permission Dialog Box
+
+  showPermissionDialogBox(BuildContext context){
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Permission Required"),
+        content: Text(
+            "This app needs access to your files to work properly. "
+                "Please tap 'Allow' on the next permission request. "
+                "If you have denied before, tap 'Open Settings' and enable 'All files access' for this app."
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              openAppSettings();
+              Navigator.pop(context);
+            },
+            child: Text("Open Settings"),
+          ),
+        ],
+      ),
+    );
+  }
   //request permission and fetch
   void requestPermissionAndFetch() async {
-    var status = await Permission.storage.request();
-    if (status.isGranted) {
-      final dir = Directory("/storage/emulated/0");
-      if (await dir.exists()) {
-        List<FileSystemEntity> items = dir.listSync();
-        //sort Folders First
-        items.sort((a, b) {
-          if (a is Directory && b is File) return -1;
-          if (a is File && b is Directory) return 1;
-          return a.path.toLowerCase().compareTo(b.path.toLowerCase());
-        });
-        setState(() {
-          allItems = items;
-        });
+    var storageStatus = await Permission.storage.status;
+    var manageStatus = await Permission.manageExternalStorage.status;
+
+    // Print for debugging
+    print("Before request: Storage: $storageStatus, Manage: $manageStatus");
+
+    if (!storageStatus.isGranted && mounted) {
+      showPermissionDialogBox(context as BuildContext);
+      storageStatus = await Permission.storage.request();
+    }
+    if (!manageStatus.isGranted && mounted) {
+      showPermissionDialogBox(context as BuildContext);
+      manageStatus = await Permission.manageExternalStorage.request();
+    }
+
+    print("After request: Storage: $storageStatus, Manage: $manageStatus");
+
+    if (storageStatus.isDenied || manageStatus.isDenied) {
+      print("Permission denied. Opening settings.");
+      openAppSettings();
+      return;
+    }
+    if (storageStatus.isPermanentlyDenied || manageStatus.isPermanentlyDenied) {
+      print("Permission permanently denied. Opening settings.");
+      openAppSettings();
+      return;
+    }
+
+    // 3. Try app-specific directory first (safe, recommended for most apps)
+    Directory? appSpecificDir = await getExternalStorageDirectory();
+    if (appSpecificDir != null && await appSpecificDir.exists()) {
+      List<FileSystemEntity> appItems = appSpecificDir.listSync();
+      print("App-specific directory: ${appSpecificDir.path}");
+      print("Found ${appItems.length} items in app-specific directory.");
+      for (var item in appItems) {
+        print(item.path);
       }
+      // Uncomment below line if you want to show these in UI
+      setState(() { allItems = appItems; });
+    }
+
+    // 4. Try root directory (full storage, requires MANAGE_EXTERNAL_STORAGE)
+    Directory rootDir = Directory("/storage/emulated/0");
+    if (await rootDir.exists()) {
+      List<FileSystemEntity> rootItems = rootDir.listSync();
+      print("Root directory: ${rootDir.path}");
+      print("Found ${rootItems.length} items in root directory.");
+      for (var item in rootItems) {
+        print(item.path);
+      }
+      // Show root items in UI
+      setState(() {
+        allItems = rootItems;
+      });
     } else {
-      openAppSettings(); //open app settings
+      print("Root directory does not exist or can't access.");
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
