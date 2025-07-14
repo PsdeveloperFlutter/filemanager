@@ -1,16 +1,18 @@
 import 'dart:io';
 
 import 'package:another_flushbar/flushbar.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:filemanager/FileManagement/AuthService.dart';
 import 'package:filemanager/FileManagement/LockScreen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import 'Setting.dart';
+import 'appLockScreen.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -20,39 +22,57 @@ void main() {
 }
 
 //This is the Code For the Starting of the App
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
+  MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final storage = FlutterSecureStorage();
   final _authService = AuthService();
 
-  MyApp({super.key});
+  void initState() {
+    super.initState();
+  }
+
+  Future<Widget> _decideStartScreen() async {
+    final lockOption =
+        await _authService.getStoredLockOption(); // yeh await karo!
+    if (lockOption == 'pin') {
+      final pin = await _authService.GetPin();
+      if (pin == null) {
+        return FileManagerScreen();
+      } else {
+        return LockScreen();
+      }
+    } else if (lockOption == 'screenLock') {
+      return FileManagerScreen();
+      // final authenticated = await _authService.allAuthenticationOfDevice();
+      // if (authenticated) {
+      //   return FileManagerScreen();
+      // } else {
+      //   return LockScreen();
+      // }
+    } else {
+      return FileManagerScreen();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: FutureBuilder(
-        future: Future.wait([
-          _authService.GetPin(),
-          _authService.isAppLockEnabled(),
-        ]),
-        builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Scaffold(body: Center(child: CircularProgressIndicator()));
+      home: FutureBuilder<Widget>(
+        future: _decideStartScreen(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Scaffold(
+              body: Center(child: Text('Error: ${snapshot.error}')),
+            );
           }
-
-          final String? pin = snapshot.data?[0];
-          final bool isAppLockEnabled = snapshot.data?[1] ?? false;
-          print("PIN: $pin");
-          print("isAppLockEnabled: $isAppLockEnabled");
-          if (pin == null) {
-            return FileManagerScreen();
-          }
-
-          if (!isAppLockEnabled) {
-            return FileManagerScreen();
-          }
-
-          // ✅ Use callback to unlock
-          return LockScreen();
+          return snapshot.data ?? FileManagerScreen();
         },
       ),
     );
@@ -71,11 +91,28 @@ class _FileManagerScreenState extends State<FileManagerScreen>
   bool shouldLock = false;
   List<FileSystemEntity> allItems = [];
 
+  Future<String?> checkLockOption() async {
+    AuthService _authService = AuthService();
+    final String? lockOption = await _authService.getStoredLockOption();
+    return lockOption;
+  }
+
   @override
   void initState() {
     super.initState();
-    requestPermissionAndFetch();
-    WidgetsBinding.instance.addObserver(this);
+    _requestPermissionsAndFetchFiles();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      checkLockOption().then((lockOption) {
+        print("Lock Option: $lockOption"); // Add this
+        if (lockOption == 'screenLock') {
+          WidgetsBinding.instance.addObserver(this);
+          showBottomSheets(this.context); // ✅ Now it's safe to call
+        } else if (lockOption == 'pin') {
+          WidgetsBinding.instance.addObserver(this);
+        }
+      });
+    });
   }
 
   @override
@@ -102,94 +139,73 @@ class _FileManagerScreenState extends State<FileManagerScreen>
     );
   }
 
-  //User Allow Permission Dialog Box
-
-  showPermissionDialogBox(BuildContext context){
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Permission Required"),
-        content: Text(
-            "This app needs access to your files to work properly. "
-                "Please tap 'Allow' on the next permission request. "
-                "If you have denied before, tap 'Open Settings' and enable 'All files access' for this app."
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () {
-              openAppSettings();
-              Navigator.pop(context);
-            },
-            child: Text("Open Settings"),
-          ),
-        ],
-      ),
-    );
-  }
   //request permission and fetch
-  void requestPermissionAndFetch() async {
-    var storageStatus = await Permission.storage.status;
-    var manageStatus = await Permission.manageExternalStorage.status;
+  Future<void> _requestPermissionsAndFetchFiles() async {
+    AndroidDeviceInfo androidInfo = await DeviceInfoPlugin().androidInfo;
+    int sdk = androidInfo.version.sdkInt;
+    bool isGranted = false;
 
-    // Print for debugging
-    print("Before request: Storage: $storageStatus, Manage: $manageStatus");
+    // 🔹 Handle permission based on SDK version
+    if (sdk >= 33) {
+      var photos = await Permission.photos.request();
+      var videos = await Permission.videos.request();
+      var audio = await Permission.audio.request();
+      var manage = await Permission.manageExternalStorage.request();
 
-    if (!storageStatus.isGranted && mounted) {
-      showPermissionDialogBox(context as BuildContext);
-      storageStatus = await Permission.storage.request();
-    }
-    if (!manageStatus.isGranted && mounted) {
-      showPermissionDialogBox(context as BuildContext);
-      manageStatus = await Permission.manageExternalStorage.request();
-    }
-
-    print("After request: Storage: $storageStatus, Manage: $manageStatus");
-
-    if (storageStatus.isDenied || manageStatus.isDenied) {
-      print("Permission denied. Opening settings.");
-      openAppSettings();
-      return;
-    }
-    if (storageStatus.isPermanentlyDenied || manageStatus.isPermanentlyDenied) {
-      print("Permission permanently denied. Opening settings.");
-      openAppSettings();
-      return;
-    }
-
-    // 3. Try app-specific directory first (safe, recommended for most apps)
-    Directory? appSpecificDir = await getExternalStorageDirectory();
-    if (appSpecificDir != null && await appSpecificDir.exists()) {
-      List<FileSystemEntity> appItems = appSpecificDir.listSync();
-      print("App-specific directory: ${appSpecificDir.path}");
-      print("Found ${appItems.length} items in app-specific directory.");
-      for (var item in appItems) {
-        print(item.path);
-      }
-      // Uncomment below line if you want to show these in UI
-      setState(() { allItems = appItems; });
-    }
-
-    // 4. Try root directory (full storage, requires MANAGE_EXTERNAL_STORAGE)
-    Directory rootDir = Directory("/storage/emulated/0");
-    if (await rootDir.exists()) {
-      List<FileSystemEntity> rootItems = rootDir.listSync();
-      print("Root directory: ${rootDir.path}");
-      print("Found ${rootItems.length} items in root directory.");
-      for (var item in rootItems) {
-        print(item.path);
-      }
-      // Show root items in UI
-      setState(() {
-        allItems = rootItems;
-      });
+      isGranted = photos.isGranted ||
+          videos.isGranted ||
+          audio.isGranted ||
+          manage.isGranted;
+    } else if (sdk > 30) {
+      var manage = await Permission.manageExternalStorage.request();
+      isGranted = manage.isGranted;
     } else {
-      print("Root directory does not exist or can't access.");
+      var storage = await Permission.storage.request();
+      isGranted = storage.isGranted;
+    }
+
+    // 🔹 Fallback: Open settings if not granted
+    if (!isGranted) {
+      print("Permission denied. Opening settings.");
+      if (mounted) {
+        await openAppSettings();
+        setState(() => allItems = []);
+      }
+      return;
+    }
+
+    // 🔹 First try: App-specific directory
+    Directory? appDir = await getExternalStorageDirectory();
+    if (appDir != null && await appDir.exists()) {
+      List<FileSystemEntity> appFiles = appDir.listSync();
+      print("App-specific directory: ${appDir.path}");
+      for (var item in appFiles) {
+        print(item.path);
+      }
+      if (mounted) {
+        setState(() => allItems = appFiles);
+      }
+    }
+
+    // 🔹 Try root directory if permission allows
+    if ((sdk > 30 && await Permission.manageExternalStorage.isGranted) ||
+        (sdk <= 30 && await Permission.storage.isGranted)) {
+      Directory rootDir = Directory("/storage/emulated/0");
+      if (await rootDir.exists()) {
+        List<FileSystemEntity> rootFiles = rootDir.listSync();
+        print("Root directory: ${rootDir.path}");
+        for (var item in rootFiles) {
+          print(item.path);
+        }
+        if (mounted) {
+          setState(() => allItems = rootFiles);
+        }
+      } else {
+        print("Root directory does not exist or can't access.");
+      }
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -197,7 +213,7 @@ class _FileManagerScreenState extends State<FileManagerScreen>
         IconButton(
             onPressed: () {
               Navigator.push(context, MaterialPageRoute(builder: (_) {
-                return MyHomePage(); //AppLockSettingsScreen();
+                return appLock(); //AppLockSettingsScreen();
               }));
             },
             icon: Icon(Icons.settings))
@@ -234,6 +250,115 @@ class _FileManagerScreenState extends State<FileManagerScreen>
   }
 }
 
+
+
+Future showBottomSheets( context) {
+  // `this.context` refers to the BuildContext of the _FileManagerScreenState
+  // No need for casting if you're sure it's being called when the state is mounted.
+  return showModalBottomSheet(
+    context: context,
+    // Use the State's context directly
+    isDismissible: false,
+    isScrollControlled: true,
+    enableDrag: false,
+    builder: (BuildContext bottomSheetContext) {
+      // Explicitly type the builder's context
+      return WillPopScope(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            height: 300,
+            width: double.infinity,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                const Text(
+                  "Unlock Doc Scanner",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                const Text("Use fingerprint or DocScanner password."),
+                const SizedBox(height: 30),
+                Center(
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      // अगर आप चाहते हैं कि आइकन पूरी जगह ले
+                      shape: RoundedRectangleBorder(
+                        //  <-- इसे बदलें
+                        borderRadius: BorderRadius.circular(30), // गोल कोने
+                        side: BorderSide(
+                          // बॉर्डर
+                          color: Colors.blue.shade500,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    onPressed: () {
+                      AuthService authService = AuthService();
+                      authService
+                          .authenticateWithBiometric()
+                          .then((value) => {
+                        if (value)
+                          {
+                            Navigator.of(bottomSheetContext).pop(),
+                            debugPrint(
+                                "\n Fingerprint Authentication Successful"),
+                          }
+                        else
+                          {
+                            debugPrint(
+                                "\n Fingerprint Authentication Failed"),
+                          }
+                      });
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Icon(
+                        Icons.fingerprint,
+                        size: 45,
+                        color: Colors.blue.shade500,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  height: 56,
+                ),
+                GestureDetector(
+                  onTap: () {
+                    final AuthService _authService = AuthService();
+                    _authService
+                        .authenticateWithPinOrPattern()
+                        .then((value) => {
+                      if (value)
+                        {
+                          Navigator.of(bottomSheetContext).pop(),
+                          debugPrint(
+                              "\n Pattern and Pin , Password Authentication Successful"),
+                        }
+                      else
+                        {
+                          debugPrint(
+                              "\n Pattern and Pin , Password Authentication Failed"),
+                        }
+                    });
+                  },
+                  child: Text(
+                    "USE PASSWORD",
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade500),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          onWillPop: () async => false);
+    },
+  );
+}
 class FileManagerScreenSub extends StatefulWidget {
   final String path;
 
@@ -426,7 +551,7 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
     final isFolder = item is Directory;
 
     return DragTarget<List<FileSystemEntity>>(
-      onWillAccept: (dragged) => isFolder,
+      onWillAcceptWithDetails: (dragged) => isFolder,
       onAccept: (dragged) async {
         if (isFolder) {
           await movesFileToFolder(

@@ -16,23 +16,25 @@ class _LookScreenState extends State<LockScreen> {
   final List<int> enteredPin = [];
   final _authService = AuthService();
   bool _authRunning = false;
-  bool _showBiometricButton = false;
+  final TextEditingController question1 = TextEditingController();
+  final TextEditingController question2 = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    checkBiometricAvailable(); // 🔍 check if supported
-    tryBiometrics();
+    //checkBiometricAvailable(); // 🔍 check if supported
+    // tryBiometrics();
   }
 
-  Future<void> checkBiometricAvailable() async {
-    final available = await _authService.isBiometricTrulyAvailable();
-    if (mounted) {
-      setState(() {
-        _showBiometricButton = available;
-      });
-    }
-  }
+  //
+  // Future<void> checkBiometricAvailable() async {
+  //   final available = await _authService.isBiometricTrulyAvailable();
+  //   if (mounted) {
+  //     setState(() {
+  //       _showBiometricButton = available;
+  //     });
+  //   }
+  // }
 
   void _goToApp() {
     if (!mounted) return;
@@ -63,11 +65,6 @@ class _LookScreenState extends State<LockScreen> {
     _authRunning = false;
   }
 
-  void onFingerprint() {
-    tryBiometrics();
-    print("Fingerprint tapped");
-  }
-
   //For Verify Pin
   void verfiyPin() async {
     if (enteredPin.length != 4) {
@@ -92,7 +89,10 @@ class _LookScreenState extends State<LockScreen> {
         print("Pin Matched");
         _goToApp();
       } else {
-        print("Pin Not Matched");
+        print("\n Pin Not Matched");
+        setState(() {
+          enteredPin.clear();
+        }); // Clear the entered PIN
         showFlushbar("Pin Not Matched", "Error", context);
       }
     } catch (e) {
@@ -102,31 +102,153 @@ class _LookScreenState extends State<LockScreen> {
     }
   }
 
-  void _handleResetPin(BuildContext context) async {
-    final isAvailable = await _authService.isBiometricTrulyAvailable();
-    if (!isAvailable) {
-      showFlushbar("Biometric is not Available on this device .",
-          "Not Available", context);
-    }
-    final success = await _authService.authenticateWithBiometric();
-    if (success && mounted) {
-      final result = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
-            builder: (_) => PasswordScreen(passwordValue: "Change Pin")),
-      );
-      print("\n Result will be true or false :- $result");
-      Future.delayed(Duration(milliseconds: 1000), () {
-        if (result == true) {
-          showFlushbar("Pin Change Successfully ", "Success", context);
-        } else {
-          showFlushbar("Pin not Change ", "Unsuccessful", context);
-        }
-      });
-    } else {
-      showFlushbar("Biometric Authentication Failed", "Failed", context);
-    }
+  void forgetPasswordDialogBox(BuildContext context) async {
+    final Map<String, dynamic> passwordData =
+        await _authService.GetPinDetails();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 10,
+          title: Text(
+            "Forgot Password",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+              color: Colors.blueAccent,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14.0),
+                child: Text(
+                  "Forgot your password? No issue! Just answer the security questions correctly and you can reset your password.",
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: TextField(
+                  controller: question1,
+                  decoration: InputDecoration(
+                    prefixIcon: Icon(Icons.question_answer_outlined),
+                    labelText: passwordData['question1'],
+                    hintText: passwordData['question1'],
+                    labelStyle: TextStyle(color: Colors.grey[700]),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: TextField(
+                  controller: question2,
+                  decoration: InputDecoration(
+                    prefixIcon: Icon(Icons.question_answer_outlined),
+                    labelText: passwordData['question2'],
+                    hintText: passwordData['question2'],
+                    labelStyle: TextStyle(color: Colors.grey[700]),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actionsPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    question1.clear();
+                    question2.clear();
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade500,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    textStyle: TextStyle(fontWeight: FontWeight.bold),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    "Cancel",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+                SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    validateSecurityAnswers(
+                        context, question1, question2, passwordData);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade500,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    textStyle: TextStyle(fontWeight: FontWeight.bold),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    "OK",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            )
+          ],
+        );
+      },
+    );
   }
+
+  //
+  // void _handleResetPin(BuildContext context) async {
+  //   final isAvailable = await _authService.isBiometricTrulyAvailable();
+  //
+  //   final success = await _authService.allAuthenticationOfDevice();
+  //   if (success && mounted) {
+  //     final result = await Navigator.push<bool>(
+  //       context,
+  //       MaterialPageRoute(
+  //           builder: (_) => PasswordScreen(passwordValue: "Change Pin")),
+  //     );
+  //     print("\n Result will be true or false :- $result");
+  //     Future.delayed(Duration(milliseconds: 1000), () {
+  //       if (result == true) {
+  //         showFlushbar("Pin Change Successfully ", "Success", context);
+  //       } else {
+  //         showFlushbar("Pin not Change ", "Unsuccessful", context);
+  //       }
+  //     });
+  //   } else {
+  //     showFlushbar("Biometric Authentication Failed", "Failed", context);
+  //   }
+  // }
 
   void onKeyTap(int key) {
     // Implement key tap functionality
@@ -192,22 +314,6 @@ class _LookScreenState extends State<LockScreen> {
                     );
                   }),
                 ),
-                SizedBox(
-                  height: 10,
-                ),
-                GestureDetector(
-                  onTap: () {
-                    // TODO: Handle forgot PIN
-                  },
-                  child: Text(
-                    'Forgot your PIN?',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
                 const SizedBox(
                   height: 15,
                 ),
@@ -246,11 +352,14 @@ class _LookScreenState extends State<LockScreen> {
                               )),
                         ),
                       ),
+                      SizedBox(
+                        height: 15,
+                      ),
                       ...[
                         [1, 2, 3],
                         [4, 5, 6],
                         [7, 8, 9],
-                        ['del', 0, 'finger']
+                        ['del', 0]
                       ].map((row) => Padding(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 24, vertical: 4),
@@ -263,10 +372,6 @@ class _LookScreenState extends State<LockScreen> {
                                   return _KeypadButton(
                                       icon: Icons.backspace_outlined,
                                       onTap: onDelete);
-                                } else if (item == 'finger') {
-                                  return _KeypadButton(
-                                      icon: Icons.fingerprint,
-                                      onTap: onFingerprint);
                                 } else {
                                   return _KeypadButton(
                                     label: item.toString(),
@@ -280,9 +385,17 @@ class _LookScreenState extends State<LockScreen> {
                     ],
                   ),
                 ),
+                SizedBox(
+                  height: 5,
+                ),
                 TextButton(
-                  onPressed: () => _handleResetPin(context),
-                  child: Text("Forgot PIN? Reset using biometrics"),
+                  onPressed: () => forgetPasswordDialogBox(context),
+                  child: Text("Forget PIN? Reset Password",
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      )),
                 ),
               ],
             ),
@@ -290,6 +403,51 @@ class _LookScreenState extends State<LockScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> validateSecurityAnswers(
+    BuildContext context,
+    TextEditingController question1,
+    TextEditingController question2,
+    Map<String, dynamic> passwordData,
+  ) async {
+    if (question1.text.isEmpty || question2.text.isEmpty) {
+      flushBars("Please Answer Both Questions", "Both questions are required",
+          Colors.red);
+    } else if (question1.text == passwordData['answer1'] &&
+        question2.text == passwordData['answer2']) {
+      question1.clear();
+      question2.clear();
+      Navigator.pop(context);
+      Navigator.push(context, MaterialPageRoute(builder: (context) {
+        return PasswordScreen(
+          passwordValue: "Change password",
+        );
+      }));
+    } else {
+      flushBars("Wrong Answers", "Please try again", Colors.red);
+    }
+    question1.clear();
+    question2.clear();
+  }
+
+  // Function to show flush bar
+  Widget flushBars(String title, String message, Color color) {
+    return Flushbar(
+      icon: Icon(
+        Icons.info_outline,
+        size: 28.0,
+        color: Colors.white,
+      ),
+      flushbarStyle: FlushbarStyle.FLOATING,
+      margin: EdgeInsets.all(8),
+      borderRadius: BorderRadius.circular(8),
+      title: title,
+      message: message,
+      duration: Duration(seconds: 3),
+      backgroundColor: color,
+      flushbarPosition: FlushbarPosition.TOP,
+    )..show(context);
   }
 }
 
@@ -311,6 +469,7 @@ class _KeypadButton extends StatelessWidget {
         behavior: HitTestBehavior.translucent,
         child: Container(
           height: 55,
+          width: 30,
           decoration: const BoxDecoration(shape: BoxShape.circle),
           child: Center(
               child: icon != null

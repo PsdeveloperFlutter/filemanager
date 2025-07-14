@@ -1,0 +1,606 @@
+import 'package:another_flushbar/flushbar.dart';
+import 'package:filemanager/FileManagement/AuthService.dart';
+import 'package:filemanager/FileManagement/CreatePasswordScreen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+void main() {
+  runApp(MaterialApp(debugShowCheckedModeBanner: false, home: appLock()));
+}
+
+class appLock extends StatefulWidget {
+  @override
+  State<appLock> createState() => _appLockState();
+}
+
+enum LockOption { screenLock, pin }
+
+class _appLockState extends State<appLock> {
+  //Create instance of Flutter Local Storage
+  final storage = FlutterSecureStorage();
+  bool _visible = false; // Variable to control visibility of the widget
+  bool _bioVisible =
+      false; // Variable to control visibility of the biometric option
+  final TextEditingController question1 = TextEditingController();
+  final TextEditingController question2 = TextEditingController();
+  AuthService authService = AuthService();
+  LockOption? _selectedOption = LockOption.screenLock;
+
+  @override
+  void initState() {
+    super.initState();
+    authService.printAvailableBiometrics();
+    _loadStoredOption();
+  }
+
+  @override
+  void dispose() {
+    question1.dispose();
+    question2.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Enable App Lock'),
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LockOptionTile(
+            value: LockOption.screenLock,
+            groupValue: _selectedOption,
+            title: 'Use your screen lock',
+            subtitle:
+                'Use your existing PIN, pattern,\nface Id, or fingerprint',
+            onChanged: (value) async {
+              if (await authService.isBiometricTrulyAvailable() == true &&
+                  await authService.isBiometricAvailable() == true) {
+                debugPrint("\n Biometric is available");
+                setState(() {
+                  _selectedOption = value;
+                  _visible = false;
+                  _bioVisible = false;
+                });
+                debugPrint("\n Selected option is: ${_bioVisible} ");
+                showBottomSheets(context); // Show the bottom sheet for biometric authentication
+              } else {
+                setState(() {
+                  _bioVisible = true;
+                });
+                debugPrint("\n Selected option is: ${_bioVisible} ");
+                debugPrint("\n Biometric is not available");
+                flushBars("Not Support", "Check your Biometric and Pin Setting",
+                    Colors.red);
+                return;
+              }
+            },
+          ),
+          sizedBoxs(10),
+          Visibility(
+            visible: _bioVisible,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 15.0),
+              child: Text(
+                "Biometric is not Set or Available",
+                style:
+                    TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          sizedBoxs(18),
+          LockOptionTile(
+            value: LockOption.pin,
+            groupValue: _selectedOption,
+            title: 'Use your 4-Digit PIN',
+            subtitle: 'Use your 4-digit PIN to unlock',
+            onChanged: (value) async {
+              // Handle pin selection
+              await handlePinSelection(context);
+              // Update the selected option
+              setState(() {
+                _selectedOption = value;
+              });
+              showmethod().then((value) {
+                if (value) {
+                  setState(() {
+                    _visible = true;
+                  }); // Show the widget if pin is set
+                } else {
+                  setState(() {
+                    _visible = false;
+                  }); // Hide the widget if pin is not set
+                }
+              });
+            },
+          ),
+          sizedBoxs(18),
+          Visibility(
+            visible: _visible,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 15.0),
+              child: GestureDetector(
+                onTap: () {
+                  passwordSetOrNot(context);
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                        backgroundColor: Colors.white,
+                        radius: 15,
+                        child: Icon(
+                          size: 12,
+                          Icons.question_mark_rounded,
+                          color: Colors.blue,
+                        )),
+                    SizedBox(
+                      width: 15,
+                    ),
+                    Text(
+                      "Did you forget pin?",
+                      style: TextStyle(
+                          color: Colors.blue, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          sizedBoxs(18),
+          Center(
+            child: Container(
+              width: 330,
+              height: 50,
+              child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade500,
+                      padding: EdgeInsets.all(10),
+                      alignment: Alignment.center,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: Colors.yellow.shade50))),
+                  onPressed: () async {
+                    if (await storeOptions() == false) {
+                      return;
+                    }
+                    flushBars(
+                        'App Lock Enabled',
+                        'Your app lock settings have been saved successfully',
+                        Colors.green);
+                  },
+                  child: Text(
+                    'Save',
+                    style: TextStyle(color: Colors.white, fontSize: 20),
+                  )),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  // Function to handle pin selection
+  Future<void> handlePinSelection(BuildContext context) async {
+    final String? pin = await authService.GetPin();
+    debugPrint("\n Pin is $pin");
+    if (pin == null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PasswordScreen(
+            passwordValue: 'Set Password',
+          ),
+        ),
+      ).then((result) {
+        if (result is bool) {
+          debugPrint("\n Returned value is: $result");
+          setState(() {
+            _visible = result;
+          });
+          if (result) {
+            flushBars('Pin Set', 'Pin Set Successfully', Colors.orangeAccent);
+          } else {
+            flushBars('Not Set', 'Pin not set', Colors.red);
+          }
+        } else {
+          debugPrint("\n Returned value is not a boolean");
+        }
+      });
+    }
+  }
+
+  // Function for the space between the widgets
+  Widget sizedBoxs(double height) {
+    return SizedBox(
+      height: height,
+    );
+  }
+
+  // Function to show flush bar
+  Widget flushBars(String title, String message, Color color) {
+    return Flushbar(
+      icon: Icon(
+        Icons.info_outline,
+        size: 28.0,
+        color: Colors.white,
+      ),
+      flushbarStyle: FlushbarStyle.FLOATING,
+      margin: EdgeInsets.all(8),
+      borderRadius: BorderRadius.circular(8),
+      title: title,
+      message: message,
+      duration: Duration(seconds: 3),
+      backgroundColor: color,
+      flushbarPosition: FlushbarPosition.TOP,
+    )..show(context);
+  }
+
+  // Function to show the password check it is available or not
+  void passwordSetOrNot(BuildContext context) async {
+    final pin = await authService.GetPin(); // Fetch the PIN using AuthService
+    if (pin != null && pin.isNotEmpty) {
+      // If the PIN is set, show the password dialog box
+      forgetPasswordDialogBox(context);
+    } else {
+      flushBars('No PIN Set', 'Please set a PIN first', Colors.red);
+    }
+  }
+
+  void forgetPasswordDialogBox(BuildContext context) async {
+    final Map<String, dynamic> passwordData = await authService.GetPinDetails();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 10,
+          title: Text(
+            "Forgot Password",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+              color: Colors.blueAccent,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14.0),
+                child: Text(
+                  "Forgot your password? No issue! Just answer the security questions correctly and you can reset your password.",
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: TextField(
+                  controller: question1,
+                  decoration: InputDecoration(
+                    prefixIcon: Icon(Icons.question_answer_outlined),
+                    labelText: passwordData['question1'],
+                    hintText: passwordData['question1'],
+                    labelStyle: TextStyle(color: Colors.grey[700]),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: TextField(
+                  controller: question2,
+                  decoration: InputDecoration(
+                    prefixIcon: Icon(Icons.question_answer_outlined),
+                    labelText: passwordData['question2'],
+                    hintText: passwordData['question2'],
+                    labelStyle: TextStyle(color: Colors.grey[700]),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actionsPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    question1.clear();
+                    question2.clear();
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade500,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    textStyle: TextStyle(fontWeight: FontWeight.bold),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    "Cancel",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+                SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    validateSecurityAnswers(
+                        context, question1, question2, passwordData);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade500,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    textStyle: TextStyle(fontWeight: FontWeight.bold),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    "OK",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            )
+          ],
+        );
+      },
+    );
+  }
+
+// Function to show the bottom sheet for biometric authentication when user select option of biometric authentication
+  Future showBottomSheets(context) {
+    // `this.context` refers to the BuildContext of the _FileManagerScreenState
+    // No need for casting if you're sure it's being called when the state is mounted.
+    return showModalBottomSheet(
+      context: context,
+      // Use the State's context directly
+      isDismissible: false,
+      isScrollControlled: true,
+      enableDrag: false,
+      builder: (BuildContext bottomSheetContext) {
+        // Explicitly type the builder's context
+        return WillPopScope(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              height: 300,
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Unlock Doc Scanner",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text("Use fingerprint or DocScanner password."),
+                  const SizedBox(height: 30),
+                  Center(
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        // अगर आप चाहते हैं कि आइकन पूरी जगह ले
+                        shape: RoundedRectangleBorder(
+                          //  <-- इसे बदलें
+                          borderRadius: BorderRadius.circular(30), // गोल कोने
+                          side: BorderSide(
+                            // बॉर्डर
+                            color: Colors.blue.shade500,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      onPressed: () {
+                        AuthService authService = AuthService();
+                        authService
+                            .authenticateWithBiometric()
+                            .then((value) => {
+                                  if (value)
+                                    {
+                                      Navigator.of(bottomSheetContext).pop(),
+                                      debugPrint(
+                                          "\n Fingerprint Authentication Successful"),
+                                    }
+                                  else
+                                    {
+                                      debugPrint(
+                                          "\n Fingerprint Authentication Failed"),
+                                    }
+                                });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Icon(
+                          Icons.fingerprint,
+                          size: 45,
+                          color: Colors.blue.shade500,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    height: 56,
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      final AuthService authService = AuthService();
+                      authService
+                          .authenticateWithPinOrPattern()
+                          .then((value) => {
+                                if (value)
+                                  {
+                                    Navigator.of(bottomSheetContext).pop(),
+                                    debugPrint(
+                                        "\n Pattern and Pin , Password Authentication Successful"),
+                                  }
+                                else
+                                  {
+                                    debugPrint(
+                                        "\n Pattern and Pin , Password Authentication Failed"),
+                                  }
+                              });
+                    },
+                    child: Text(
+                      "USE PASSWORD",
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            onWillPop: () async => false);
+      },
+    );
+  }
+
+  Future<void> validateSecurityAnswers(
+    BuildContext context,
+    TextEditingController question1,
+    TextEditingController question2,
+    Map<String, dynamic> passwordData,
+  ) async {
+    if (question1.text.isEmpty || question2.text.isEmpty) {
+      flushBars("Please Answer Both Questions", "Both questions are required",
+          Colors.red);
+    } else if (question1.text == passwordData['answer1'] &&
+        question2.text == passwordData['answer2']) {
+      question1.clear();
+      question2.clear();
+      Navigator.pop(context);
+      Navigator.push(context, MaterialPageRoute(builder: (context) {
+        return PasswordScreen(
+          passwordValue: "Change password",
+        );
+      }));
+    } else {
+      flushBars("Wrong Answers", "Please try again", Colors.red);
+    }
+    question1.clear();
+    question2.clear();
+  }
+
+  Future<bool> storeOptions() async {
+    if (_selectedOption?.name.toString() == 'pin' &&
+        await authService.GetPin() == null) {
+      flushBars("Set a Pin", "Please set a pin to proceed", Colors.red);
+      return false;
+    }
+    if (_selectedOption == null) {
+      flushBars(
+          "Select an Option", "Please select an option to proceed", Colors.red);
+      return false;
+    } else {
+      await storage.write(key: 'lock_option', value: _selectedOption!.name);
+      debugPrint("\n Lock option selected: ${_selectedOption!.name}");
+      return true;
+    }
+  }
+
+  Future<bool> showmethod() async {
+    if (await authService.GetPin() != null) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  // Function to get the stored lock option
+  Future<String?> getStoredOption() async {
+    return await storage.read(key: 'lock_option');
+  }
+
+  // Function to load the stored lock option
+  void _loadStoredOption() async {
+    final option = await getStoredOption();
+    debugPrint("\n Stored option is: $option");
+    setState(() {
+      if (option == 'pin') {
+        _selectedOption = LockOption.pin;
+        showmethod().then((value) {
+          if (value) {
+            setState(() {
+              _visible = true; // Show the widget if pin is set
+            });
+          } else {
+            setState(() {
+              _visible = false; // Hide the widget if pin is not set
+            });
+          }
+        });
+      } else if (option == 'screenLock') {
+        _selectedOption = LockOption.screenLock;
+        showBottomSheets(context);
+      } else {
+        _selectedOption = null; // Default case if no option is stored
+      }
+    });
+  }
+}
+
+//This is the Lock Radio option
+class LockOptionTile extends StatelessWidget {
+  final LockOption value;
+  final LockOption? groupValue;
+  final ValueChanged<LockOption?> onChanged;
+  final String title;
+  final String subtitle;
+
+  LockOptionTile({
+    super.key,
+    required this.value,
+    required this.groupValue,
+    required this.onChanged,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          shape: BoxShape.rectangle,
+          border: Border.all(color: Colors.grey, width: 2),
+        ),
+        child: RadioListTile<LockOption>(
+          controlAffinity: ListTileControlAffinity.trailing,
+          value: value,
+          groupValue: groupValue,
+          title: Text(title),
+          subtitle: Text(subtitle),
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+}

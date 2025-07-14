@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:another_flushbar/flushbar.dart';
+import 'package:flutter/material.dart';
+
 import 'AuthService.dart';
 
 class PasswordScreen extends StatefulWidget {
@@ -14,11 +15,15 @@ class PasswordScreen extends StatefulWidget {
 class _PasswordScreenState extends State<PasswordScreen> {
   // Controllers
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
   final TextEditingController answerController1 = TextEditingController();
   final TextEditingController answerController2 = TextEditingController();
   bool _isPasswordObscured = true; // Initially, the password is hidden
-  bool _isConfirmPasswordObscured = true; // Initially, confirm password is hidden
+  bool _isConfirmPasswordObscured =
+      true; // Initially, confirm password is hidden
+  final FocusNode _answerFocusNode1 = FocusNode();
+  final FocusNode _answerFocusNode2 = FocusNode();
   final List<String> recoveryQuestions = [
     "What is your mother's maiden name?",
     "What was the name of your first pet?",
@@ -39,6 +44,17 @@ class _PasswordScreenState extends State<PasswordScreen> {
   }
 
   @override
+  void dispose() {
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    answerController1.dispose();
+    answerController2.dispose();
+    _answerFocusNode1.dispose();
+    _answerFocusNode2.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -55,18 +71,21 @@ class _PasswordScreenState extends State<PasswordScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const SizedBox(height: 40),
-            buildTextField('Enter 4 digit Password', passwordController, false, true, false,_isPasswordObscured,true,(){
+            buildTextField('Enter 4 digit Password', passwordController, false,
+                true, false, _isPasswordObscured, true, () {
               setState(() {
                 _isPasswordObscured = !_isPasswordObscured;
               });
-            }),
-            buildTextField('Confirm Password', confirmPasswordController, false, true, false,_isConfirmPasswordObscured,true,(){
+            }, FocusNode()), // Added FocusNode for password field
+            buildTextField('Confirm Password', confirmPasswordController, false,
+                true, false, _isConfirmPasswordObscured, true, () {
               setState(() {
                 _isConfirmPasswordObscured = !_isConfirmPasswordObscured;
               });
-            }),
+            }, FocusNode()), // Added FocusNode for confirm password field
             const SizedBox(height: 30),
-            Text("Security Questions", style: Theme.of(context).textTheme.titleMedium),
+            Text("Security Questions",
+                style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.all(12.0),
@@ -86,10 +105,21 @@ class _PasswordScreenState extends State<PasswordScreen> {
                 setState(() {
                   selectedQuestion1 = q;
                 });
+                FocusScope.of(context).requestFocus(
+                    _answerFocusNode1); // Focus on the answer field when question is selected
               },
             ),
             const SizedBox(height: 10),
-            buildTextField('Answer', answerController1, false, false, true,false,false,null),
+            buildTextField(
+                'Answer',
+                answerController1,
+                false,
+                false,
+                true,
+                false,
+                false,
+                null,
+                _answerFocusNode1), // Use the FocusNode for the answer field
             const SizedBox(height: 20),
             // Second Question + Answer
             QuestionSelector(
@@ -100,19 +130,21 @@ class _PasswordScreenState extends State<PasswordScreen> {
                 setState(() {
                   selectedQuestion2 = q;
                 });
+                FocusScope.of(context).requestFocus(_answerFocusNode2);
               },
             ),
             const SizedBox(height: 10),
-            buildTextField('Answer', answerController2, false, false, true,false,false,null),
+            buildTextField('Answer', answerController2, false, false, true,
+                false, false, null, _answerFocusNode2),
             const SizedBox(height: 30),
             Container(
               width: 340,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12)
-              ),
+              decoration:
+                  BoxDecoration(borderRadius: BorderRadius.circular(12)),
               child: ElevatedButton(
                 style: ButtonStyle(
-                  backgroundColor: MaterialStateProperty.all(Colors.orangeAccent.shade200),
+                  backgroundColor:
+                      WidgetStateProperty.all(Colors.orangeAccent.shade200),
                 ),
                 onPressed: () {
                   InsertUserPassword();
@@ -139,11 +171,13 @@ class _PasswordScreenState extends State<PasswordScreen> {
       bool isAnswer,
       bool obscure,
       bool showSuffixIcon, // New parameter
-      VoidCallback? onSuffixIconTap // Made nullable to match usage
+      VoidCallback? onSuffixIconTap, // Made nullable to match usage
+      FocusNode? focusNode // New parameter for FocusNode
       ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextField(
+        focusNode: focusNode, // Prevents focus on the field
         maxLength: isAnswer ? 100 : 4,
         textAlign: TextAlign.left,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
@@ -155,15 +189,16 @@ class _PasswordScreenState extends State<PasswordScreen> {
           // Conditionally show the suffixIcon
           suffixIcon: showSuffixIcon
               ? IconButton(
-            icon: Icon(
-              // Change icon based on the 'obscure' state
-              obscure ? Icons.visibility_off : Icons.visibility,
-            ),
-            onPressed: onSuffixIconTap, // Call this function when tapped
-          )
+                  icon: Icon(
+                    // Change icon based on the 'obscure' state
+                    obscure ? Icons.visibility_off : Icons.visibility,
+                  ),
+                  onPressed: onSuffixIconTap, // Call this function when tapped
+                )
               : null,
           focusColor: Colors.grey.shade200,
-          fillColor: Colors.green, // You might want to make this dynamic or remove if not needed for all fields
+          fillColor: Colors.green,
+          // You might want to make this dynamic or remove if not needed for all fields
           labelText: label,
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.all(Radius.circular(10)),
@@ -178,11 +213,13 @@ class _PasswordScreenState extends State<PasswordScreen> {
               borderRadius: BorderRadius.all(Radius.circular(10)),
               borderSide: BorderSide(color: Colors.grey),
               gapPadding: 10),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
       ),
     );
   }
+
   // Insert User Password
   void InsertUserPassword() {
     if (passwordController.text.isEmpty ||
@@ -195,8 +232,8 @@ class _PasswordScreenState extends State<PasswordScreen> {
         SnackBar(content: Text("Please Fill all Fields")),
       );
     } else if (confirmPasswordController.text != passwordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Password and Confirm Password does not match ")));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text("Password and Confirm Password does not match ")));
     } else {
       Map<String, dynamic> userPasswordDetails = {
         "password": passwordController.text.trim(),
@@ -214,10 +251,12 @@ class _PasswordScreenState extends State<PasswordScreen> {
         duration: Duration(seconds: 2),
         icon: Icon(Icons.check, color: Colors.black),
         backgroundColor: Colors.orangeAccent,
-      ).show(context).then((value) => Navigator.pop(context, true)); //Navigate to Previous Screen
+      ).show(context).then((value) =>
+          Navigator.pop(context, true)); //Navigate to Previous Screen
     }
   }
 }
+
 //This Class for Question Selection
 class QuestionSelector extends StatelessWidget {
   final String label;
@@ -251,13 +290,13 @@ class QuestionSelector extends StatelessWidget {
           items: questions
               .map(
                 (q) => PopupMenuItem<String>(
-              value: q,
-              child: Text(
-                q,
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-          )
+                  value: q,
+                  child: Text(
+                    q,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              )
               .toList(),
           color: Colors.grey[800],
         );
@@ -275,7 +314,8 @@ class QuestionSelector extends StatelessWidget {
             fillColor: Colors.grey.shade200,
             suffixIcon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
           ),
           style: TextStyle(
             color: selectedQuestion.isEmpty ? Colors.grey : Colors.black,
