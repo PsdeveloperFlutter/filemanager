@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:another_flushbar/flushbar.dart';
-import 'package:filemanager/FileManagement/CreatePasswordScreen.dart';
+import 'package:filemanager/FileManagement/createPasswordUi/CreatePasswordScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
@@ -357,6 +357,7 @@ class AuthService {
       flushbarPosition: FlushbarPosition.TOP,
     )..show(context);
   }
+
   // Function to show the forget password dialog box
   void forgetPasswordDialogBox(BuildContext context, AuthService _authService,
       TextEditingController question1, TextEditingController question2) async {
@@ -481,5 +482,44 @@ class AuthService {
         );
       },
     );
+  }
+
+  //This is for the FlushBar
+  Future FlushBarWidget(String message, BuildContext context, Iconsvalue) {
+    return Flushbar(
+        message: message,
+        duration: Duration(seconds: 3),
+        backgroundColor: Colors.orange,
+        margin: EdgeInsets.all(8),
+        borderRadius: BorderRadius.circular(8),
+        icon: Icon(
+          Iconsvalue,
+          color: Colors.white,
+        )).show(context);
+  }
+
+//Validate the Password
+  Future<bool> validatePassword(BuildContext context, String text,TextEditingController _password,
+      bool isAppLockEnabled, bool biometricstatus) async {
+    final Map<String, dynamic> passwordData = await GetPinDetails();
+    if (passwordData['password'] == text) {
+      print('\n isAppLockEnabled ${isAppLockEnabled}');
+      print('\n biometricstatus ${biometricstatus}');
+      print('\n isAppLockEnabled ${isAppLockEnabled}');
+      print('\n biometricstatus ${biometricstatus}');
+      Navigator.push(context, MaterialPageRoute(builder: (context) {
+        return PasswordScreen(passwordValue: "Change Password");
+      }));
+
+      return true;
+    } else if (text.isEmpty) {
+      FlushBarWidget(
+          "Please Enter Password", context, Icons.error_outline);
+      return false;
+    } else {
+     FlushBarWidget("Wrong Pin", context, Icons.error_outline);
+    }
+    _password.clear();
+    return false;
   }
 }

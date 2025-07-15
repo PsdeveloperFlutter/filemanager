@@ -12,13 +12,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class FileBrowserController extends GetxController {
   var currentSortOption = 'Name A → Z'; // default option
-  var isSelectionMode = false.obs;  //this for the selection process for the Select all features
-  var selectedItems = <FileSystemEntity>[].obs; //This is for the selected items by user
+  var isSelectionMode =
+      false.obs; //this for the selection process for the Select all features
+  var selectedItems =
+      <FileSystemEntity>[].obs; //This is for the selected items by user
   // Holds copied item (file or folder)
   RxBool refreshValue = false.obs; //This is for the Refreshing purpose
   FileSystemEntity? copiedEntity; //
   RxBool isDarkTheme = false.obs; // This is for the Dark Theme
-  static const _themekey = 'isDarkTheme'; // Key for SharedPreferences
+  final _themekey = 'isDarkTheme'; // Key for SharedPreferences
 
   ThemeMode get themeMode => isDarkTheme.value
       ? ThemeMode.dark
@@ -68,6 +70,7 @@ class FileBrowserController extends GetxController {
       .where(
           (file) => p.basename(file.path).contains(searchQuery.toLowerCase()))
       .toList();
+
   //this function is for the goback functionality
   void goBackDirectory() {
     if (_navigationStack.isNotEmpty) {
@@ -81,14 +84,15 @@ class FileBrowserController extends GetxController {
   void updateSearch(query) {
     searchQuery.value = query;
   }
-   void loadSortOption()async{
-    final prefs=await SharedPreferences.getInstance();
-    final savedOption=prefs.getString('sort_option');
-    if(savedOption!=null){
-      currentSortOption=savedOption;
+
+  void loadSortOption() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedOption = prefs.getString('sort_option');
+    if (savedOption != null) {
+      currentSortOption = savedOption;
       sortFilesByOption(savedOption);
     }
-   }
+  }
 
   @override
   void onInit() {
@@ -97,6 +101,7 @@ class FileBrowserController extends GetxController {
     loadSortOption(); // Load saved sort option
     clearAllItems();
   }
+
   // This is for the initialization of the storage and listing files
   Future<void> _initStorage() async {
     if (await Permission.storage.request().isGranted) {
@@ -119,6 +124,7 @@ class FileBrowserController extends GetxController {
     }
     return segments;
   }
+
 // This is for the listing the files in the current directory
   void listFiles(Directory dir) {
     try {
@@ -155,6 +161,7 @@ class FileBrowserController extends GetxController {
       canGoBack.value = _navigationStack.isNotEmpty; // Update back button state
     }
   }
+
   //this is for the Rename Functionality
   Future<void> renameFileOrFolder(
       BuildContext context, FileSystemEntity entity) async {
@@ -286,7 +293,6 @@ class FileBrowserController extends GetxController {
       }
     }
   }
-
 
   //This code is responsible for the Sorting purpose of the files
   void sortFilesByOption(String option) {
@@ -424,22 +430,26 @@ class FileBrowserController extends GetxController {
   List<FileSystemEntity> itemsToCopy = [];
 
   /// ✅ Call this for single item move/copy
-  void initiateMoveOrCopySingle(FileSystemEntity entity, String mode,BuildContext context) {
+  void initiateMoveOrCopySingle(
+      FileSystemEntity entity, String mode, BuildContext context) {
     clearSelection(); // clear previous selection
-    initiateMoveOrCopyMultiple([entity], mode,context); // treat as multi with 1 item
+    initiateMoveOrCopyMultiple(
+        [entity], mode, context); // treat as multi with 1 item
   }
 
   void initiateMoveOrCopyMultiple(
-      List<FileSystemEntity> entities, String mode,BuildContext context) {
+      List<FileSystemEntity> entities, String mode, BuildContext context) {
     clearSelection();
     if (mode == "copy") {
       itemsToCopy.assignAll(entities); // ✅ this too
     } else if (mode == "move") {
       itemsToMove.assignAll(entities); // ✅ this too
     }
-    showModalBottomSheet(context: context, builder:(context){
-      return SelectDestinationSheet(mode: mode);
-    });
+    showModalBottomSheet(
+        context: context,
+        builder: (context) {
+          return SelectDestinationSheet(mode: mode);
+        });
   }
 
   /// ✅ Clear old selections
@@ -627,9 +637,6 @@ class FileBrowserController extends GetxController {
     }
   }
 
-
-
-
   void toggleItemSelection(FileSystemEntity entity) {
     if (selectedItems.contains(entity)) {
       selectedItems.remove(entity);
@@ -641,13 +648,13 @@ class FileBrowserController extends GetxController {
 
   void selectItems(int index) {
     selectedItems.insert(index, fileName[index]);
-
   }
 
   void clearAllItems() {
     selectedItems.clear();
     isSelectionMode.value = false;
   }
+
   void enableSelectionModeIfNeeded() {
     if (!isSelectionMode.value) {
       isSelectionMode.value = true;

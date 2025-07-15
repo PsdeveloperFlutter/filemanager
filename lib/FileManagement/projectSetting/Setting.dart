@@ -1,9 +1,8 @@
-import 'package:another_flushbar/flushbar.dart';
-import 'package:filemanager/FileManagement/AuthService.dart';
+import 'package:filemanager/FileManagement/projectSetting/AuthService.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_switch/flutter_switch.dart';
 
-import 'CreatePasswordScreen.dart';
+import '../createPasswordUi/CreatePasswordScreen.dart';
 
 void main() => runApp(MyApp());
 
@@ -254,8 +253,13 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
                   onPressed: () {
-                    validatePassword(context,
-                        _password.text); //Check if password valid or not
+                    authService.validatePassword(
+                        context,
+                        _password.text,
+                        _password,
+                        isAppLockEnabled ?? false,
+                        biometricstatus ??
+                            false); //Check if password valid or not
                     _password.clear(); //Clear text Fields
                     Navigator.of(context).pop();
                   },
@@ -389,7 +393,7 @@ class _MyHomePageState extends State<MyHomePage> {
       Map<String, dynamic> passwordData,
       String value) async {
     if (question1.text.isEmpty || question2.text.isEmpty) {
-      FlushBarWidget(
+      authService.FlushBarWidget(
           "Please Answer Both Questions", context, Icons.warning_amber_rounded);
     } else if (question1.text == passwordData['answer1'] &&
         question2.text == passwordData['answer2'] &&
@@ -416,33 +420,10 @@ class _MyHomePageState extends State<MyHomePage> {
         );
       }));
     } else {
-      FlushBarWidget("Wrong Answers", context, Icons.error_outline);
+      authService.FlushBarWidget("Wrong Answers", context, Icons.error_outline);
     }
     question1.clear();
     question2.clear();
-  }
-
-//Validate the Password
-  Future<bool> validatePassword(BuildContext context, String text) async {
-    final Map<String, dynamic> passwordData = await authService.GetPinDetails();
-    if (passwordData['password'] == text) {
-      print('\n isAppLockEnabled ${isAppLockEnabled}');
-      print('\n biometricstatus ${biometricstatus}');
-      print('\n isAppLockEnabled ${isAppLockEnabled}');
-      print('\n biometricstatus ${biometricstatus}');
-      Navigator.push(context, MaterialPageRoute(builder: (context) {
-        return PasswordScreen(passwordValue: "Change Password");
-      }));
-
-      return true;
-    } else if (text.isEmpty) {
-      FlushBarWidget("Please Enter Password", context, Icons.error_outline);
-      return false;
-    } else {
-      FlushBarWidget("Wrong Pin", context, Icons.error_outline);
-    }
-    _password.clear();
-    return false;
   }
 
 //Check the Pin is set or not
@@ -452,7 +433,7 @@ class _MyHomePageState extends State<MyHomePage> {
       // If the PIN is set, show the password dialog box
       PasswordDialogBox(context);
     } else {
-      FlushBarWidget("First Set Pin", context, Icons.pin);
+      authService.FlushBarWidget("First Set Pin", context, Icons.pin);
     }
   }
 
@@ -535,20 +516,6 @@ class _MyHomePageState extends State<MyHomePage> {
         });
   }
 
-//This is for the FlushBar
-  Future FlushBarWidget(String message, BuildContext context, Iconsvalue) {
-    return Flushbar(
-        message: message,
-        duration: Duration(seconds: 3),
-        backgroundColor: Colors.orange,
-        margin: EdgeInsets.all(8),
-        borderRadius: BorderRadius.circular(8),
-        icon: Icon(
-          Iconsvalue,
-          color: Colors.white,
-        )).show(context);
-  }
-
 //Set Pin Functionality and Pin Logic Here
   void setPinFunctionality(BuildContext context) async {
     final pin = await authService.GetPin();
@@ -623,7 +590,8 @@ class _MyHomePageState extends State<MyHomePage> {
   //This Code when the User Disable and Verfiy the Pin code and after that User pin will reset
   void verifyPinLogic(val, BuildContext context) async {
     if (enterPin.text.isEmpty) {
-      FlushBarWidget("Please Enter Pin", context, Icons.error_outline);
+      authService.FlushBarWidget(
+          "Please Enter Pin", context, Icons.error_outline);
       return;
     }
     String? result = await authService.GetPin();
@@ -644,7 +612,8 @@ class _MyHomePageState extends State<MyHomePage> {
       }
       Navigator.pop(context); //For Navigate Back
     } else {
-      FlushBarWidget("Wrong Pin", context, Icons.warning_amber_rounded);
+      authService.FlushBarWidget(
+          "Wrong Pin", context, Icons.warning_amber_rounded);
     }
     enterPin.clear();
   }
@@ -735,7 +704,7 @@ class _MyHomePageState extends State<MyHomePage> {
   //Enable Biometric
   void enableBiometric(bool val, BuildContext context) async {
     if (await authService.isAppLockEnabled() == false) {
-      FlushBarWidget(
+      authService.FlushBarWidget(
           "First Enable App Lock", context, Icons.warning_amber_rounded);
     } else {
       bool result = await authService.setBiometricToggle(val);

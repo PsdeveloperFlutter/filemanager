@@ -1,5 +1,5 @@
-import 'package:filemanager/FileManagement/AuthService.dart';
-import 'package:filemanager/FileManagement/CreatePasswordScreen.dart';
+import 'package:filemanager/FileManagement/projectSetting/AuthService.dart';
+import 'package:filemanager/FileManagement/createPasswordUi/CreatePasswordScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 

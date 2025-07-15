@@ -5,9 +5,11 @@ import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'sqfliteDatabase.dart';
 import 'fileManageUi.dart';
+
 final GlobalKey<RecentFilesScreenState> recentFilesKey = GlobalKey<RecentFilesScreenState>();// This key is used to access the state of RecentFilesScreen
 final GlobalKey<FileBrowserScreenState> fileBrowserKey = GlobalKey<FileBrowserScreenState>();// This key is used to access the state of FileBrowserScreen
 final GlobalKey<FavoriteScreenState> favoriteScreenKey = GlobalKey<FavoriteScreenState>();// This key is used to access the state of FavoriteScreen
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Await the permission request properly
@@ -17,19 +19,25 @@ Future<void> main() async {
   controller.loadLayoutFromPrefs();
   runApp(MyApp());
 }
+
 Future<void> requestPermission() async {
   var status = await Permission.manageExternalStorage.status;
   if (!status.isGranted) {
     await Permission.manageExternalStorage.request();
   }
 }
+
 class MyApp extends StatelessWidget {
   MyApp({super.key});
   // This line is safe now since the controller is registered before runApp()
   final themeController = Get.find<FileBrowserController>();
+
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
+      initialBinding: BindingsBuilder(() {
+        Get.put(FileBrowserController());
+      }),
       theme: ThemeData.light(),
       darkTheme: ThemeData.dark(),
       themeMode: themeController.themeMode,

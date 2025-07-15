@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:another_flushbar/flushbar.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:filemanager/FileManagement/AuthService.dart';
-import 'package:filemanager/FileManagement/LockScreen.dart';
+import 'package:filemanager/FileManagement/projectSetting/AuthService.dart';
+import 'package:filemanager/FileManagement/appLockUi/LockScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,7 +12,7 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import 'appLockScreen.dart';
+import '../FileManagement/appLockUi/appLockScreen.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -91,23 +91,19 @@ class _FileManagerScreenState extends State<FileManagerScreen>
   bool shouldLock = false;
   List<FileSystemEntity> allItems = [];
 
-  Future<String?> checkLockOption() async {
-    AuthService _authService = AuthService();
-    final String? lockOption = await _authService.getStoredLockOption();
-    return lockOption;
-  }
 
   @override
   void initState() {
     super.initState();
     _requestPermissionsAndFetchFiles();
-
+    AuthService authService = AuthService();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      checkLockOption().then((lockOption) {
+    authService.getStoredLockOption().then((lockOption) {
         print("Lock Option: $lockOption"); // Add this
         if (lockOption == 'screenLock') {
           WidgetsBinding.instance.addObserver(this);
-          showBottomSheets(this.context); // ✅ Now it's safe to call
+          AuthService authService = AuthService();
+          authService.showBottomSheets(this.context); // ✅ Now it's safe to call
         } else if (lockOption == 'pin') {
           WidgetsBinding.instance.addObserver(this);
         }
@@ -250,115 +246,6 @@ class _FileManagerScreenState extends State<FileManagerScreen>
   }
 }
 
-
-
-Future showBottomSheets( context) {
-  // `this.context` refers to the BuildContext of the _FileManagerScreenState
-  // No need for casting if you're sure it's being called when the state is mounted.
-  return showModalBottomSheet(
-    context: context,
-    // Use the State's context directly
-    isDismissible: false,
-    isScrollControlled: true,
-    enableDrag: false,
-    builder: (BuildContext bottomSheetContext) {
-      // Explicitly type the builder's context
-      return WillPopScope(
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            height: 300,
-            width: double.infinity,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                const Text(
-                  "Unlock Doc Scanner",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                const Text("Use fingerprint or DocScanner password."),
-                const SizedBox(height: 30),
-                Center(
-                  child: TextButton(
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      // अगर आप चाहते हैं कि आइकन पूरी जगह ले
-                      shape: RoundedRectangleBorder(
-                        //  <-- इसे बदलें
-                        borderRadius: BorderRadius.circular(30), // गोल कोने
-                        side: BorderSide(
-                          // बॉर्डर
-                          color: Colors.blue.shade500,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                    onPressed: () {
-                      AuthService authService = AuthService();
-                      authService
-                          .authenticateWithBiometric()
-                          .then((value) => {
-                        if (value)
-                          {
-                            Navigator.of(bottomSheetContext).pop(),
-                            debugPrint(
-                                "\n Fingerprint Authentication Successful"),
-                          }
-                        else
-                          {
-                            debugPrint(
-                                "\n Fingerprint Authentication Failed"),
-                          }
-                      });
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Icon(
-                        Icons.fingerprint,
-                        size: 45,
-                        color: Colors.blue.shade500,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  height: 56,
-                ),
-                GestureDetector(
-                  onTap: () {
-                    final AuthService _authService = AuthService();
-                    _authService
-                        .authenticateWithPinOrPattern()
-                        .then((value) => {
-                      if (value)
-                        {
-                          Navigator.of(bottomSheetContext).pop(),
-                          debugPrint(
-                              "\n Pattern and Pin , Password Authentication Successful"),
-                        }
-                      else
-                        {
-                          debugPrint(
-                              "\n Pattern and Pin , Password Authentication Failed"),
-                        }
-                    });
-                  },
-                  child: Text(
-                    "USE PASSWORD",
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue.shade500),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          onWillPop: () async => false);
-    },
-  );
-}
 class FileManagerScreenSub extends StatefulWidget {
   final String path;
 

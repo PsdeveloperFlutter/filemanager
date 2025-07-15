@@ -1,7 +1,7 @@
 import 'package:another_flushbar/flushbar.dart';
 import 'package:flutter/material.dart';
 
-import 'AuthService.dart';
+import '../projectSetting/AuthService.dart';
 
 class PasswordScreen extends StatefulWidget {
   final String passwordValue;
