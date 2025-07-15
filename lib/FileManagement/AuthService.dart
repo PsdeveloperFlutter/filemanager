@@ -1,6 +1,8 @@
 import 'dart:convert';
 
-import 'package:flutter/cupertino.dart';
+import 'package:another_flushbar/flushbar.dart';
+import 'package:filemanager/FileManagement/CreatePasswordScreen.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -128,7 +130,8 @@ class AuthService {
           localizedReason:
               'Please authenticate using your device PIN, pattern, password ',
           options: const AuthenticationOptions(
-            biometricOnly: false, // ✅ False rakhein taki sirf PIN, pattern, password chale
+            biometricOnly: false,
+            // ✅ False rakhein taki sirf PIN, pattern, password chale
             useErrorDialogs: true,
             stickyAuth: false,
             sensitiveTransaction: false,
@@ -171,7 +174,7 @@ class AuthService {
     return await _auth.getAvailableBiometrics();
   }
 
-  Future<void>printAvailableBiometrics()async{
+  Future<void> printAvailableBiometrics() async {
     List<BiometricType> availableBiometrics = await getAvailableBiometrics();
     if (availableBiometrics.isEmpty) {
       print("No biometric types available on this device.");
@@ -179,6 +182,7 @@ class AuthService {
       print("Available biometric types: $availableBiometrics");
     }
   }
+
   //Check if the app is Enabled
   Future<bool> isAppLockEnabled() async {
     final isEnabled = await _storage.read(key: _localKey);
@@ -196,5 +200,286 @@ class AuthService {
   Future<String?> getStoredLockOption() async {
     final storage = FlutterSecureStorage();
     return await storage.read(key: 'lock_option'); // 'screenLock' ya 'pin'
+  }
+
+// Function to show the bottom sheet for biometric authentication when user select option of biometric authentication
+  Future showBottomSheets(context) {
+    // `this.context` refers to the BuildContext of the _FileManagerScreenState
+    // No need for casting if you're sure it's being called when the state is mounted.
+    return showModalBottomSheet(
+      context: context,
+      // Use the State's context directly
+      isDismissible: false,
+      isScrollControlled: true,
+      enableDrag: false,
+      builder: (BuildContext bottomSheetContext) {
+        // Explicitly type the builder's context
+        return WillPopScope(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              height: 300,
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Unlock Doc Scanner",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text("Use fingerprint or DocScanner password."),
+                  const SizedBox(height: 30),
+                  Center(
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        // अगर आप चाहते हैं कि आइकन पूरी जगह ले
+                        shape: RoundedRectangleBorder(
+                          //  <-- इसे बदलें
+                          borderRadius: BorderRadius.circular(30), // गोल कोने
+                          side: BorderSide(
+                            // बॉर्डर
+                            color: Colors.blue.shade500,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      onPressed: () {
+                        AuthService authService = AuthService();
+                        authService
+                            .authenticateWithBiometric()
+                            .then((value) => {
+                                  if (value)
+                                    {
+                                      Navigator.of(bottomSheetContext).pop(),
+                                      debugPrint(
+                                          "\n Fingerprint Authentication Successful"),
+                                    }
+                                  else
+                                    {
+                                      debugPrint(
+                                          "\n Fingerprint Authentication Failed"),
+                                    }
+                                });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Icon(
+                          Icons.fingerprint,
+                          size: 45,
+                          color: Colors.blue.shade500,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    height: 56,
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      final AuthService authService = AuthService();
+                      authService
+                          .authenticateWithPinOrPattern()
+                          .then((value) => {
+                                if (value)
+                                  {
+                                    Navigator.of(bottomSheetContext).pop(),
+                                    debugPrint(
+                                        "\n Pattern and Pin , Password Authentication Successful"),
+                                  }
+                                else
+                                  {
+                                    debugPrint(
+                                        "\n Pattern and Pin , Password Authentication Failed"),
+                                  }
+                              });
+                    },
+                    child: Text(
+                      "USE PASSWORD",
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            onWillPop: () async => false);
+      },
+    );
+  }
+
+// Function to validate security answers
+  Future<void> validateSecurityAnswers(
+    BuildContext context,
+    TextEditingController question1,
+    TextEditingController question2,
+    Map<String, dynamic> passwordData,
+  ) async {
+    if (question1.text.isEmpty || question2.text.isEmpty) {
+      flushBars("Please Answer Both Questions", "Both questions are required",
+          Colors.red, context);
+    } else if (question1.text == passwordData['answer1'] &&
+        question2.text == passwordData['answer2']) {
+      question1.clear();
+      question2.clear();
+      Navigator.pop(context);
+      Navigator.push(context, MaterialPageRoute(builder: (context) {
+        return PasswordScreen(
+          passwordValue: "Change password",
+        );
+      }));
+    } else {
+      flushBars("Wrong Answers", "Please try again", Colors.red, context);
+    }
+    question1.clear();
+    question2.clear();
+  }
+
+  // Function to show flush bar
+  Widget flushBars(
+      String title, String message, Color color, BuildContext context) {
+    return Flushbar(
+      icon: Icon(
+        Icons.info_outline,
+        size: 28.0,
+        color: Colors.white,
+      ),
+      flushbarStyle: FlushbarStyle.FLOATING,
+      margin: EdgeInsets.all(8),
+      borderRadius: BorderRadius.circular(8),
+      title: title,
+      message: message,
+      duration: Duration(seconds: 3),
+      backgroundColor: color,
+      flushbarPosition: FlushbarPosition.TOP,
+    )..show(context);
+  }
+  // Function to show the forget password dialog box
+  void forgetPasswordDialogBox(BuildContext context, AuthService _authService,
+      TextEditingController question1, TextEditingController question2) async {
+    final Map<String, dynamic> passwordData =
+        await _authService.GetPinDetails();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 10,
+          title: Text(
+            "Forgot Password",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+              color: Colors.blueAccent,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14.0),
+                child: Text(
+                  "Forgot your password? No issue! Just answer the security questions correctly and you can reset your password.",
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: TextField(
+                  controller: question1,
+                  decoration: InputDecoration(
+                    prefixIcon: Icon(Icons.question_answer_outlined),
+                    labelText: passwordData['question1'],
+                    hintText: passwordData['question1'],
+                    labelStyle: TextStyle(color: Colors.grey[700]),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: TextField(
+                  controller: question2,
+                  decoration: InputDecoration(
+                    prefixIcon: Icon(Icons.question_answer_outlined),
+                    labelText: passwordData['question2'],
+                    hintText: passwordData['question2'],
+                    labelStyle: TextStyle(color: Colors.grey[700]),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actionsPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    question1.clear();
+                    question2.clear();
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade500,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    textStyle: TextStyle(fontWeight: FontWeight.bold),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    "Cancel",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+                SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    validateSecurityAnswers(
+                        context, question1, question2, passwordData);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade500,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    textStyle: TextStyle(fontWeight: FontWeight.bold),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    "OK",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            )
+          ],
+        );
+      },
+    );
   }
 }

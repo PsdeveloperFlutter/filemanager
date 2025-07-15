@@ -102,154 +102,6 @@ class _LookScreenState extends State<LockScreen> {
     }
   }
 
-  void forgetPasswordDialogBox(BuildContext context) async {
-    final Map<String, dynamic> passwordData =
-        await _authService.GetPinDetails();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-          ),
-          backgroundColor: Colors.white,
-          elevation: 10,
-          title: Text(
-            "Forgot Password",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 22,
-              color: Colors.blueAccent,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 14.0),
-                child: Text(
-                  "Forgot your password? No issue! Just answer the security questions correctly and you can reset your password.",
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey[800],
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: TextField(
-                  controller: question1,
-                  decoration: InputDecoration(
-                    prefixIcon: Icon(Icons.question_answer_outlined),
-                    labelText: passwordData['question1'],
-                    hintText: passwordData['question1'],
-                    labelStyle: TextStyle(color: Colors.grey[700]),
-                    filled: true,
-                    fillColor: Colors.grey[100],
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: TextField(
-                  controller: question2,
-                  decoration: InputDecoration(
-                    prefixIcon: Icon(Icons.question_answer_outlined),
-                    labelText: passwordData['question2'],
-                    hintText: passwordData['question2'],
-                    labelStyle: TextStyle(color: Colors.grey[700]),
-                    filled: true,
-                    fillColor: Colors.grey[100],
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actionsPadding:
-              const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          actions: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    question1.clear();
-                    question2.clear();
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade500,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    textStyle: TextStyle(fontWeight: FontWeight.bold),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    "Cancel",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-                SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    validateSecurityAnswers(
-                        context, question1, question2, passwordData);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade500,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    textStyle: TextStyle(fontWeight: FontWeight.bold),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    "OK",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            )
-          ],
-        );
-      },
-    );
-  }
-
-  //
-  // void _handleResetPin(BuildContext context) async {
-  //   final isAvailable = await _authService.isBiometricTrulyAvailable();
-  //
-  //   final success = await _authService.allAuthenticationOfDevice();
-  //   if (success && mounted) {
-  //     final result = await Navigator.push<bool>(
-  //       context,
-  //       MaterialPageRoute(
-  //           builder: (_) => PasswordScreen(passwordValue: "Change Pin")),
-  //     );
-  //     print("\n Result will be true or false :- $result");
-  //     Future.delayed(Duration(milliseconds: 1000), () {
-  //       if (result == true) {
-  //         showFlushbar("Pin Change Successfully ", "Success", context);
-  //       } else {
-  //         showFlushbar("Pin not Change ", "Unsuccessful", context);
-  //       }
-  //     });
-  //   } else {
-  //     showFlushbar("Biometric Authentication Failed", "Failed", context);
-  //   }
-  // }
-
   void onKeyTap(int key) {
     // Implement key tap functionality
     if (enteredPin.length < 4) {
@@ -389,7 +241,8 @@ class _LookScreenState extends State<LockScreen> {
                   height: 5,
                 ),
                 TextButton(
-                  onPressed: () => forgetPasswordDialogBox(context),
+                  onPressed: () => _authService.forgetPasswordDialogBox(
+                      context, _authService, question1, question2),
                   child: Text("Forget PIN? Reset Password",
                       style: TextStyle(
                         color: Colors.blue,
@@ -412,8 +265,8 @@ class _LookScreenState extends State<LockScreen> {
     Map<String, dynamic> passwordData,
   ) async {
     if (question1.text.isEmpty || question2.text.isEmpty) {
-      flushBars("Please Answer Both Questions", "Both questions are required",
-          Colors.red);
+      _authService.flushBars("Please Answer Both Questions",
+          "Both questions are required", Colors.red, context);
     } else if (question1.text == passwordData['answer1'] &&
         question2.text == passwordData['answer2']) {
       question1.clear();
@@ -425,29 +278,11 @@ class _LookScreenState extends State<LockScreen> {
         );
       }));
     } else {
-      flushBars("Wrong Answers", "Please try again", Colors.red);
+      _authService.flushBars(
+          "Wrong Answers", "Please try again", Colors.red, context);
     }
     question1.clear();
     question2.clear();
-  }
-
-  // Function to show flush bar
-  Widget flushBars(String title, String message, Color color) {
-    return Flushbar(
-      icon: Icon(
-        Icons.info_outline,
-        size: 28.0,
-        color: Colors.white,
-      ),
-      flushbarStyle: FlushbarStyle.FLOATING,
-      margin: EdgeInsets.all(8),
-      borderRadius: BorderRadius.circular(8),
-      title: title,
-      message: message,
-      duration: Duration(seconds: 3),
-      backgroundColor: color,
-      flushbarPosition: FlushbarPosition.TOP,
-    )..show(context);
   }
 }
 
