@@ -51,7 +51,7 @@ class _LookScreenState extends State<LockScreen> {
 
     try {
       final available = await _authService.isBiometricToggleEnabled();
-      print('\n Biometric toggle is enabled: $available');
+      debugPrint('\n Biometric toggle is enabled: $available');
       if (available) {
         final success = await _authService.authenticateWithBiometric();
         if (success && mounted) {
@@ -59,7 +59,7 @@ class _LookScreenState extends State<LockScreen> {
         }
       }
     } catch (e) {
-      print("Biometric error: $e");
+      debugPrint("Biometric error: $e");
     }
 
     _authRunning = false;
@@ -73,30 +73,30 @@ class _LookScreenState extends State<LockScreen> {
     }
     try {
       int pin = int.parse(enteredPin.join());
-      print("\n Entered PIN: $pin");
-      final String? storedPinValue = await _authService.GetPin();
+      debugPrint("\n Entered PIN: $pin");
+      final String? storedPinValue = await _authService.getPin();
 
       if (storedPinValue == null || storedPinValue.isEmpty) {
-        print("Stored PIN not found or is empty");
+        debugPrint("Stored PIN not found or is empty");
         showFlushbar("Error retrieving stored PIN", "Error", context);
         return;
       }
 
       final int storedPinInt = int.parse(storedPinValue);
-      print("\n Stored PIN: $storedPinInt");
+      debugPrint("\n Stored PIN: $storedPinInt");
 
       if (pin == storedPinInt) {
-        print("Pin Matched");
+        debugPrint("Pin Matched");
         _goToApp();
       } else {
-        print("\n Pin Not Matched");
+        debugPrint("\n Pin Not Matched");
         setState(() {
           enteredPin.clear();
         }); // Clear the entered PIN
         showFlushbar("Pin Not Matched", "Error", context);
       }
     } catch (e) {
-      print("Error during PIN verification: $e");
+      debugPrint("Error during PIN verification: $e");
       showFlushbar(
           "An error occurred during PIN verification", "Error", context);
     }
@@ -109,7 +109,7 @@ class _LookScreenState extends State<LockScreen> {
         enteredPin.add(key);
       });
     }
-    print("Key $key tapped");
+    debugPrint("Key $key tapped");
   }
 
   void onDelete() {
@@ -119,7 +119,7 @@ class _LookScreenState extends State<LockScreen> {
       });
     }
     // Implement delete functionality
-    print("Delete tapped");
+    debugPrint("Delete tapped");
   }
 
   void showFlushbar(String message, String title, BuildContext context) {
@@ -141,7 +141,7 @@ class _LookScreenState extends State<LockScreen> {
             child: Column(
               children: [
                 Text(
-                  'Enter your current 4-digit Pincode',
+                  'Enter your current 4-digit Pin code',
                   style: TextStyle(
                     color: Colors.black,
                     fontSize: 17,

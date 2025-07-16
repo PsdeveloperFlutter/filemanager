@@ -4,17 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 void main() {
-  runApp(MaterialApp(debugShowCheckedModeBanner: false, home: appLock()));
+  runApp(MaterialApp(debugShowCheckedModeBanner: false, home: applock()));
 }
 
-class appLock extends StatefulWidget {
+class applock extends StatefulWidget {
+  const applock({super.key});
+
   @override
-  State<appLock> createState() => _appLockState();
+  State<applock> createState() => _appLockState();
 }
 
 enum LockOption { screenLock, pin }
 
-class _appLockState extends State<appLock> {
+class _appLockState extends State<applock> {
   //Create instance of Flutter Local Storage
   final storage = FlutterSecureStorage();
   bool _visible = false; // Variable to control visibility of the widget
@@ -63,14 +65,14 @@ class _appLockState extends State<appLock> {
                   _visible = false;
                   _bioVisible = false;
                 });
-                debugPrint("\n Selected option is: ${_bioVisible} ");
+                debugPrint("\n Selected option is: $_bioVisible ");
                 authService.showBottomSheets(
                     context); // Show the bottom sheet for biometric authentication
               } else {
                 setState(() {
                   _bioVisible = true;
                 });
-                debugPrint("\n Selected option is: ${_bioVisible} ");
+                debugPrint("\n Selected option is: $_bioVisible ");
                 debugPrint("\n Biometric is not available");
                 authService.flushBars(
                     "Not Support",
@@ -189,7 +191,7 @@ class _appLockState extends State<appLock> {
 
   // Function to handle pin selection
   Future<void> handlePinSelection(BuildContext context) async {
-    final String? pin = await authService.GetPin();
+    final String? pin = await authService.getPin();
     debugPrint("\n Pin is $pin");
     if (pin == null) {
       Navigator.push(
@@ -228,7 +230,7 @@ class _appLockState extends State<appLock> {
 
   // Function to show the password check it is available or not
   void passwordSetOrNot(BuildContext context) async {
-    final pin = await authService.GetPin(); // Fetch the PIN using AuthService
+    final pin = await authService.getPin(); // Fetch the PIN using AuthService
     if (pin != null && pin.isNotEmpty) {
       // If the PIN is set, show the password dialog box
       forgetPasswordDialogBox(context);
@@ -239,7 +241,7 @@ class _appLockState extends State<appLock> {
   }
 
   void forgetPasswordDialogBox(BuildContext context) async {
-    final Map<String, dynamic> passwordData = await authService.GetPinDetails();
+    final Map<String, dynamic> passwordData = await authService.getPinDetails();
 
     showDialog(
       context: context,
@@ -363,7 +365,7 @@ class _appLockState extends State<appLock> {
 
   Future<bool> storeOptions() async {
     if (_selectedOption?.name.toString() == 'pin' &&
-        await authService.GetPin() == null) {
+        await authService.getPin() == null) {
       authService.flushBars(
           "Set a Pin", "Please set a pin to proceed", Colors.red, context);
       return false;
@@ -381,7 +383,7 @@ class _appLockState extends State<appLock> {
 
   // Function to check if the pin is set or not
   Future<bool> showmethod() async {
-    if (await authService.GetPin() != null) {
+    if (await authService.getPin() != null) {
       return true;
     } else {
       return false;

@@ -13,25 +13,25 @@ class AuthService {
   static const _biometricKey = "BIOMETRIC_ENABLED";
 
   //This Code is For set Pin
-  Future<void> SetPin(Map<String, dynamic> pin) async {
+  Future<void> setPin(Map<String, dynamic> pin) async {
     await _storage.write(key: "app_pin", value: pin['password']);
     String jsonString = jsonEncode(pin); //Convert the map to json format
     await _storage.write(
         key: "app_pin_details",
         value: jsonString); //store the jsonString to the flutter secure storage
     await _storage.write(key: _localKey, value: true.toString());
-    print("\n $pin Pin set successfully $jsonString");
+    debugPrint("\n $pin Pin set successfully $jsonString");
   }
 
   //This Code is For get Pin
-  Future<String?> GetPin() async {
+  Future<String?> getPin() async {
     return await _storage.read(key: "app_pin");
   }
 
   //This Code is For Check Pin
-  Future<bool> VerifyPin(String pin) async {
-    final StoredPin = await _storage.read(key: "app_pin");
-    return StoredPin == pin;
+  Future<bool> verifyPin(String pin) async {
+    final storedPin = await _storage.read(key: "app_pin");
+    return storedPin == pin;
   }
 
   //This Function help to ResetPin
@@ -41,7 +41,7 @@ class AuthService {
   }
 
   //This Code is For Get Pin Details from flutter secure storage
-  Future<Map<String, dynamic>> GetPinDetails() async {
+  Future<Map<String, dynamic>> getPinDetails() async {
     final jsonString = await _storage.read(key: "app_pin_details");
     if (jsonString != null) {
       return jsonDecode(jsonString);
@@ -68,24 +68,24 @@ class AuthService {
         bool didAuthenticate = await authenticateWithBiometric();
         if (didAuthenticate) {
           await _storage.write(key: _biometricKey, value: 'true');
-          print("Biometric enabled Via Toggle");
+          debugPrint("Biometric enabled Via Toggle");
           return true;
         } else {
-          print("User cancelled biometric auth");
+          debugPrint("User cancelled biometric auth");
           return false;
         }
       } else {
-        print("Biometric not available or enrolled");
+        debugPrint("Biometric not available or enrolled");
         return false;
       }
     } else {
       await _storage.write(key: _biometricKey, value: 'false');
-      print("Biometric disabled via toggle");
+      debugPrint("Biometric disabled via toggle");
       return true;
     }
   }
 
-  //Ye wala function Explain karta hi ki biometric jo lagi hoi hai kya nhi
+  //Ye walla function Explain kart hi ki biometric jo lag hoi hai kya nhi
   Future<bool> isBiometricTrulyAvailable() async {
     final result = await _auth.getAvailableBiometrics();
     if (result.isNotEmpty) {
@@ -98,11 +98,11 @@ class AuthService {
   //This code is for the authenticate with Biometric
   Future<bool> authenticateWithBiometric() async {
     try {
-      bool isAvailable = await _auth.canCheckBiometrics;
-      bool isSupported = await _auth.isDeviceSupported();
+      bool isAvailable = await isBiometricAvailable();
+      bool isSupported = await isBiometricTrulyAvailable();
 
       if (!isAvailable || !isSupported) {
-        print("Biometric not available or not supported.");
+        debugPrint("Biometric not available or not supported.");
         return false;
       }
 
@@ -117,16 +117,16 @@ class AuthService {
 
       return didAuthenticate;
     } catch (e) {
-      print("Biometric error: $e");
+      debugPrint("Biometric error: $e");
       return false;
     }
   }
 
-  //Siraf Pin and Password aur pattern ke liye authentication
+  //Sira Pin and Password aur pattern ke liye authentication
   Future<bool> authenticateWithPinOrPattern() async {
     try {
       bool isAuthenticated = await _auth.authenticate(
-          // Ye siraf PIN, pattern, ya password ke liye hai
+          // Ye sirrah PIN, pattern, ya password ke liye hai
           localizedReason:
               'Please authenticate using your device PIN, pattern, password ',
           options: const AuthenticationOptions(
@@ -177,9 +177,9 @@ class AuthService {
   Future<void> printAvailableBiometrics() async {
     List<BiometricType> availableBiometrics = await getAvailableBiometrics();
     if (availableBiometrics.isEmpty) {
-      print("No biometric types available on this device.");
+      debugPrint("No biometric types available on this device.");
     } else {
-      print("Available biometric types: $availableBiometrics");
+      debugPrint("Available biometric types: $availableBiometrics");
     }
   }
 
@@ -191,15 +191,14 @@ class AuthService {
 
 //Enable /Disable App Lock
   Future<void> setAppLockEnabled(bool value) async {
-    print("\n Value of the Set App Lock Enabled $value");
+    debugPrint("\n Value of the Set App Lock Enabled $value");
     return _storage.write(key: _localKey, value: value.toString());
   }
 
   //This function is for fetching app lock value ScreenLock or pin
 
   Future<String?> getStoredLockOption() async {
-    final storage = FlutterSecureStorage();
-    return await storage.read(key: 'lock_option'); // 'screenLock' ya 'pin'
+    return await _storage.read(key: 'lock_option'); // 'screenLock' ya 'pin'
   }
 
 // Function to show the bottom sheet for biometric authentication when user select option of biometric authentication
@@ -359,10 +358,10 @@ class AuthService {
   }
 
   // Function to show the forget password dialog box
-  void forgetPasswordDialogBox(BuildContext context, AuthService _authService,
+  void forgetPasswordDialogBox(BuildContext context, AuthService authService,
       TextEditingController question1, TextEditingController question2) async {
     final Map<String, dynamic> passwordData =
-        await _authService.GetPinDetails();
+        await authService.getPinDetails();
 
     showDialog(
       context: context,
@@ -485,7 +484,7 @@ class AuthService {
   }
 
   //This is for the FlushBar
-  Future FlushBarWidget(String message, BuildContext context, Iconsvalue) {
+  Future flushBarWidget(String message, BuildContext context, iconsValue) {
     return Flushbar(
         message: message,
         duration: Duration(seconds: 3),
@@ -493,33 +492,33 @@ class AuthService {
         margin: EdgeInsets.all(8),
         borderRadius: BorderRadius.circular(8),
         icon: Icon(
-          Iconsvalue,
+          iconsValue,
           color: Colors.white,
         )).show(context);
   }
 
 //Validate the Password
-  Future<bool> validatePassword(BuildContext context, String text,TextEditingController _password,
+  Future<bool> validatePassword(BuildContext context, String text,TextEditingController password,
       bool isAppLockEnabled, bool biometricstatus) async {
-    final Map<String, dynamic> passwordData = await GetPinDetails();
+    final Map<String, dynamic> passwordData = await getPinDetails();
     if (passwordData['password'] == text) {
-      print('\n isAppLockEnabled ${isAppLockEnabled}');
-      print('\n biometricstatus ${biometricstatus}');
-      print('\n isAppLockEnabled ${isAppLockEnabled}');
-      print('\n biometricstatus ${biometricstatus}');
+      debugPrint('\n isAppLockEnabled $isAppLockEnabled');
+      debugPrint('\n biometric status $biometricstatus');
+      debugPrint('\n isAppLockEnabled $isAppLockEnabled');
+      debugPrint('\n biometric status $biometricstatus');
       Navigator.push(context, MaterialPageRoute(builder: (context) {
         return PasswordScreen(passwordValue: "Change Password");
       }));
 
       return true;
     } else if (text.isEmpty) {
-      FlushBarWidget(
+      flushBarWidget(
           "Please Enter Password", context, Icons.error_outline);
       return false;
     } else {
-     FlushBarWidget("Wrong Pin", context, Icons.error_outline);
+     flushBarWidget("Wrong Pin", context, Icons.error_outline);
     }
-    _password.clear();
+    password.clear();
     return false;
   }
 }

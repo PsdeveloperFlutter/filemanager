@@ -244,7 +244,7 @@ class _PasswordScreenState extends State<PasswordScreen> {
         "answer2": answerController2.text.trim(),
       };
       final auth = AuthService();
-      auth.SetPin(userPasswordDetails);
+      auth.setPin(userPasswordDetails);
       Flushbar(
         title: "Successfully",
         message: "Pin Set Successfully",

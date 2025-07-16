@@ -7,6 +7,7 @@ import '../createPasswordUi/CreatePasswordScreen.dart';
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
+  const MyApp({Key?key}):super(key:key);
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -57,7 +58,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   //Fetch the Pin
   void pinFetch() async {
-    String? result = await authService.GetPin();
+    String? result = await authService.getPin();
     if (result != null) {
       pinstatus = true;
       print("Pin is Available $result");
@@ -274,7 +275,7 @@ class _MyHomePageState extends State<MyHomePage> {
   } //PasswordDialogBox for Changing the password
 
   void forgetPasswordDialogBox(BuildContext context, String value) async {
-    final Map<String, dynamic> passwordData = await authService.GetPinDetails();
+    final Map<String, dynamic> passwordData = await authService.getPinDetails();
 
     showDialog(
       context: context,
@@ -393,7 +394,7 @@ class _MyHomePageState extends State<MyHomePage> {
       Map<String, dynamic> passwordData,
       String value) async {
     if (question1.text.isEmpty || question2.text.isEmpty) {
-      authService.FlushBarWidget(
+      authService.flushBarWidget(
           "Please Answer Both Questions", context, Icons.warning_amber_rounded);
     } else if (question1.text == passwordData['answer1'] &&
         question2.text == passwordData['answer2'] &&
@@ -420,7 +421,7 @@ class _MyHomePageState extends State<MyHomePage> {
         );
       }));
     } else {
-      authService.FlushBarWidget("Wrong Answers", context, Icons.error_outline);
+      authService.flushBarWidget("Wrong Answers", context, Icons.error_outline);
     }
     question1.clear();
     question2.clear();
@@ -428,12 +429,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
 //Check the Pin is set or not
   void passwordSetOrNot(BuildContext context) async {
-    final pin = await authService.GetPin(); // Fetch the PIN using AuthService
+    final pin = await authService.getPin(); // Fetch the PIN using AuthService
     if (pin != null && pin.isNotEmpty) {
       // If the PIN is set, show the password dialog box
       PasswordDialogBox(context);
     } else {
-      authService.FlushBarWidget("First Set Pin", context, Icons.pin);
+      authService.flushBarWidget("First Set Pin", context, Icons.pin);
     }
   }
 
@@ -518,7 +519,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
 //Set Pin Functionality and Pin Logic Here
   void setPinFunctionality(BuildContext context) async {
-    final pin = await authService.GetPin();
+    final pin = await authService.getPin();
     // Define `val` as a placeholder or pass it as a parameter
     bool val = !(isAppLockEnabled ?? false);
     final appLockEnabled = await authService.isAppLockEnabled();
@@ -590,11 +591,11 @@ class _MyHomePageState extends State<MyHomePage> {
   //This Code when the User Disable and Verfiy the Pin code and after that User pin will reset
   void verifyPinLogic(val, BuildContext context) async {
     if (enterPin.text.isEmpty) {
-      authService.FlushBarWidget(
+      authService.flushBarWidget(
           "Please Enter Pin", context, Icons.error_outline);
       return;
     }
-    String? result = await authService.GetPin();
+    String? result = await authService.getPin();
     if (result == enterPin.text.toString()) {
       setState(() {
         isAppLockEnabled = val;
@@ -612,7 +613,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
       Navigator.pop(context); //For Navigate Back
     } else {
-      authService.FlushBarWidget(
+      authService.flushBarWidget(
           "Wrong Pin", context, Icons.warning_amber_rounded);
     }
     enterPin.clear();
@@ -620,7 +621,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   //This Enable and Disable App Lock
   void enableAndDisableAppLock(bool val, BuildContext context) async {
-    final pin = await authService.GetPin();
+    final pin = await authService.getPin();
     final appLockEnabled = await authService.isAppLockEnabled();
 
     // Case 1: PIN exists and app lock is enabled → verify user
@@ -704,7 +705,7 @@ class _MyHomePageState extends State<MyHomePage> {
   //Enable Biometric
   void enableBiometric(bool val, BuildContext context) async {
     if (await authService.isAppLockEnabled() == false) {
-      authService.FlushBarWidget(
+      authService.flushBarWidget(
           "First Enable App Lock", context, Icons.warning_amber_rounded);
     } else {
       bool result = await authService.setBiometricToggle(val);

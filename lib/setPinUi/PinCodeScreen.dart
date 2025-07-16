@@ -174,7 +174,7 @@ class _PinCodeScreenState extends State<PinCodeScreen> {
   void verifyPin() async{
     int pin=int.parse(enteredPin.join());
     print("\n Enter Pin :- $pin");
-    final storePin=await object.GetPin();
+    final storePin=await object.getPin();
     final int storePinInt=int.parse(storePin!);
     if(pin==storePinInt){
       print("\n Pin Matched $storePin");

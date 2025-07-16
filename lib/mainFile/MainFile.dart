@@ -23,7 +23,7 @@ void main() {
 
 //This is the Code For the Starting of the App
 class MyApp extends StatefulWidget {
-  MyApp({super.key});
+  const MyApp({super.key});
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -33,6 +33,7 @@ class _MyAppState extends State<MyApp> {
   final storage = FlutterSecureStorage();
   final _authService = AuthService();
 
+  @override
   void initState() {
     super.initState();
   }
@@ -41,7 +42,7 @@ class _MyAppState extends State<MyApp> {
     final lockOption =
         await _authService.getStoredLockOption(); // yeh await karo!
     if (lockOption == 'pin') {
-      final pin = await _authService.GetPin();
+      final pin = await _authService.getPin();
       if (pin == null) {
         return FileManagerScreen();
       } else {
@@ -99,7 +100,7 @@ class _FileManagerScreenState extends State<FileManagerScreen>
     AuthService authService = AuthService();
     WidgetsBinding.instance.addPostFrameCallback((_) {
     authService.getStoredLockOption().then((lockOption) {
-        print("Lock Option: $lockOption"); // Add this
+        debugPrint("Lock Option: $lockOption"); // Add this
         if (lockOption == 'screenLock') {
           WidgetsBinding.instance.addObserver(this);
           AuthService authService = AuthService();
@@ -124,11 +125,11 @@ class _FileManagerScreenState extends State<FileManagerScreen>
     }
     if (state == AppLifecycleState.resumed && shouldLock) {
       shouldLock = false;
-      _lockapp(context as BuildContext);
+      lockapp(context as BuildContext);
     }
   }
 
-  _lockapp(BuildContext context) {
+  lockapp(BuildContext context) {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => LockScreen()),
@@ -162,7 +163,7 @@ class _FileManagerScreenState extends State<FileManagerScreen>
 
     // 🔹 Fallback: Open settings if not granted
     if (!isGranted) {
-      print("Permission denied. Opening settings.");
+      debugPrint("Permission denied. Opening settings.");
       if (mounted) {
         await openAppSettings();
         setState(() => allItems = []);
@@ -174,9 +175,9 @@ class _FileManagerScreenState extends State<FileManagerScreen>
     Directory? appDir = await getExternalStorageDirectory();
     if (appDir != null && await appDir.exists()) {
       List<FileSystemEntity> appFiles = appDir.listSync();
-      print("App-specific directory: ${appDir.path}");
+      debugPrint("App-specific directory: ${appDir.path}");
       for (var item in appFiles) {
-        print(item.path);
+        debugPrint(item.path);
       }
       if (mounted) {
         setState(() => allItems = appFiles);
@@ -189,15 +190,15 @@ class _FileManagerScreenState extends State<FileManagerScreen>
       Directory rootDir = Directory("/storage/emulated/0");
       if (await rootDir.exists()) {
         List<FileSystemEntity> rootFiles = rootDir.listSync();
-        print("Root directory: ${rootDir.path}");
+        debugPrint("Root directory: ${rootDir.path}");
         for (var item in rootFiles) {
-          print(item.path);
+          debugPrint(item.path);
         }
         if (mounted) {
           setState(() => allItems = rootFiles);
         }
       } else {
-        print("Root directory does not exist or can't access.");
+        debugPrint("Root directory does not exist or can't access.");
       }
     }
   }
@@ -209,7 +210,7 @@ class _FileManagerScreenState extends State<FileManagerScreen>
         IconButton(
             onPressed: () {
               Navigator.push(context, MaterialPageRoute(builder: (_) {
-                return appLock(); //AppLockSettingsScreen();
+                return applock(); //AppLockSettingsScreen();
               }));
             },
             icon: Icon(Icons.settings))
@@ -230,7 +231,7 @@ class _FileManagerScreenState extends State<FileManagerScreen>
                   subtitle: Text(isFolder ? "Folder" : "File"),
                   onTap: () {
                     if (!isFolder) {
-                      // Open file using the OpenFilex package
+                      // Open file using the OpenFiles package
                       OpenFilex.open(item.path);
                     } else {
                       Navigator.push(
@@ -256,7 +257,7 @@ class FileManagerScreenSub extends StatefulWidget {
 }
 
 class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
-  ScrollController _scrollController = ScrollController();
+  final ScrollController _scrollController = ScrollController();
   bool isSelectionMode = false;
   List<FileSystemEntity> selectedItems = [];
   List<FileSystemEntity> currentlyDraggingItems = [];
@@ -272,6 +273,7 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
     fetchFolderContent();
   }
 
+  @override
   void dispose() {
     super.dispose();
     _scrollController.dispose();
@@ -305,7 +307,7 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
           await item.rename(newPath);
         }
       } catch (e) {
-        print("Error moving file: $e");
+        debugPrint("Error moving file: $e");
       }
     }));
     fetchFolderContent();
@@ -320,7 +322,7 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
     return Scaffold(
         floatingActionButton: FloatingActionButton(
           backgroundColor: Colors.green,
-          onPressed: () => CreateFolder(context),
+          onPressed: () => createFolder(context),
           child: Icon(
             Icons.add,
             color: Colors.white,
@@ -382,7 +384,7 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
         }));
   }
 
-  Future<void> CreateFolder(BuildContext context) async {
+  Future<void> createFolder(BuildContext context) async {
     TextEditingController folderNameController = TextEditingController();
     String? errorText; // For feedback inside the dialog
     showDialog(
@@ -408,11 +410,11 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
                         ),
                         TextButton(
                           onPressed: () async {
-                            String NewFolderName =
+                            String newFolderName =
                                 folderNameController.text.trim();
-                            if (NewFolderName.isNotEmpty) {
+                            if (newFolderName.isNotEmpty) {
                               final folder =
-                                  Directory("${widget.path}/$NewFolderName");
+                                  Directory("${widget.path}/$newFolderName");
                               if (!await folder.exists()) {
                                 await folder.create();
                                 fetchFolderContent();
@@ -488,7 +490,7 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
                 : Colors.white,
             elevation: 1,
             child: SingleChildScrollView(
-              child: Container(
+              child: SizedBox(
                 height: 100,
                 child: Row(
                   children: [
@@ -602,7 +604,7 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
           message: len == 0
               ? '${len + 1} Document Move Successfully'
               : len == 1
-                  ? ' ${len} Document Move Successfully'
+                  ? ' $len Document Move Successfully'
                   : '$len Documents Move Successfully',
           duration: Duration(seconds: 3),
           backgroundColor: Colors.orangeAccent,
@@ -616,7 +618,7 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
           }));
         });
       } catch (e) {
-        print("Error moving file: $e");
+        debugPrint("Error moving file: $e");
       }
     }
     fetchFolderContent(); //For Refresh the Folder
