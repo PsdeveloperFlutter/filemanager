@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:another_flushbar/flushbar.dart';
 import 'package:filemanager/FileManagement/createPasswordUi/CreatePasswordScreen.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
@@ -202,25 +204,76 @@ class AuthService {
   }
 
 // Function to show the bottom sheet for biometric authentication when user select option of biometric authentication
-  Future showBottomSheets(context) {
-    // `this.context` refers to the BuildContext of the _FileManagerScreenState
-    // No need for casting if you're sure it's being called when the state is mounted.
-    return showModalBottomSheet(
-      context: context,
-      // Use the State's context directly
-      isDismissible: false,
-      isScrollControlled: true,
-      enableDrag: false,
-      builder: (BuildContext bottomSheetContext) {
-        // Explicitly type the builder's context
-        return WillPopScope(
+
+
+  Future showBottomSheets(BuildContext context) {
+    if (Platform.isIOS) {
+      /// ✅ Cupertino ActionSheet for iOS
+      return showCupertinoModalPopup(
+        context: context,
+        builder: (BuildContext bottomSheetContext) {
+          return CupertinoActionSheet(
+            title: Text('Unlock Doc Scanner'),
+            message: Text('Use fingerprint or DocScanner password.'),
+            actions: [
+              CupertinoActionSheetAction(
+                onPressed: () async {
+                  AuthService authService = AuthService();
+                  bool isAuthenticated =
+                  await authService.authenticateWithBiometric();
+
+                  if (isAuthenticated) {
+                    Navigator.of(bottomSheetContext).pop();
+                    debugPrint("Fingerprint Authentication Successful");
+                  } else {
+                    debugPrint("Fingerprint Authentication Failed");
+                  }
+                },
+                child: Icon(
+                  CupertinoIcons.lock_shield,
+                  size: 40,
+                  color: CupertinoColors.activeBlue,
+                ),
+              ),
+              CupertinoActionSheetAction(
+                onPressed: () async {
+                  AuthService authService = AuthService();
+                  bool isAuthenticated =
+                  await authService.authenticateWithPinOrPattern();
+
+                  if (isAuthenticated) {
+                    Navigator.of(bottomSheetContext).pop();
+                    debugPrint("Pin/Password Authentication Successful");
+                  } else {
+                    debugPrint("Pin/Password Authentication Failed");
+                  }
+                },
+                child: Text("USE PASSWORD"),
+              ),
+            ],
+            cancelButton: CupertinoActionSheetAction(
+              onPressed: () => Navigator.of(bottomSheetContext).pop(),
+              child: Text('Cancel'),
+            ),
+          );
+        },
+      );
+    } else {
+      /// ✅ Material BottomSheet for Android
+      return showModalBottomSheet(
+        context: context,
+        isDismissible: false,
+        isScrollControlled: true,
+        enableDrag: false,
+        builder: (BuildContext bottomSheetContext) {
+          return WillPopScope(
+            onWillPop: () async => false,
             child: Container(
               padding: const EdgeInsets.all(16),
               height: 300,
               width: double.infinity,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   const Text(
                     "Unlock Doc Scanner",
@@ -233,34 +286,25 @@ class AuthService {
                     child: TextButton(
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.zero,
-                        // अगर आप चाहते हैं कि आइकन पूरी जगह ले
                         shape: RoundedRectangleBorder(
-                          //  <-- इसे बदलें
-                          borderRadius: BorderRadius.circular(30), // गोल कोने
+                          borderRadius: BorderRadius.circular(30),
                           side: BorderSide(
-                            // बॉर्डर
                             color: Colors.blue.shade500,
                             width: 2,
                           ),
                         ),
                       ),
-                      onPressed: () {
+                      onPressed: () async {
                         AuthService authService = AuthService();
-                        authService
-                            .authenticateWithBiometric()
-                            .then((value) => {
-                                  if (value)
-                                    {
-                                      Navigator.of(bottomSheetContext).pop(),
-                                      debugPrint(
-                                          "\n Fingerprint Authentication Successful"),
-                                    }
-                                  else
-                                    {
-                                      debugPrint(
-                                          "\n Fingerprint Authentication Failed"),
-                                    }
-                                });
+                        bool isAuthenticated =
+                        await authService.authenticateWithBiometric();
+
+                        if (isAuthenticated) {
+                          Navigator.of(bottomSheetContext).pop();
+                          debugPrint("Fingerprint Authentication Successful");
+                        } else {
+                          debugPrint("Fingerprint Authentication Failed");
+                        }
                       },
                       child: Padding(
                         padding: const EdgeInsets.all(8.0),
@@ -272,42 +316,36 @@ class AuthService {
                       ),
                     ),
                   ),
-                  SizedBox(
-                    height: 56,
-                  ),
+                  const SizedBox(height: 56),
                   GestureDetector(
-                    onTap: () {
-                      final AuthService authService = AuthService();
-                      authService
-                          .authenticateWithPinOrPattern()
-                          .then((value) => {
-                                if (value)
-                                  {
-                                    Navigator.of(bottomSheetContext).pop(),
-                                    debugPrint(
-                                        "\n Pattern and Pin , Password Authentication Successful"),
-                                  }
-                                else
-                                  {
-                                    debugPrint(
-                                        "\n Pattern and Pin , Password Authentication Failed"),
-                                  }
-                              });
+                    onTap: () async {
+                      AuthService authService = AuthService();
+                      bool isAuthenticated =
+                      await authService.authenticateWithPinOrPattern();
+
+                      if (isAuthenticated) {
+                        Navigator.of(bottomSheetContext).pop();
+                        debugPrint("Pin/Password Authentication Successful");
+                      } else {
+                        debugPrint("Pin/Password Authentication Failed");
+                      }
                     },
                     child: Text(
                       "USE PASSWORD",
                       style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade500),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade500,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            onWillPop: () async => false);
-      },
-    );
+          );
+        },
+      );
+    }
   }
 
 // Function to validate security answers
