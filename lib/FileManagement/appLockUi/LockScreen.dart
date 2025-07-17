@@ -1,9 +1,9 @@
 import 'package:another_flushbar/flushbar.dart';
 import 'package:flutter/material.dart';
 
-import '../projectSetting/AuthService.dart';
-import '../createPasswordUi/CreatePasswordScreen.dart';
 import '../../mainFile/MainFile.dart';
+import '../createPasswordUi/CreatePasswordScreen.dart';
+import '../projectSetting/AuthService.dart';
 
 class LockScreen extends StatefulWidget {
   const LockScreen();
@@ -140,6 +140,21 @@ class _LookScreenState extends State<LockScreen> {
           child: SingleChildScrollView(
             child: Column(
               children: [
+                SizedBox(height: 50),
+                Container(
+                    width: 85,
+                    // Set the desired width
+                    height: 85,
+                    // Set the desired height
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.1),
+                      // Light blue background
+                      shape: BoxShape.rectangle, // Circular shape
+                    ),
+                    child: Image.asset('assets/images/logo.png',fit: BoxFit.cover,)),
+                SizedBox(
+                  height: 50,
+                ),
                 Text(
                   'Enter your current 4-digit Pin code',
                   style: TextStyle(
@@ -149,7 +164,7 @@ class _LookScreenState extends State<LockScreen> {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 34),
+                SizedBox(height: 28),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(4, (index) {
@@ -167,7 +182,7 @@ class _LookScreenState extends State<LockScreen> {
                   }),
                 ),
                 const SizedBox(
-                  height: 15,
+                  height: 22,
                 ),
                 Container(
                   padding: const EdgeInsets.only(top: 5, bottom: 15),
@@ -205,13 +220,13 @@ class _LookScreenState extends State<LockScreen> {
                         ),
                       ),
                       SizedBox(
-                        height: 15,
+                        height: 25,
                       ),
                       ...[
                         [1, 2, 3],
                         [4, 5, 6],
                         [7, 8, 9],
-                        ['del', 0]
+                        ['del', 0, ' ']
                       ].map((row) => Padding(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 24, vertical: 4),
