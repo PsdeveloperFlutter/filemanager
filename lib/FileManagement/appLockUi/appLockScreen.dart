@@ -1,5 +1,6 @@
-import 'package:filemanager/FileManagement/projectSetting/AuthService.dart';
 import 'package:filemanager/FileManagement/createPasswordUi/CreatePasswordScreen.dart';
+import 'package:filemanager/FileManagement/projectSetting/AuthService.dart';
+import 'package:filemanager/FileManagement/uiComponents/uiUtility.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -24,7 +25,10 @@ class _appLockState extends State<applock> {
       false; // Variable to control visibility of the biometric option
   final TextEditingController question1 = TextEditingController();
   final TextEditingController question2 = TextEditingController();
+  final TextEditingController pinController =
+      TextEditingController(); // Controller for the PIN input
   AuthService authService = AuthService();
+  uiUtility uiobject = uiUtility();
   LockOption? _selectedOption = LockOption.screenLock;
 
   @override
@@ -177,6 +181,9 @@ class _appLockState extends State<applock> {
                         'Your app lock settings have been saved successfully',
                         Colors.green,
                         context);
+                    Future.delayed(Duration(seconds: 4), () {
+                      Navigator.pop(context);
+                    });
                   },
                   child: Text(
                     'Save',
@@ -218,6 +225,8 @@ class _appLockState extends State<applock> {
           debugPrint("\n Returned value is not a boolean");
         }
       });
+    } else if (pin.isNotEmpty) {
+      uiobject.passwordDialogBox(context, authService, pinController, pin);
     }
   }
 
@@ -410,7 +419,7 @@ class _appLockState extends State<applock> {
         });
       } else if (option == 'screenLock') {
         _selectedOption = LockOption.screenLock;
-        authService.showBottomSheets(context);
+        // authService.showBottomSheets(context);
       } else {
         _selectedOption = null; // Default case if no option is stored
       }
