@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_switch/flutter_switch.dart';
 
+import '../appLockUi/appLockScreen.dart';
+import '../projectSetting/AuthService.dart';
+
+// Assuming you have an AuthService class for authentication
 class privacyScreen extends StatefulWidget {
   const privacyScreen({super.key});
 
@@ -9,25 +13,57 @@ class privacyScreen extends StatefulWidget {
 }
 
 class _privacyScreenState extends State<privacyScreen> {
-  bool isLocked = false;
+  bool isLocked = false; // Initial value for the switch
+  dynamic lock_option = ' ';
+  AuthService object =
+      AuthService(); // Create the Object of the AuthService Class
 
-  // Initial value for the switch
+  // Function to get the current value of the privacy lock option
+  void getPrivacyLockValue() async {
+    lock_option = await object.getStoredLockOption();
+    debugPrint('\n Lock Option: $lock_option');
+    final value = await object.getPrivacyLockOption() == 'true' ? true : false;
+    setState(() {
+      isLocked =
+          lock_option == 'screenLock' || lock_option == 'pin' ? true : false;
+    });
+    debugPrint('\n Privacy Lock Value: $isLocked');
+  }
+
+  void initState() {
+    super.initState();
+    getPrivacyLockValue(); // Fetch the initial value when the screen loads
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        title: Text(
+          'Privacy & Security',
+          style: TextStyle(color: Colors.black, fontSize: 20),
+        ),
+        centerTitle: true,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+        elevation: 0,
+      ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 50),
+          const SizedBox(height: 30),
           privacyListTitle(
             title: 'Enable app lock',
             leadingColor: Colors.blue,
             icon: Icons.lock,
             onTap: () {
-              setState(() {
-                isLocked = !isLocked;
-              });
+              onTapFunction();
             },
             trialing: FlutterSwitch(
                 width: 50.0,
@@ -40,18 +76,58 @@ class _privacyScreenState extends State<privacyScreen> {
                 inactiveColor: Colors.grey,
                 value: isLocked,
                 onToggle: (val) {
-                  setState(() {
-                    isLocked = val;
-                  });
+                  onTapFunction();
                 }),
             subtitle: 'Use your existing passcode to keep your app secure.',
-          )
+          ),
+          const SizedBox(height: 15),
+          Visibility(
+              visible: lock_option == 'screenLock' || lock_option == 'pin'
+                  ? true
+                  : false,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 18.0),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) {
+                      return applock();
+                    })).then((value) {
+                      getPrivacyLockValue(); // Refresh the lock state after returning
+                    });
+                  },
+                  child: Text(
+                    'Manage your app lock',
+                    style: TextStyle(
+                        color: Colors.blue,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ))
         ],
       ),
     );
   }
+
+  // Function to handle the tap on the switch and Navigate to the app lock screen
+  void onTapFunction() async {
+    // setState(() {
+    //   isLocked = !isLocked;
+    // });
+    // if (isLocked) {
+    //   object.setPrivacyLockOption('true');
+    // } else {
+    //   object.setPrivacyLockOption('false');
+    // }
+    await Navigator.push(context, MaterialPageRoute(builder: (context) {
+      return applock();
+    }));
+    getPrivacyLockValue();
+  }
 }
 
+//Privacy List Title Widget
 class privacyListTitle extends StatelessWidget {
   final String title;
   final Color leadingColor;
@@ -73,7 +149,11 @@ class privacyListTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       child: ListTile(
-        leading: Icon(icon, color: leadingColor,size: 30,),
+        leading: Icon(
+          icon,
+          color: leadingColor,
+          size: 30,
+        ),
         subtitle: Text(subtitle!, style: TextStyle(color: Colors.black)),
         title: Text(title, style: TextStyle(color: Colors.black)),
         onTap: onTap,
