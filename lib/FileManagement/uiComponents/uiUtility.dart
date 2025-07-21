@@ -1,13 +1,18 @@
+import 'package:another_flushbar/flushbar.dart';
 import 'package:flutter/material.dart';
 
 import '../projectSetting/AuthService.dart';
 
 class uiUtility {
-  // This class can be used
   AuthService authService = AuthService();
-  passwordDialogBox(BuildContext context, AuthService authService,
-      TextEditingController pinController, String pin,
-      TextEditingController question1,TextEditingController question2) {
+
+  passwordDialogBox(
+      BuildContext context,
+      AuthService authService,
+      TextEditingController pinController,
+      String pin,
+      TextEditingController question1,
+      TextEditingController question2) {
     showDialog(
         context: context,
         builder: (context) {
@@ -69,7 +74,8 @@ class uiUtility {
                         elevation: 0,
                       ),
                       onPressed: () {
-                        authService.forgetPasswordDialogBox(context, authService, question1, question2);
+                        authService.forgetPasswordDialogBox(
+                            context, authService, question1, question2);
                       },
                       child: Text(
                         "Forget",
@@ -96,7 +102,7 @@ class uiUtility {
                   ElevatedButton(
                     onPressed: () {
                       if (pinController.text == pin) {
-                        authService.flushBars(
+                        flushBars(
                             'Pin Verified',
                             'Your PIN is verified successfully',
                             Colors.green,
@@ -108,10 +114,10 @@ class uiUtility {
                         });
                       } else if (pinController.text.isEmpty ||
                           pinController.text.length < 4) {
-                        authService.flushBars("Invalid Pin",
-                            "Please enter four digit pin", Colors.red, context);
+                        flushBars("Invalid Pin", "Please enter four digit pin",
+                            Colors.red, context);
                       } else {
-                        authService.flushBars(
+                        flushBars(
                             'Incorrect Pin',
                             'The entered PIN is incorrect',
                             Colors.red,
@@ -136,5 +142,38 @@ class uiUtility {
             ],
           );
         });
+  }
+
+  //This is for the FlushBar
+  Future flushBarWidget(String message, BuildContext context, iconsValue) {
+    return Flushbar(
+        message: message,
+        duration: Duration(seconds: 3),
+        backgroundColor: Colors.orange,
+        margin: EdgeInsets.all(8),
+        borderRadius: BorderRadius.circular(8),
+        icon: Icon(
+          iconsValue,
+          color: Colors.white,
+        )).show(context);
+  }
+
+  // Function to show flush bar
+  Widget flushBars(
+      String title, String message, Color color, BuildContext context) {
+    return Flushbar(
+      icon: Icon(
+        Icons.info_outline,
+        size: 28.0,
+        color: Colors.white,
+      ),
+      flushbarStyle: FlushbarStyle.FLOATING,
+      borderRadius: BorderRadius.circular(8),
+      title: title,
+      message: message,
+      duration: Duration(seconds: 3),
+      backgroundColor: color,
+      flushbarPosition: FlushbarPosition.TOP,
+    )..show(context);
   }
 }
