@@ -4,6 +4,7 @@ import 'package:another_flushbar/flushbar.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:filemanager/FileManagement/projectSetting/AuthService.dart';
 import 'package:filemanager/FileManagement/appLockUi/LockScreen.dart';
+import 'package:filemanager/FileManagement/uiComponents/uiUtility.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -13,6 +14,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../FileManagement/appLockUi/appLockScreen.dart';
+import '../FileManagement/privacyScreen/privacyScreen.dart';
+import '../FileManagement/projectSetting/Setting.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -32,6 +35,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   final storage = FlutterSecureStorage();
   final _authService = AuthService();
+  final uiObject=uiUtility();
 
   @override
   void initState() {
@@ -91,24 +95,32 @@ class _FileManagerScreenState extends State<FileManagerScreen>
     with WidgetsBindingObserver {
   bool shouldLock = false;
   List<FileSystemEntity> allItems = [];
-
+  AuthService authService = AuthService();
 
   @override
   void initState() {
     super.initState();
     _requestPermissionsAndFetchFiles();
-    AuthService authService = AuthService();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+    check(); // Call check() after the first frame is rendered
+    });
+  }
+  void check(){
     authService.getStoredLockOption().then((lockOption) {
-        debugPrint("Lock Option: $lockOption"); // Add this
-        if (lockOption == 'screenLock') {
-          WidgetsBinding.instance.addObserver(this);
-          AuthService authService = AuthService();
-          authService.showBottomSheets(this.context); // ✅ Now it's safe to call
-        } else if (lockOption == 'pin') {
-          WidgetsBinding.instance.addObserver(this);
-        }
-      });
+      debugPrint("Lock Option: $lockOption"); // Add this
+      if (lockOption == 'screenLock') {
+        WidgetsBinding.instance.addObserver(this);
+        authService.isBiometricTrulyAvailable().then((isAvailable){
+          if(isAvailable){
+            uiObject.showBottomSheets(this.context); // ✅ Now it's safe to call
+          }
+          else{
+            debugPrint("\n Biometric not available");
+          }
+        });
+      } else if (lockOption == 'pin') {
+        WidgetsBinding.instance.addObserver(this);
+      }
     });
   }
 
@@ -210,7 +222,7 @@ class _FileManagerScreenState extends State<FileManagerScreen>
         IconButton(
             onPressed: () {
               Navigator.push(context, MaterialPageRoute(builder: (_) {
-                return applock(); //AppLockSettingsScreen();
+                return privacyScreen(); //AppLockSettingsScreen();
               }));
             },
             icon: Icon(Icons.settings))
