@@ -30,14 +30,23 @@ class _appLockState extends State<applock> {
   AuthService authService = AuthService();
   uiUtility uiobject = uiUtility();
   LockOption? _selectedOption = LockOption.screenLock;
-
+  bool bioValue=false;
   @override
   void initState() {
     super.initState();
     authService.printAvailableBiometrics();
     _loadStoredOption();
+    bioMeteric(); // Check if biometric is available and show on Screen
   }
 
+  void bioMeteric()async{
+   if(await authService.isBiometricTrulyAvailable()==true){
+      debugPrint("\n Biometric is available Show Value is: $bioValue");
+      setState(() {
+        bioValue=true;
+      });
+   }
+  }
   @override
   void dispose() {
     question1.dispose();
@@ -54,38 +63,41 @@ class _appLockState extends State<applock> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          LockOptionTile(
-            value: LockOption.screenLock,
-            groupValue: _selectedOption,
-            title: 'Use your screen lock',
-            subtitle:
-                'Use your existing PIN, pattern,\nface Id, or fingerprint',
-            onChanged: (value) async {
-              if (await authService.isBiometricTrulyAvailable() == true &&
-                  await authService.isBiometricAvailable() == true) {
-                debugPrint("\n Biometric is available");
-                setState(() {
-                  _selectedOption = value;
-                  _visible = false;
-                  _bioVisible = false;
-                });
-                debugPrint("\n Selected option is: $_bioVisible ");
-                authService.showBottomSheets(
-                    context); // Show the bottom sheet for biometric authentication
-              } else {
-                setState(() {
-                  _bioVisible = true;
-                });
-                debugPrint("\n Selected option is: $_bioVisible ");
-                debugPrint("\n Biometric is not available");
-                authService.flushBars(
-                    "Not Support",
-                    "Check your Biometric and Pin Setting",
-                    Colors.red,
-                    context);
-                return;
-              }
-            },
+          Visibility(
+           visible: bioValue,
+            child: LockOptionTile(
+              value: LockOption.screenLock,
+              groupValue: _selectedOption,
+              title: 'Use your screen lock',
+              subtitle:
+                  'Use your existing PIN, pattern,\nface Id, or fingerprint',
+              onChanged: (value) async {
+                if (await authService.isBiometricTrulyAvailable() == true &&
+                    await authService.isBiometricAvailable() == true) {
+                  debugPrint("\n Biometric is available");
+                  setState(() {
+                    _selectedOption = value;
+                    _visible = false;
+                    _bioVisible = false;
+                  });
+                  debugPrint("\n Selected option is: $_bioVisible ");
+                  uiobject.showBottomSheets(
+                      context); // Show the bottom sheet for biometric authentication
+                } else {
+                  setState(() {
+                    _bioVisible = true;
+                  });
+                  debugPrint("\n Selected option is: $_bioVisible ");
+                  debugPrint("\n Biometric is not available");
+                  uiobject.flushBars(
+                      "Not Support",
+                      "Check your Biometric and Pin Setting",
+                      Colors.red,
+                      context);
+                  return;
+                }
+              },
+            ),
           ),
           sizedBoxs(10),
           Visibility(
@@ -176,7 +188,7 @@ class _appLockState extends State<applock> {
                     if (await storeOptions() == false) {
                       return;
                     }
-                    authService.flushBars(
+                    uiobject.flushBars(
                         'App Lock Enabled',
                         'Your app lock settings have been saved successfully',
                         Colors.green,
@@ -215,18 +227,18 @@ class _appLockState extends State<applock> {
             _visible = result;
           });
           if (result) {
-            authService.flushBars('Pin Set', 'Pin Set Successfully',
+            uiobject.flushBars('Pin Set', 'Pin Set Successfully',
                 Colors.orangeAccent, context);
           } else {
-            authService.flushBars(
-                'Not Set', 'Pin not set', Colors.red, context);
+            uiobject.flushBars('Not Set', 'Pin not set', Colors.red, context);
           }
         } else {
           debugPrint("\n Returned value is not a boolean");
         }
       });
     } else if (pin.isNotEmpty) {
-      uiobject.passwordDialogBox(context, authService, pinController, pin);
+      uiobject.passwordDialogBox(
+          context, authService, pinController, pin, question1, question2);
     }
   }
 
@@ -244,7 +256,7 @@ class _appLockState extends State<applock> {
       // If the PIN is set, show the password dialog box
       forgetPasswordDialogBox(context);
     } else {
-      authService.flushBars(
+      uiobject.flushBars(
           'No PIN Set', 'Please set a PIN first', Colors.red, context);
     }
   }
@@ -375,12 +387,12 @@ class _appLockState extends State<applock> {
   Future<bool> storeOptions() async {
     if (_selectedOption?.name.toString() == 'pin' &&
         await authService.getPin() == null) {
-      authService.flushBars(
+      uiobject.flushBars(
           "Set a Pin", "Please set a pin to proceed", Colors.red, context);
       return false;
     }
     if (_selectedOption == null) {
-      authService.flushBars("Select an Option",
+      uiobject.flushBars("Select an Option",
           "Please select an option to proceed", Colors.red, context);
       return false;
     } else {
@@ -406,11 +418,14 @@ class _appLockState extends State<applock> {
     setState(() {
       if (option == 'pin') {
         _selectedOption = LockOption.pin;
-        showmethod().then((value) {
+        showmethod().then((value) async {
           if (value) {
             setState(() {
               _visible = true; // Show the widget if pin is set
             });
+            final String? getpin = await authService.getPin();
+            uiobject.passwordDialogBox(context, authService, pinController,
+                getpin!, question1, question2);
           } else {
             setState(() {
               _visible = false; // Hide the widget if pin is not set
