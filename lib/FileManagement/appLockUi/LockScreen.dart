@@ -1,7 +1,7 @@
 import 'package:another_flushbar/flushbar.dart';
 import 'package:filemanager/FileManagement/uiComponents/uiUtility.dart';
 import 'package:flutter/material.dart';
-import 'package:super_tooltip/super_tooltip.dart';
+
 import '../../mainFile/MainFile.dart';
 import '../createPasswordUi/CreatePasswordScreen.dart';
 import '../projectSetting/AuthService.dart';
@@ -301,31 +301,6 @@ class _KeypadButton extends StatefulWidget {
 }
 
 class _KeypadButtonState extends State<_KeypadButton> {
-  SuperTooltip? tooltip;
-
-  void showTooltip(BuildContext context) {
-    tooltip = SuperTooltip(
-      popupDirection: TooltipDirection.up,
-      content: Material(
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Text(
-            widget.label ?? '',
-            style: TextStyle(color: Colors.white),
-          ),
-        ),
-      ),
-      backgroundColor: Colors.black,
-      borderColor: Colors.blue,
-      showCloseButton: false,
-    );
-
-    final dynamic tooltipContext = context.findRenderObject();
-    if (tooltipContext != null) {
-      tooltip!.showOnTap;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Expanded(
@@ -334,7 +309,6 @@ class _KeypadButtonState extends State<_KeypadButton> {
         child: InkWell(
           onTap: () {
             widget.onTap();
-            showTooltip(context);
           },
           child: Container(
             height: 55,
@@ -343,19 +317,19 @@ class _KeypadButtonState extends State<_KeypadButton> {
             child: Center(
               child: widget.icon != null
                   ? Icon(
-                widget.icon,
-                size: 30,
-                color: Colors.blue,
-                weight: 500,
-              )
+                      widget.icon,
+                      size: 30,
+                      color: Colors.blue,
+                      weight: 500,
+                    )
                   : Text(
-                widget.label ?? '',
-                style: TextStyle(
-                  fontSize: 26,
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+                      widget.label ?? '',
+                      style: TextStyle(
+                        fontSize: 26,
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
             ),
           ),
         ),

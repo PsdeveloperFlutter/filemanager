@@ -24,8 +24,7 @@ class _privacyScreenState extends State<privacyScreen> {
     debugPrint('\n Lock Option: $lock_option');
     final value = await object.getPrivacyLockOption() == 'true' ? true : false;
     setState(() {
-      isLocked =
-          lock_option == 'screenLock' || lock_option == 'pin' ? true : false;
+      isLocked =value; // Update the switch state based on the stored value
     });
     debugPrint('\n Privacy Lock Value: $isLocked');
   }
@@ -33,6 +32,19 @@ class _privacyScreenState extends State<privacyScreen> {
   void initState() {
     super.initState();
     getPrivacyLockValue(); // Fetch the initial value when the screen loads
+    seePin();
+  }
+  // Function to check if the pin is set or not
+  bool seePin(){
+    object.getPin().then((value){
+      if(value=='true'){
+       return true;
+      }
+      else {
+        return false;
+      }
+    });
+    return false;
   }
 
   @override
@@ -76,15 +88,32 @@ class _privacyScreenState extends State<privacyScreen> {
                 inactiveColor: Colors.grey,
                 value: isLocked,
                 onToggle: (val) {
-                  onTapFunction();
+                  // if(isLocked==true){
+                  //   object.setPrivacyLockOption('false');
+                  //   setState(() {
+                  //     isLocked = false;
+                  //   });
+                  //   object.resetPin(); // Reset the pin when disabling the lock
+                  // }
+                  // else{
+                  //   onTapFunction();
+                  // }
+                  if(isLocked==false){
+                    onTapFunction();
+                  }
+                  else if(isLocked==true){
+                    setState(() {
+                      isLocked=val;
+                    });
+                    object.setPrivacyLockOption(isLocked? 'true' : 'false');
+                    object.resetPin(); // Reset the pin when disabling the lock
+                  }
                 }),
             subtitle: 'Use your existing passcode to keep your app secure.',
           ),
           const SizedBox(height: 15),
           Visibility(
-              visible: lock_option == 'screenLock' || lock_option == 'pin'
-                  ? true
-                  : false,
+              visible:isLocked,
               child: Padding(
                 padding: const EdgeInsets.only(left: 18.0),
                 child: GestureDetector(

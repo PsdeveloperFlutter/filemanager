@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:another_flushbar/flushbar.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:filemanager/FileManagement/projectSetting/AuthService.dart';
 import 'package:filemanager/FileManagement/appLockUi/LockScreen.dart';
+import 'package:filemanager/FileManagement/projectSetting/AuthService.dart';
 import 'package:filemanager/FileManagement/uiComponents/uiUtility.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -13,9 +13,7 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../FileManagement/appLockUi/appLockScreen.dart';
 import '../FileManagement/privacyScreen/privacyScreen.dart';
-import '../FileManagement/projectSetting/Setting.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -35,7 +33,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   final storage = FlutterSecureStorage();
   final _authService = AuthService();
-  final uiObject=uiUtility();
+  final uiObject = uiUtility();
 
   @override
   void initState() {
@@ -96,31 +94,51 @@ class _FileManagerScreenState extends State<FileManagerScreen>
   bool shouldLock = false;
   List<FileSystemEntity> allItems = [];
   AuthService authService = AuthService();
+  bool privacyEnable = false;
 
   @override
   void initState() {
     super.initState();
     _requestPermissionsAndFetchFiles();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-    check(); // Call check() after the first frame is rendered
+      check(); // Call check() after the first frame is rendered
+      checkPrivacyOption();
     });
   }
-  void check(){
+  // Function to check the privacy lock option
+  void checkPrivacyOption() {
+    authService.getPrivacyLockOption().then((value) {
+      if (value == 'true') {
+        privacyEnable = true;
+        debugPrint("\n Privacy Enable: $privacyEnable");
+      } else {
+        privacyEnable = false;
+        debugPrint("\n Privacy Enable: $privacyEnable");
+      }
+    });
+  }
+  // Function to check the lock option and handle app lifecycle
+  void check() {
     authService.getStoredLockOption().then((lockOption) {
       debugPrint("Lock Option: $lockOption"); // Add this
-      if (lockOption == 'screenLock') {
-        WidgetsBinding.instance.addObserver(this);
-        authService.isBiometricTrulyAvailable().then((isAvailable){
-          if(isAvailable){
-            uiObject.showBottomSheets(this.context); // ✅ Now it's safe to call
-          }
-          else{
-            debugPrint("\n Biometric not available");
-          }
-        });
-      } else if (lockOption == 'pin') {
+      if (privacyEnable == false) {
         WidgetsBinding.instance.addObserver(this);
       }
+      else if (privacyEnable==true){
+        if (lockOption == 'screenLock') {
+          WidgetsBinding.instance.addObserver(this);
+          authService.isBiometricTrulyAvailable().then((isAvailable) {
+            if (isAvailable) {
+              uiObject.showBottomSheets(this.context); // ✅ Now it's safe to call
+            } else {
+              debugPrint("\n Biometric not available");
+            }
+          });
+        } else if (lockOption == 'pin') {
+          WidgetsBinding.instance.addObserver(this);
+        }
+      }
+
     });
   }
 
@@ -222,7 +240,7 @@ class _FileManagerScreenState extends State<FileManagerScreen>
         IconButton(
             onPressed: () {
               Navigator.push(context, MaterialPageRoute(builder: (_) {
-                return privacyScreen(); //AppLockSettingsScreen();
+                return privacyScreen(); //PrivacyScreen();
               }));
             },
             icon: Icon(Icons.settings))
