@@ -1,6 +1,7 @@
 import 'package:another_flushbar/flushbar.dart';
+import 'package:filemanager/FileManagement/uiComponents/uiUtility.dart';
 import 'package:flutter/material.dart';
-
+import 'package:super_tooltip/super_tooltip.dart';
 import '../../mainFile/MainFile.dart';
 import '../createPasswordUi/CreatePasswordScreen.dart';
 import '../projectSetting/AuthService.dart';
@@ -15,6 +16,7 @@ class LockScreen extends StatefulWidget {
 class _LookScreenState extends State<LockScreen> {
   final List<int> enteredPin = [];
   final _authService = AuthService();
+  final uiObject = uiUtility();
   bool _authRunning = false;
   final TextEditingController question1 = TextEditingController();
   final TextEditingController question2 = TextEditingController();
@@ -140,7 +142,7 @@ class _LookScreenState extends State<LockScreen> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                SizedBox(height: 50),
+                SizedBox(height: 130),
                 Container(
                     width: 85,
                     // Set the desired width
@@ -151,9 +153,12 @@ class _LookScreenState extends State<LockScreen> {
                       // Light blue background
                       shape: BoxShape.rectangle, // Circular shape
                     ),
-                    child: Image.asset('assets/images/logo.png',fit: BoxFit.cover,)),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      fit: BoxFit.cover,
+                    )),
                 SizedBox(
-                  height: 50,
+                  height: 70,
                 ),
                 Text(
                   'Enter your current 4-digit Pin code',
@@ -164,7 +169,7 @@ class _LookScreenState extends State<LockScreen> {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 28),
+                SizedBox(height: 30),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(4, (index) {
@@ -182,6 +187,19 @@ class _LookScreenState extends State<LockScreen> {
                   }),
                 ),
                 const SizedBox(
+                  height: 18,
+                ),
+                TextButton(
+                  onPressed: () => _authService.forgetPasswordDialogBox(
+                      context, _authService, question1, question2),
+                  child: Text("Forget PIN? Reset Password",
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      )),
+                ),
+                SizedBox(
                   height: 22,
                 ),
                 Container(
@@ -189,44 +207,14 @@ class _LookScreenState extends State<LockScreen> {
                   color: Colors.transparent,
                   child: Column(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 18, vertical: 8),
-                        child: SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: ElevatedButton(
-                              onPressed: enteredPin.length == 4
-                                  ? () {
-                                      verfiyPin();
-                                    }
-                                  : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey[850],
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                                elevation: 0,
-                                disabledBackgroundColor: Colors.grey[400],
-                                disabledForegroundColor: Colors.grey[200],
-                              ),
-                              child: Text(
-                                'NEXT',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.w500,
-                                    letterSpacing: 1.1),
-                              )),
-                        ),
-                      ),
                       SizedBox(
-                        height: 25,
+                        height: 20,
                       ),
                       ...[
                         [1, 2, 3],
                         [4, 5, 6],
                         [7, 8, 9],
-                        ['del', 0, ' ']
+                        ['del', 0, 'right']
                       ].map((row) => Padding(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 24, vertical: 4),
@@ -239,6 +227,17 @@ class _LookScreenState extends State<LockScreen> {
                                   return _KeypadButton(
                                       icon: Icons.backspace_outlined,
                                       onTap: onDelete);
+                                } else if (item == 'right') {
+                                  return _KeypadButton(
+                                      icon: Icons.check_circle_outline_rounded,
+                                      onTap: () {
+                                        enteredPin.length == 4
+                                            ? verfiyPin()
+                                            : showFlushbar(
+                                                "Please Enter 4 Digit Pin",
+                                                "Error",
+                                                context);
+                                      });
                                 } else {
                                   return _KeypadButton(
                                     label: item.toString(),
@@ -251,19 +250,6 @@ class _LookScreenState extends State<LockScreen> {
                           ))
                     ],
                   ),
-                ),
-                SizedBox(
-                  height: 5,
-                ),
-                TextButton(
-                  onPressed: () => _authService.forgetPasswordDialogBox(
-                      context, _authService, question1, question2),
-                  child: Text("Forget PIN? Reset Password",
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      )),
                 ),
               ],
             ),
@@ -280,7 +266,7 @@ class _LookScreenState extends State<LockScreen> {
     Map<String, dynamic> passwordData,
   ) async {
     if (question1.text.isEmpty || question2.text.isEmpty) {
-      _authService.flushBars("Please Answer Both Questions",
+      uiObject.flushBars("Please Answer Both Questions",
           "Both questions are required", Colors.red, context);
     } else if (question1.text == passwordData['answer1'] &&
         question2.text == passwordData['answer2']) {
@@ -293,7 +279,7 @@ class _LookScreenState extends State<LockScreen> {
         );
       }));
     } else {
-      _authService.flushBars(
+      uiObject.flushBars(
           "Wrong Answers", "Please try again", Colors.red, context);
     }
     question1.clear();
@@ -302,7 +288,8 @@ class _LookScreenState extends State<LockScreen> {
 }
 
 //This is Class for the KeyBoard and del for finger
-class _KeypadButton extends StatelessWidget {
+
+class _KeypadButton extends StatefulWidget {
   final String? label;
   final IconData? icon;
   final VoidCallback onTap;
@@ -310,35 +297,69 @@ class _KeypadButton extends StatelessWidget {
   const _KeypadButton({this.label, this.icon, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
-    return Expanded(
+  State<_KeypadButton> createState() => _KeypadButtonState();
+}
+
+class _KeypadButtonState extends State<_KeypadButton> {
+  SuperTooltip? tooltip;
+
+  void showTooltip(BuildContext context) {
+    tooltip = SuperTooltip(
+      popupDirection: TooltipDirection.up,
+      content: Material(
         child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.translucent,
-        child: Container(
-          height: 55,
-          width: 30,
-          decoration: const BoxDecoration(shape: BoxShape.circle),
-          child: Center(
-              child: icon != null
-                  ? Icon(
-                      icon,
-                      size: 28,
-                      color: Colors.blue,
-                      weight: 500,
-                    )
-                  : Text(
-                      label ?? '',
-                      style: TextStyle(
-                        fontSize: 26,
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )),
+          padding: const EdgeInsets.all(8.0),
+          child: Text(
+            widget.label ?? '',
+            style: TextStyle(color: Colors.white),
+          ),
         ),
       ),
-    ));
+      backgroundColor: Colors.black,
+      borderColor: Colors.blue,
+      showCloseButton: false,
+    );
+
+    final dynamic tooltipContext = context.findRenderObject();
+    if (tooltipContext != null) {
+      tooltip!.showOnTap;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+        child: InkWell(
+          onTap: () {
+            widget.onTap();
+            showTooltip(context);
+          },
+          child: Container(
+            height: 55,
+            width: 30,
+            decoration: const BoxDecoration(shape: BoxShape.circle),
+            child: Center(
+              child: widget.icon != null
+                  ? Icon(
+                widget.icon,
+                size: 30,
+                color: Colors.blue,
+                weight: 500,
+              )
+                  : Text(
+                widget.label ?? '',
+                style: TextStyle(
+                  fontSize: 26,
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
