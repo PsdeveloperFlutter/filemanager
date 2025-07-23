@@ -437,6 +437,7 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
         }));
   }
 
+  //Code for Creating a Folder
   Future<void> createFolder(BuildContext context) async {
     TextEditingController folderNameController = TextEditingController();
     String? errorText; // For feedback inside the dialog
@@ -489,8 +490,8 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
   //This Below Code is for the Drag and Drop Functionality of the File Manager
   Widget buildDraggableItems(int index, BuildContext context) {
     final item = allItems[index];
-    final isSelected = selectedItems.any((e) => e.path == item.path);
     final isFolder = item is Directory;
+    final isSelected = selectedItems.any((e) => e.path == item.path);
 
     return DragTarget<List<FileSystemEntity>>(
       onWillAcceptWithDetails: (dragged) => isFolder,
@@ -506,20 +507,21 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
       },
       builder: (context, candidateData, rejectedData) {
         final isHighlighted = candidateData.isNotEmpty;
-        return LongPressDraggable<List<FileSystemEntity>>(
+
+        return Draggable<List<FileSystemEntity>>(
           data: selectedItems.isEmpty ? [item] : selectedItems,
           feedback: Material(
             color: Colors.transparent,
             child: Container(
+              height: 40,
+              width: 120,
               decoration: BoxDecoration(
                 color: Colors.orangeAccent.shade200,
                 borderRadius: BorderRadius.circular(10),
               ),
-              height: 40,
-              width: 120,
               child: Center(
                 child: Text(
-                  "${selectedItems.isEmpty ? 1 : selectedItems.length} File${selectedItems.length == 1 || selectedItems.isEmpty ? '' : 's'}",
+                  "${selectedItems.isEmpty ? 1 : selectedItems.length} File${(selectedItems.length <= 1) ? '' : 's'}",
                   style: GoogleFonts.lato(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -528,8 +530,9 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
               ),
             ),
           ),
+
           onDragStarted: () {
-            // Optionally set selection mode here
+            print("Drag started with: ${selectedItems.map((e) => e.path).toList()}");
           },
           onDraggableCanceled: (_, __) {
             setState(() {
@@ -538,100 +541,88 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
             });
           },
           child: Card(
+            elevation: 1,
             color: isHighlighted && isFolder
                 ? Colors.greenAccent.shade200
                 : Colors.white,
-            elevation: 1,
-            child: SingleChildScrollView(
+            child: SizedBox(
+              height: 100,
               child: SizedBox(
-                height: 100,
-                child: Row(
-                  children: [
-                    isSelectionMode && !isFolder
-                        ? Checkbox(
-                            value: isSelected,
-                            onChanged: (checked) {
-                              setState(() {
-                                if (checked == true) {
-                                  selectedItems.add(item);
-                                } else {
-                                  selectedItems
-                                      .removeWhere((e) => e.path == item.path);
-                                }
-                              });
-                            },
-                          )
-                        : Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 18.0),
-                            child: Icon(
-                              isFolder ? Icons.folder : Icons.insert_drive_file,
-                              color: Colors.green,
-                              size: 25,
-                            ),
-                          ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          OpenFilex.open(item.path);
-                        },
-                        child: ListTile(
-                          subtitle: isFolder == true
-                              ? Text("Folder")
-                              : Text(
-                                  "File",
-                                  style: TextStyle(
-                                      color: Colors.black, fontSize: 15),
-                                ),
-                          title: Text(
-                            basename(item.path),
-                            style: TextStyle(
-                              fontWeight: (isSelected && isSelectionMode)
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              color: (isSelected && isSelectionMode)
-                                  ? Colors.blue
-                                  : Colors.black,
-                            ),
-                          ),
-                          onTap: () {
-                            if (isSelectionMode) {
-                              setState(() {
-                                if (isSelected) {
-                                  selectedItems
-                                      .removeWhere((e) => e.path == item.path);
-                                } else {
-                                  selectedItems.add(item);
-                                }
-                              });
-                            } else if (isFolder) {
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        FileManagerScreenSub(path: item.path),
-                                  ));
-                            } else {
-                              OpenFilex.open(item.path);
-                            }
-                          },
-                          onLongPress: () {
+                width: 40,
+                child: ListTile(
+                  onTap: () {
+                    if (isSelectionMode && !isFolder) {
+                      setState(() {
+                        if (isSelected) {
+                          selectedItems.removeWhere((e) => e.path == item.path);
+                        } else {
+                          selectedItems.add(item);
+                        }
+                      });
+                    } else if (isFolder) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              FileManagerScreenSub(path: item.path),
+                        ),
+                      );
+                    } else {
+                      OpenFilex.open(item.path); // ✅ Open file on tap
+                    }
+                  },
+                  onLongPress: () {
+                    if (!isFolder) {
+                      setState(() {
+                        isSelectionMode = true;
+                        if (!isSelected) {
+                          selectedItems.add(item);
+                        }
+                      });
+                    }
+
+                  },
+                  leading: isSelectionMode && !isFolder
+                      ? Checkbox(
+                          value: isSelected,
+                          onChanged: (checked) {
                             setState(() {
-                              if (isFolder) {
-                                isSelectionMode = false;
-                              } else {
-                                isSelectionMode = true;
-                              }
-                              if (!selectedItems
-                                  .any((e) => e.path == item.path)) {
+                              if (checked == true) {
                                 selectedItems.add(item);
+                              } else {
+                                selectedItems.removeWhere(
+                                    (e) => e.path == item.path);
                               }
                             });
                           },
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 18.0),
+                          child: Icon(
+                            isFolder
+                                ? Icons.folder
+                                : Icons.insert_drive_file,
+                            color: Colors.green,
+                            size: 25,
+                          ),
                         ),
-                      ),
+                  title: Text(
+                    basename(item.path),
+                    style: TextStyle(
+                      fontWeight: (isSelected && isSelectionMode)
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      color: (isSelected && isSelectionMode)
+                          ? Colors.blue
+                          : Colors.black,
+                      fontSize: 15,
                     ),
-                  ],
+                  ),
+                  subtitle: Text(
+                    isFolder ? 'Folder' : 'File',
+                    style: const TextStyle(fontSize: 13),
+                  ),
                 ),
               ),
             ),
