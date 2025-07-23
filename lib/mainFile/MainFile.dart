@@ -82,6 +82,9 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+// This is the Code For the File Manager Screen
 class FileManagerScreen extends StatefulWidget {
   const FileManagerScreen({super.key});
 
@@ -99,53 +102,77 @@ class _FileManagerScreenState extends State<FileManagerScreen>
   @override
   void initState() {
     super.initState();
-    _requestPermissionsAndFetchFiles();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      check(); // Call check() after the first frame is rendered
-      checkPrivacyOption();
-    });
-  }
-  // Function to check the privacy lock option
-  void checkPrivacyOption() {
-    authService.getPrivacyLockOption().then((value) {
-      if (value == 'true') {
-        privacyEnable = true;
-        debugPrint("\n Privacy Enable: $privacyEnable");
-      } else {
-        privacyEnable = false;
-        debugPrint("\n Privacy Enable: $privacyEnable");
-      }
-    });
-  }
-  // Function to check the lock option and handle app lifecycle
-  void check() {
-    authService.getStoredLockOption().then((lockOption) {
-      debugPrint("Lock Option: $lockOption"); // Add this
-      if (privacyEnable == false) {
-        WidgetsBinding.instance.addObserver(this);
-      }
-      else if (privacyEnable==true){
-        if (lockOption == 'screenLock') {
-          WidgetsBinding.instance.addObserver(this);
-          authService.isBiometricTrulyAvailable().then((isAvailable) {
-            if (isAvailable) {
-              uiObject.showBottomSheets(this.context); // ✅ Now it's safe to call
-            } else {
-              debugPrint("\n Biometric not available");
-            }
-          });
-        } else if (lockOption == 'pin') {
-          WidgetsBinding.instance.addObserver(this);
-        }
-      }
+    WidgetsBinding.instance.addObserver(this);
 
+    // Request permissions and check privacy after UI is rendered
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _requestPermissionsAndFetchFiles();
+      await checkPrivacyOption();
+      await checkLockOption();
     });
   }
 
   @override
   void dispose() {
-    super.dispose();
     WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // 📲 App lifecycle events: handle screen lock/resume
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      shouldLock = true;
+    } else if (state == AppLifecycleState.resumed && shouldLock) {
+      shouldLock = false;
+      _handleAppUnlock();
+    }
+  }
+
+  // 🔐 Check user privacy setting
+  Future<void> checkPrivacyOption() async {
+    final value = await authService.getPrivacyLockOption();
+    privacyEnable = value == 'true';
+    debugPrint("Privacy Enabled: $privacyEnable");
+  }
+
+  // 🔐 Initial check when app starts
+  Future<void> checkLockOption() async {
+    if (!privacyEnable) return;
+
+    final lockOption = await authService.getStoredLockOption();
+
+    if (lockOption == 'screenLock') {
+      final isAvailable = await authService.isBiometricTrulyAvailable();
+      if (isAvailable) {
+        uiObject
+            .showBottomSheets(navigatorKey.currentContext!); // biometric screen
+      } else {
+        debugPrint("Biometric not available");
+      }
+    } else if (lockOption == 'pin') {
+      navigatorKey.currentState?.push(MaterialPageRoute(
+        builder: (_) => LockScreen(),
+      ));
+    }
+  }
+
+  // 🔄 Handle app resume from screen lock
+  void _handleAppUnlock() async {
+    if (!privacyEnable) return;
+
+    final lockOption = await authService.getStoredLockOption();
+
+    if (lockOption == 'screenLock') {
+      final isAvailable = await authService.isBiometricTrulyAvailable();
+      if (isAvailable) {
+        uiObject.showBottomSheets(navigatorKey.currentContext!);
+      }
+    } else if (lockOption == 'pin') {
+      navigatorKey.currentState?.push(MaterialPageRoute(
+        builder: (_) => LockScreen(),
+      ));
+    }
   }
 
   @override
@@ -155,15 +182,11 @@ class _FileManagerScreenState extends State<FileManagerScreen>
     }
     if (state == AppLifecycleState.resumed && shouldLock) {
       shouldLock = false;
-      lockapp(context as BuildContext);
+      Navigator.pushReplacement(
+        context as BuildContext,
+        MaterialPageRoute(builder: (context) => LockScreen()),
+      );
     }
-  }
-
-  lockapp(BuildContext context) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => LockScreen()),
-    );
   }
 
   //request permission and fetch
