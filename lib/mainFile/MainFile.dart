@@ -50,14 +50,11 @@ class _MyAppState extends State<MyApp> {
       } else {
         return LockScreen();
       }
-    } else if (lockOption == 'screenLock') {
-      return FileManagerScreen();
-      // final authenticated = await _authService.allAuthenticationOfDevice();
-      // if (authenticated) {
-      //   return FileManagerScreen();
-      // } else {
-      //   return LockScreen();
-      // }
+    } else if (lockOption == 'screenLock' && mounted) { // Added 'mounted' check
+      // It's important to check if the widget is still in the tree
+      // before interacting with its context, especially in async methods.
+      uiObject.showBottomSheets(this.context); // Show biometric options
+      return FileManagerScreen(); // Return a default screen while bottom sheet is shown
     } else {
       return FileManagerScreen();
     }
