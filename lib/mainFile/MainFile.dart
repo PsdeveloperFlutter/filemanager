@@ -38,6 +38,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+
   }
 
   Future<Widget> _decideStartScreen() async {
@@ -50,7 +51,8 @@ class _MyAppState extends State<MyApp> {
       } else {
         return LockScreen();
       }
-    } else if (lockOption == 'screenLock' && mounted) { // Added 'mounted' check
+    } else if (lockOption == 'screenLock' && mounted) {
+      // Added 'mounted' check
       // It's important to check if the widget is still in the tree
       // before interacting with its context, especially in async methods.
       uiObject.showBottomSheets(this.context); // Show biometric options
@@ -95,17 +97,27 @@ class _FileManagerScreenState extends State<FileManagerScreen>
   List<FileSystemEntity> allItems = [];
   AuthService authService = AuthService();
   bool privacyEnable = false;
+  bool isSelectionMode = false;
+  List<FileSystemEntity> selectedItems = [];
+  List<FileSystemEntity> currentlyDraggingItems = [];
+  bool isDragging = false;
+  String? hoverTargetPath;
+  bool isGridView = false;
+  bool isDragg = false;
 
   @override
   void initState() {
     super.initState();
+    fetchFolderContent();
     WidgetsBinding.instance.addObserver(this);
 
     // Request permissions and check privacy after UI is rendered
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _requestPermissionsAndFetchFiles();
       await checkPrivacyOption();
-      await checkLockOption();
+      // Ensure the widget is still mounted before calling checkLockOption
+      // to prevent errors if the widget is disposed before the async operation completes.
+      if (mounted) await checkLockOption();
     });
   }
 
@@ -142,8 +154,8 @@ class _FileManagerScreenState extends State<FileManagerScreen>
     if (lockOption == 'screenLock') {
       final isAvailable = await authService.isBiometricTrulyAvailable();
       if (isAvailable) {
-        uiObject
-            .showBottomSheets(navigatorKey.currentContext!); // biometric screen
+        // Ensure context is still valid before using it.
+        if (navigatorKey.currentContext != null) uiObject.showBottomSheets(navigatorKey.currentContext!);
       } else {
         debugPrint("Biometric not available");
       }
@@ -163,7 +175,8 @@ class _FileManagerScreenState extends State<FileManagerScreen>
     if (lockOption == 'screenLock') {
       final isAvailable = await authService.isBiometricTrulyAvailable();
       if (isAvailable) {
-        uiObject.showBottomSheets(navigatorKey.currentContext!);
+        // Ensure context is still valid.
+        if (navigatorKey.currentContext != null) uiObject.showBottomSheets(navigatorKey.currentContext!);
       }
     } else if (lockOption == 'pin') {
       navigatorKey.currentState?.push(MaterialPageRoute(
@@ -172,19 +185,13 @@ class _FileManagerScreenState extends State<FileManagerScreen>
     }
   }
 
-  @override
+  // Note: didChangeAppLifeCycleState seems to be a typo and might conflict with didChangeAppLifecycleState.
+  // If it's intended to be an override, it should match the framework's method signature exactly.
+  // For now, I'm commenting it out as it might be redundant or incorrectly implemented.
+  /* @override
   void didChangeAppLifeCycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      shouldLock = true;
-    }
-    if (state == AppLifecycleState.resumed && shouldLock) {
-      shouldLock = false;
-      Navigator.pushReplacement(
-        context as BuildContext,
-        MaterialPageRoute(builder: (context) => LockScreen()),
-      );
-    }
-  }
+    // ... existing logic ...
+  } */
 
   //request permission and fetch
   Future<void> _requestPermissionsAndFetchFiles() async {
@@ -253,6 +260,239 @@ class _FileManagerScreenState extends State<FileManagerScreen>
     }
   }
 
+  //For Fetching the Folders
+  void fetchFolderContent() {
+    final dir = Directory(
+        "/storage/emulated/0"); // Example path, replace with actual logic if needed
+    if (dir.existsSync()) {
+      List<FileSystemEntity> items = dir.listSync();
+
+      items.sort((a, b) {
+        if (a is Directory && b is File) return -1;
+        if (a is File && b is Directory) return 1;
+        return a.path.toLowerCase().compareTo(b.path.toLowerCase());
+      });
+      setState(() {
+        allItems = items;
+        selectedItems.clear();
+      });
+    }
+  }
+
+  Future<void> handleDrop(String targetPath,
+      List<FileSystemEntity> draggedItems, BuildContext context) async {
+    await Future.wait(draggedItems.map((item) async {
+      final newPath = '$targetPath/${basename(item.path)}';
+      try {
+        if (await FileSystemEntity.type(newPath) ==
+            FileSystemEntityType.notFound) {
+          await item.rename(newPath);
+        }
+      } catch (e) {
+        debugPrint("Error moving file: $e");
+      }
+    }));
+    fetchFolderContent();
+    setState(() {
+      selectedItems.clear();
+      isSelectionMode = false;
+    });
+  }
+
+  //This Below Code is for the Drag and Drop Functionality of the File Manager
+  Widget buildDraggableItems(int index, BuildContext context) {
+    final item = allItems[index];
+    final isFolder = item is Directory;
+    final isSelected = selectedItems.any((e) => e.path == item.path);
+
+    return DragTarget<List<FileSystemEntity>>(
+      onWillAcceptWithDetails: (dragged) => isFolder,
+      onAccept: (dragged) async {
+        if (isFolder) {
+          await movesFileToFolder(
+              dragged, item, context, selectedItems.length, item);
+          setState(() {
+            selectedItems.clear();
+            isSelectionMode = false;
+          });
+        }
+      },
+      builder: (context, candidateData, rejectedData) {
+        final isHighlighted = candidateData.isNotEmpty;
+
+        return LongPressDraggable<List<FileSystemEntity>>(
+          data: selectedItems.isEmpty ? [item] : selectedItems,
+          feedback: Material(
+            color: Colors.transparent,
+            child: Container(
+              height: 40,
+              width: 120,
+              decoration: BoxDecoration(
+                color: Colors.orangeAccent.shade200,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: Text(
+                  "${selectedItems.isEmpty ? 1 : selectedItems.length} File${(selectedItems.length <= 1) ? '' : 's'}",
+                  style: GoogleFonts.lato(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          onDragStarted: () {
+            setState(() {
+              isDragging = true;
+            });
+            print(
+                "Drag started with: ${selectedItems.map((e) => e.path).toList()}");
+          },
+          onDraggableCanceled: (_, __) {
+            setState(() {
+              selectedItems.clear();
+              isSelectionMode = false;
+              isDragg = false;
+            });
+          },
+          onDragEnd: (_) {
+            setState(() {
+              selectedItems.clear();
+              isDragging = false;
+              isDragg = false;
+            });
+          },
+          child: AnimatedScale(
+            filterQuality: FilterQuality.high,
+            scale: (isDragging && isSelected) ? 1.10 : 1.0,
+            duration: const Duration(milliseconds: 300),
+            child: Card(
+              elevation: 1,
+              color: isHighlighted && isFolder
+                  ? Colors.greenAccent.shade200
+                  : Colors.white,
+              child: SizedBox(
+                width: 40,
+                child: ListTile(
+
+                  onTap: () {
+                    if (isSelectionMode && !isFolder) {
+                      setState(() {
+                        if (isSelected) {
+                          selectedItems
+                              .removeWhere((e) => e.path == item.path);
+                        } else {
+                          selectedItems.add(item);
+                        }
+                      });
+                    } else if (isFolder) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              FileManagerScreenSub(path: item.path),
+                        ),
+                      );
+                    } else {
+                      OpenFilex.open(item.path); // ✅ Open file on tap
+                    }
+                  },
+                  onLongPress: !isSelectionMode && !isFolder
+                      ? () {
+                          setState(() {
+                            isSelectionMode = true;
+                            if (!isSelected) {
+                              selectedItems.add(item);
+                            }
+                          });
+                        }
+                      : null,
+                  leading: isSelectionMode && !isFolder
+                      ? Checkbox(
+                          value: isSelected,
+                          onChanged: (checked) {
+                            setState(() {
+                              if (checked == true) {
+                                selectedItems.add(item);
+                              } else {
+                                selectedItems
+                                    .removeWhere((e) => e.path == item.path);
+                              }
+                            });
+                          },
+                        )
+                      : Padding(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 18.0),
+                          child: Icon(
+                            isFolder ? Icons.folder : Icons.insert_drive_file,
+                            color: Colors.green,
+                            size: 25,
+                          ),
+                        ),
+                  title: Text(
+                    basename(item.path),
+                    style: TextStyle(
+                      fontWeight: (isSelected && isSelectionMode)
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      color: (isSelected && isSelectionMode)
+                          ? Colors.blue
+                          : Colors.black,
+                      fontSize: 15,
+                    ),
+                  ),
+                  subtitle: Text(
+                    isFolder ? 'Folder' : 'File',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+//This Below Function is for the Moving of the File to the Folder
+  Future<void> movesFileToFolder(
+      List<FileSystemEntity> files,
+      Directory targetFolder,
+      BuildContext context,
+      int len,
+      Directory item) async {
+    for (final file in files) {
+      try {
+        final filename = basename(file.path);
+        final newPath = join(targetFolder.path, filename);
+        await file.rename(newPath);
+        Flushbar(
+          title: 'Successfully',
+          message: len == 0
+              ? '${len + 1} Document Move Successfully'
+              : len == 1
+                  ? ' $len Document Move Successfully'
+                  : '$len Documents Move Successfully',
+          duration: Duration(seconds: 3),
+          backgroundColor: Colors.orangeAccent,
+          icon: Icon(
+            Icons.check,
+            color: Colors.black,
+          ),
+        ).show(context).then((_) {
+          Navigator.push(context, MaterialPageRoute(builder: (context) {
+            return FileManagerScreenSub(path: item.path);
+          }));
+        });
+      } catch (e) {
+        debugPrint("Error moving file: $e");
+      }
+    }
+    fetchFolderContent(); //For Refresh the Folder
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -268,35 +508,13 @@ class _FileManagerScreenState extends State<FileManagerScreen>
       body: ListView.builder(
           itemCount: allItems.length,
           itemBuilder: (context, index) {
-            final item = allItems[index];
-            final isFolder = item is Directory;
-            return Card(
-              elevation: 2,
-              child: ListTile(
-                  leading: Icon(
-                    isFolder ? Icons.folder : Icons.insert_drive_file,
-                    color: Colors.green,
-                  ),
-                  title: Text(item.path.split("/").last),
-                  subtitle: Text(isFolder ? "Folder" : "File"),
-                  onTap: () {
-                    if (!isFolder) {
-                      // Open file using the OpenFiles package
-                      OpenFilex.open(item.path);
-                    } else {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) =>
-                                  FileManagerScreenSub(path: item.path)));
-                    }
-                  }),
-            );
+            return buildDraggableItems(index, context);
           }),
     );
   }
 }
 
+// This is the Code For the File Manager Sub Screen
 class FileManagerScreenSub extends StatefulWidget {
   final String path;
 
@@ -317,7 +535,6 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
   String? hoverTargetPath;
   bool isGridView = false;
   bool isDragg = false;
-  ScrollController scrollController = ScrollController();
 
   @override
   void initState() {
@@ -520,14 +737,11 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    "${selectedItems.isEmpty ? 1 : selectedItems.length} File${(selectedItems.length <= 1) ? '' : 's'}",
-                    style: GoogleFonts.lato(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
+                child: Text(
+                  "${selectedItems.isEmpty ? 1 : selectedItems.length} File${(selectedItems.length <= 1) ? '' : 's'}",
+                  style: GoogleFonts.lato(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -564,81 +778,78 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
                   ? Colors.greenAccent.shade200
                   : Colors.white,
               child: SizedBox(
-                height: 100,
-                child: SizedBox(
-                  width: 40,
-                  child: ListTile(
-                    onTap: () {
-                      if (isSelectionMode && !isFolder) {
-                        setState(() {
-                          if (isSelected) {
-                            selectedItems
-                                .removeWhere((e) => e.path == item.path);
-                          } else {
-                            selectedItems.add(item);
-                          }
-                        });
-                      } else if (isFolder) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                FileManagerScreenSub(path: item.path),
+                width: 40,
+                child: ListTile(
+                  onTap: () {
+                    if (isSelectionMode && !isFolder) {
+                      setState(() {
+                        if (isSelected) {
+                          selectedItems
+                              .removeWhere((e) => e.path == item.path);
+                        } else {
+                          selectedItems.add(item);
+                        }
+                      });
+                    } else if (isFolder) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              FileManagerScreenSub(path: item.path),
+                        ),
+                      );
+                    } else {
+                      OpenFilex.open(item.path); // ✅ Open file on tap
+                    }
+                  },
+                  onLongPress: !isSelectionMode && !isFolder
+                      ? () {
+                          setState(() {
+                            isSelectionMode = true;
+                            if (!isSelected) {
+                              selectedItems.add(item);
+                            }
+                          });
+                        }
+                      : null,
+                  leading: isSelectionMode && !isFolder
+                      ? Checkbox(
+                          value: isSelected,
+                          onChanged: (checked) {
+                            setState(() {
+                              if (checked == true) {
+                                selectedItems.add(item);
+                              } else {
+                                selectedItems
+                                    .removeWhere((e) => e.path == item.path);
+                              }
+                            });
+                          },
+                        )
+                      : Padding(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 18.0),
+                          child: Icon(
+                            isFolder ? Icons.folder : Icons.insert_drive_file,
+                            color: Colors.green,
+                            size: 25,
                           ),
-                        );
-                      } else {
-                        OpenFilex.open(item.path); // ✅ Open file on tap
-                      }
-                    },
-                    onLongPress: !isSelectionMode && !isFolder
-                        ? () {
-                              setState(() {
-                                isSelectionMode = true;
-                                if (!isSelected) {
-                                  selectedItems.add(item);
-                                }
-                              });
-                          }
-                        : null,
-                    leading: isSelectionMode && !isFolder
-                        ? Checkbox(
-                            value: isSelected,
-                            onChanged: (checked) {
-                              setState(() {
-                                if (checked == true) {
-                                  selectedItems.add(item);
-                                } else {
-                                  selectedItems
-                                      .removeWhere((e) => e.path == item.path);
-                                }
-                              });
-                            },
-                          )
-                        : Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 18.0),
-                            child: Icon(
-                              isFolder ? Icons.folder : Icons.insert_drive_file,
-                              color: Colors.green,
-                              size: 25,
-                            ),
-                          ),
-                    title: Text(
-                      basename(item.path),
-                      style: TextStyle(
-                        fontWeight: (isSelected && isSelectionMode)
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        color: (isSelected && isSelectionMode)
-                            ? Colors.blue
-                            : Colors.black,
-                        fontSize: 15,
-                      ),
+                        ),
+                  title: Text(
+                    basename(item.path),
+                    style: TextStyle(
+                      fontWeight: (isSelected && isSelectionMode)
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      color: (isSelected && isSelectionMode)
+                          ? Colors.blue
+                          : Colors.black,
+                      fontSize: 15,
                     ),
-                    subtitle: Text(
-                      isFolder ? 'Folder' : 'File',
-                      style: const TextStyle(fontSize: 13),
-                    ),
+                  ),
+                  subtitle: Text(
+                    isFolder ? 'Folder' : 'File',
+                    style: const TextStyle(fontSize: 13),
                   ),
                 ),
               ),

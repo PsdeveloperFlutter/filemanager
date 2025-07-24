@@ -53,6 +53,7 @@ dependencies:
   flutter_gif: ^0.0.4
   #open_file: ^3.3.2
   shared_preferences: ^2.2.2
+  gesture_password_widget: ^2.0.1
   sqflite: ^2.3.2
   provider: ^6.1.2
   pdf: ^3.10.4
