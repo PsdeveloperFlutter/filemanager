@@ -1,8 +1,9 @@
 import 'dart:io';
-import 'package:filemanager/FileManagement/privacyScreen/privacyScreen.dart';
+
 import 'package:another_flushbar/flushbar.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:filemanager/FileManagement/appLockUi/LockScreen.dart';
+import 'package:filemanager/FileManagement/privacyScreen/privacyScreen.dart';
 import 'package:filemanager/FileManagement/projectSetting/AuthService.dart';
 import 'package:filemanager/FileManagement/uiComponents/uiUtility.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +13,6 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-
 
 void main() {
   runApp(MaterialApp(
@@ -37,7 +37,6 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-
   }
 
   Future<Widget> _decideStartScreen() async {
@@ -154,7 +153,8 @@ class _FileManagerScreenState extends State<FileManagerScreen>
       final isAvailable = await authService.isBiometricTrulyAvailable();
       if (isAvailable) {
         // Ensure context is still valid before using it.
-        if (navigatorKey.currentContext != null) uiObject.showBottomSheets(navigatorKey.currentContext!);
+        if (navigatorKey.currentContext != null)
+          uiObject.showBottomSheets(navigatorKey.currentContext!);
       } else {
         debugPrint("Biometric not available");
       }
@@ -175,7 +175,8 @@ class _FileManagerScreenState extends State<FileManagerScreen>
       final isAvailable = await authService.isBiometricTrulyAvailable();
       if (isAvailable) {
         // Ensure context is still valid.
-        if (navigatorKey.currentContext != null) uiObject.showBottomSheets(navigatorKey.currentContext!);
+        if (navigatorKey.currentContext != null)
+          uiObject.showBottomSheets(navigatorKey.currentContext!);
       }
     } else if (lockOption == 'pin') {
       navigatorKey.currentState?.push(MaterialPageRoute(
@@ -374,13 +375,11 @@ class _FileManagerScreenState extends State<FileManagerScreen>
               child: SizedBox(
                 width: 40,
                 child: ListTile(
-
                   onTap: () {
                     if (isSelectionMode && !isFolder) {
                       setState(() {
                         if (isSelected) {
-                          selectedItems
-                              .removeWhere((e) => e.path == item.path);
+                          selectedItems.removeWhere((e) => e.path == item.path);
                         } else {
                           selectedItems.add(item);
                         }
@@ -422,8 +421,7 @@ class _FileManagerScreenState extends State<FileManagerScreen>
                           },
                         )
                       : Padding(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 18.0),
+                          padding: const EdgeInsets.symmetric(horizontal: 18.0),
                           child: Icon(
                             isFolder ? Icons.folder : Icons.insert_drive_file,
                             color: Colors.green,
@@ -495,15 +493,29 @@ class _FileManagerScreenState extends State<FileManagerScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("File Manager"), actions: [
-        IconButton(
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) {
-                return privacyScreen(); //PrivacyScreen();
-              }));
-            },
-            icon: Icon(Icons.settings))
-      ]),
+      appBar: AppBar(
+          title: isSelectionMode
+              ? Text("File Manager")
+              : GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      isSelectionMode = false;
+                      selectedItems.clear();
+                    });
+                  },
+                  child: Icon(
+                    Icons.cancel,
+                    color: Colors.green,
+                  )),
+          actions: [
+            IconButton(
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) {
+                    return privacyScreen(); //PrivacyScreen();
+                  }));
+                },
+                icon: Icon(Icons.settings))
+          ]),
       body: ListView.builder(
           itemCount: allItems.length,
           itemBuilder: (context, index) {
@@ -783,8 +795,7 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
                     if (isSelectionMode && !isFolder) {
                       setState(() {
                         if (isSelected) {
-                          selectedItems
-                              .removeWhere((e) => e.path == item.path);
+                          selectedItems.removeWhere((e) => e.path == item.path);
                         } else {
                           selectedItems.add(item);
                         }
@@ -826,8 +837,7 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
                           },
                         )
                       : Padding(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 18.0),
+                          padding: const EdgeInsets.symmetric(horizontal: 18.0),
                           child: Icon(
                             isFolder ? Icons.folder : Icons.insert_drive_file,
                             color: Colors.green,
