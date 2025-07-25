@@ -154,8 +154,9 @@ class _FileManagerScreenState extends State<FileManagerScreen>
       final isAvailable = await authService.isBiometricTrulyAvailable();
       if (isAvailable) {
         // Ensure context is still valid before using it.
-        if (navigatorKey.currentContext != null)
+        if (navigatorKey.currentContext != null) {
           uiObject.showBottomSheets(navigatorKey.currentContext!);
+        }
       } else {
         debugPrint("Biometric not available");
       }
@@ -310,7 +311,7 @@ class _FileManagerScreenState extends State<FileManagerScreen>
       onWillAcceptWithDetails: (dragged) => isFolder,
       onAccept: (dragged) async {
         if (isFolder) {
-          await movesFileToFolder(
+          await authService.movesFileToFolder(
               dragged, item, context, selectedItems.length, item);
           setState(() {
             selectedItems.clear();
@@ -455,47 +456,13 @@ class _FileManagerScreenState extends State<FileManagerScreen>
   }
 
 //This Below Function is for the Moving of the File to the Folder
-  Future<void> movesFileToFolder(
-      List<FileSystemEntity> files,
-      Directory targetFolder,
-      BuildContext context,
-      int len,
-      Directory item) async {
-    for (final file in files) {
-      try {
-        final filename = basename(file.path);
-        final newPath = join(targetFolder.path, filename);
-        await file.rename(newPath);
-        Flushbar(
-          title: 'Successfully',
-          message: len == 0
-              ? '${len + 1} Document Move Successfully'
-              : len == 1
-                  ? ' $len Document Move Successfully'
-                  : '$len Documents Move Successfully',
-          duration: Duration(seconds: 3),
-          backgroundColor: Colors.orangeAccent,
-          icon: Icon(
-            Icons.check,
-            color: Colors.black,
-          ),
-        ).show(context).then((_) {
-          Navigator.push(context, MaterialPageRoute(builder: (context) {
-            return FileManagerScreenSub(path: item.path);
-          }));
-        });
-      } catch (e) {
-        debugPrint("Error moving file: $e");
-      }
-    }
-    fetchFolderContent(); //For Refresh the Folder
-  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          title: isSelectionMode==false
+          title: isSelectionMode == false
               ? Text("File Manager")
               : GestureDetector(
                   onTap: () {
@@ -533,15 +500,15 @@ class FileManagerScreenSub extends StatefulWidget {
   const FileManagerScreenSub({super.key, required this.path});
 
   @override
-  State<FileManagerScreenSub> createState() => _FileManagerScreenSubState();
+  State<FileManagerScreenSub> createState() => FileManagerScreenSubState();
 }
 
-class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
-  final ScrollController _scrollController = ScrollController();
+class FileManagerScreenSubState extends State<FileManagerScreenSub> {
   bool isSelectionMode = false;
   List<FileSystemEntity> selectedItems = [];
   List<FileSystemEntity> currentlyDraggingItems = [];
   bool isDragging = false;
+  AuthService authService = AuthService();
 
   List<FileSystemEntity> allItems = [];
   String? hoverTargetPath;
@@ -557,7 +524,6 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
   @override
   void dispose() {
     super.dispose();
-    _scrollController.dispose();
   }
 
   //For Fetching the Folders
@@ -603,7 +569,7 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
     return Scaffold(
         floatingActionButton: FloatingActionButton(
           backgroundColor: Colors.green,
-          onPressed: () => createFolder(context),
+          onPressed: () => authService.createFolder(context,widget.path),
           child: Icon(
             Icons.add,
             color: Colors.white,
@@ -657,63 +623,12 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
                       width: 80,
                       child: buildDraggableItems(index, context)))
               : ListView.builder(
-                  controller: _scrollController,
                   itemCount: allItems.length,
                   itemBuilder: (context, index) {
                     return buildDraggableItems(index, context);
                   },
                 );
         }));
-  }
-
-  //Code for Creating a Folder
-  Future<void> createFolder(BuildContext context) async {
-    TextEditingController folderNameController = TextEditingController();
-    String? errorText; // For feedback inside the dialog
-    showDialog(
-        context: context,
-        builder: (context) {
-          return StatefulBuilder(
-              builder: (context, setState) => AlertDialog(
-                      title: Text("Create a New Folder"),
-                      content: TextField(
-                        controller: folderNameController,
-                        decoration: InputDecoration(
-                          hintText: "Enter Folder Name",
-                          errorText: errorText,
-                        ),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () {
-                            folderNameController.clear();
-                            Navigator.of(context).pop();
-                          },
-                          child: Text("Cancel"),
-                        ),
-                        TextButton(
-                          onPressed: () async {
-                            String newFolderName =
-                                folderNameController.text.trim();
-                            if (newFolderName.isNotEmpty) {
-                              final folder =
-                                  Directory("${widget.path}/$newFolderName");
-                              if (!await folder.exists()) {
-                                await folder.create();
-                                fetchFolderContent();
-                                folderNameController.clear();
-                                Navigator.of(context).pop();
-                              } else {
-                                setState(() {
-                                  errorText = "Folder Already Exists";
-                                });
-                              }
-                            }
-                          },
-                          child: Text("Create"),
-                        )
-                      ]));
-        });
   }
 
   //This Below Code is for the Drag and Drop Functionality of the File Manager
@@ -726,7 +641,7 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
       onWillAcceptWithDetails: (dragged) => isFolder,
       onAccept: (dragged) async {
         if (isFolder) {
-          await movesFileToFolder(
+          await authService.movesFileToFolder(
               dragged, item, context, selectedItems.length, item);
           setState(() {
             selectedItems.clear();
@@ -868,42 +783,5 @@ class _FileManagerScreenSubState extends State<FileManagerScreenSub> {
         );
       },
     );
-  }
-
-//This Below Function is for the Moving of the File to the Folder
-  Future<void> movesFileToFolder(
-      List<FileSystemEntity> files,
-      Directory targetFolder,
-      BuildContext context,
-      int len,
-      Directory item) async {
-    for (final file in files) {
-      try {
-        final filename = basename(file.path);
-        final newPath = join(targetFolder.path, filename);
-        await file.rename(newPath);
-        Flushbar(
-          title: 'Successfully',
-          message: len == 0
-              ? '${len + 1} Document Move Successfully'
-              : len == 1
-                  ? ' $len Document Move Successfully'
-                  : '$len Documents Move Successfully',
-          duration: Duration(seconds: 3),
-          backgroundColor: Colors.orangeAccent,
-          icon: Icon(
-            Icons.check,
-            color: Colors.black,
-          ),
-        ).show(context).then((_) {
-          Navigator.push(context, MaterialPageRoute(builder: (context) {
-            return FileManagerScreenSub(path: item.path);
-          }));
-        });
-      } catch (e) {
-        debugPrint("Error moving file: $e");
-      }
-    }
-    fetchFolderContent(); //For Refresh the Folder
   }
 }

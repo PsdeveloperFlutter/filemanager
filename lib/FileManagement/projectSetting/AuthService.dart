@@ -3,11 +3,21 @@ import 'dart:io';
 
 import 'package:another_flushbar/flushbar.dart';
 import 'package:filemanager/FileManagement/createPasswordUi/CreatePasswordScreen.dart';
+import 'package:filemanager/FileManagement/uiComponents/uiUtility.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:path/path.dart';
 
+import '../mainFile/MainFile.dart';
+
+void main() {
+  AuthService obj = AuthService();
+  obj.printAvailableBiometrics();
+}
+FileManagerScreenSubState fileObject=FileManagerScreenSubState();
+uiUtility uiObject = uiUtility();
 class AuthService {
   final _storage = FlutterSecureStorage();
   final _auth = LocalAuthentication();
@@ -23,6 +33,17 @@ class AuthService {
         value: jsonString); //store the jsonString to the flutter secure storage
     await _storage.write(key: _localKey, value: true.toString());
     debugPrint("\n $pin Pin set successfully $jsonString");
+  }
+
+  //This Code is For Check Pin
+  Future<bool> seePin() async {
+    String? pin = await getPin();
+    if(pin !=null && pin.isNotEmpty){
+      return true;
+    }
+    else{
+      return false;
+    }
   }
 
   //This Code is For get Pin
@@ -135,7 +156,7 @@ class AuthService {
             biometricOnly: false,
             // ✅ False rakhein taki sirf PIN, pattern, password chale
             useErrorDialogs: true,
-            stickyAuth: false,
+            stickyAuth: true,
             sensitiveTransaction: false,
           ));
       return isAuthenticated;
@@ -145,37 +166,11 @@ class AuthService {
     }
   }
 
-  //This code is for the authenticate with all authentication methods Pin , pattern , face  or fingerprint
-  Future<bool> allAuthenticationOfDevice() async {
-    try {
-      bool isAvailable =
-          await _auth.canCheckBiometrics || await _auth.isDeviceSupported();
-      if (!isAvailable) {
-        // Device par koi bhi lock nahi hai
-        return false;
-      }
-      bool didAuthenticate = await _auth.authenticate(
-        localizedReason: 'App unlock karne ke liye authenticate karein',
-        options: const AuthenticationOptions(
-          biometricOnly: false,
-          // False rakhein taki PIN, pattern, password bhi chale
-          useErrorDialogs: true,
-          // System dialogs dikhane ke liye
-          stickyAuth: true,
-        ),
-      );
-      return didAuthenticate;
-    } catch (e) {
-      debugPrint("Error in all authentication of device: $e");
-      return false; // Agar koi error aaye to false return karein
-    }
-  }
-
-  // Device par supported biometric types check karein
   Future<List<BiometricType>> getAvailableBiometrics() async {
     return await _auth.getAvailableBiometrics();
   }
 
+  // This function is to print the available biometric types
   Future<void> printAvailableBiometrics() async {
     List<BiometricType> availableBiometrics = await getAvailableBiometrics();
     if (availableBiometrics.isEmpty) {
@@ -183,6 +178,7 @@ class AuthService {
     } else {
       debugPrint("Available biometric types: $availableBiometrics");
     }
+    debugPrint('\n ${availableBiometrics.contains(BiometricType.strong)}');
   }
 
   //Check if the app is Enabled
@@ -191,161 +187,25 @@ class AuthService {
     return isEnabled == 'true';
   }
 
-//Enable /Disable App Lock
+  //Enable /Disable App Lock
   Future<void> setAppLockEnabled(bool value) async {
     debugPrint("\n Value of the Set App Lock Enabled $value");
     return _storage.write(key: _localKey, value: value.toString());
   }
 
   //This function is for fetching app lock value ScreenLock or pin
-
   Future<String?> getStoredLockOption() async {
     return await _storage.read(key: 'lock_option'); // 'screenLock' ya 'pin'
   }
 
-// Function to show the bottom sheet for biometric authentication when user select option of biometric authentication
+  //This function is for the Setting the Privacy Lock Option
+  void setPrivacyLockOption(String option) async {
+    await _storage.write(key: 'privacy_lock_option', value: option);
+    debugPrint(" \n Privacy Lock Option set to $option");
+  }
 
-
-  Future showBottomSheets(BuildContext context) {
-    if (Platform.isIOS) {
-      /// ✅ Cupertino ActionSheet for iOS
-      return showCupertinoModalPopup(
-        context: context,
-        builder: (BuildContext bottomSheetContext) {
-          return CupertinoActionSheet(
-            title: Text('Unlock Doc Scanner'),
-            message: Text('Use fingerprint or DocScanner password.'),
-            actions: [
-              CupertinoActionSheetAction(
-                onPressed: () async {
-                  AuthService authService = AuthService();
-                  bool isAuthenticated =
-                  await authService.authenticateWithBiometric();
-
-                  if (isAuthenticated) {
-                    Navigator.of(bottomSheetContext).pop();
-                    debugPrint("Fingerprint Authentication Successful");
-                  } else {
-                    debugPrint("Fingerprint Authentication Failed");
-                  }
-                },
-                child: Icon(
-                  CupertinoIcons.lock_shield,
-                  size: 40,
-                  color: CupertinoColors.activeBlue,
-                ),
-              ),
-              CupertinoActionSheetAction(
-                onPressed: () async {
-                  AuthService authService = AuthService();
-                  bool isAuthenticated =
-                  await authService.authenticateWithPinOrPattern();
-
-                  if (isAuthenticated) {
-                    Navigator.of(bottomSheetContext).pop();
-                    debugPrint("Pin/Password Authentication Successful");
-                  } else {
-                    debugPrint("Pin/Password Authentication Failed");
-                  }
-                },
-                child: Text("USE PASSWORD"),
-              ),
-            ],
-            cancelButton: CupertinoActionSheetAction(
-              onPressed: () => Navigator.of(bottomSheetContext).pop(),
-              child: Text('Cancel'),
-            ),
-          );
-        },
-      );
-    } else {
-      /// ✅ Material BottomSheet for Android
-      return showModalBottomSheet(
-        context: context,
-        isDismissible: false,
-        isScrollControlled: true,
-        enableDrag: false,
-        builder: (BuildContext bottomSheetContext) {
-          return WillPopScope(
-            onWillPop: () async => false,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              height: 300,
-              width: double.infinity,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Unlock Doc Scanner",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text("Use fingerprint or DocScanner password."),
-                  const SizedBox(height: 30),
-                  Center(
-                    child: TextButton(
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          side: BorderSide(
-                            color: Colors.blue.shade500,
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                      onPressed: () async {
-                        AuthService authService = AuthService();
-                        bool isAuthenticated =
-                        await authService.authenticateWithBiometric();
-
-                        if (isAuthenticated) {
-                          Navigator.of(bottomSheetContext).pop();
-                          debugPrint("Fingerprint Authentication Successful");
-                        } else {
-                          debugPrint("Fingerprint Authentication Failed");
-                        }
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Icon(
-                          Icons.fingerprint,
-                          size: 45,
-                          color: Colors.blue.shade500,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 56),
-                  GestureDetector(
-                    onTap: () async {
-                      AuthService authService = AuthService();
-                      bool isAuthenticated =
-                      await authService.authenticateWithPinOrPattern();
-
-                      if (isAuthenticated) {
-                        Navigator.of(bottomSheetContext).pop();
-                        debugPrint("Pin/Password Authentication Successful");
-                      } else {
-                        debugPrint("Pin/Password Authentication Failed");
-                      }
-                    },
-                    child: Text(
-                      "USE PASSWORD",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue.shade500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      );
-    }
+  Future<String?> getPrivacyLockOption() async {
+    return await _storage.read(key: 'privacy_lock_option');
   }
 
 // Function to validate security answers
@@ -356,7 +216,7 @@ class AuthService {
     Map<String, dynamic> passwordData,
   ) async {
     if (question1.text.isEmpty || question2.text.isEmpty) {
-      flushBars("Please Answer Both Questions", "Both questions are required",
+      uiObject.flushBars("Please Answer Both Questions", "Both questions are required",
           Colors.red, context);
     } else if (question1.text == passwordData['answer1'] &&
         question2.text == passwordData['answer2']) {
@@ -369,37 +229,18 @@ class AuthService {
         );
       }));
     } else {
-      flushBars("Wrong Answers", "Please try again", Colors.red, context);
+      uiObject.flushBars("Wrong Answers", "Please try again", Colors.red, context);
     }
     question1.clear();
     question2.clear();
   }
 
-  // Function to show flush bar
-  Widget flushBars(
-      String title, String message, Color color, BuildContext context) {
-    return Flushbar(
-      icon: Icon(
-        Icons.info_outline,
-        size: 28.0,
-        color: Colors.white,
-      ),
-      flushbarStyle: FlushbarStyle.FLOATING,
-      margin: EdgeInsets.all(8),
-      borderRadius: BorderRadius.circular(8),
-      title: title,
-      message: message,
-      duration: Duration(seconds: 3),
-      backgroundColor: color,
-      flushbarPosition: FlushbarPosition.TOP,
-    )..show(context);
-  }
+  //Function to show Enter Password Dialog Box for App Lock Screen
 
   // Function to show the forget password dialog box
   void forgetPasswordDialogBox(BuildContext context, AuthService authService,
       TextEditingController question1, TextEditingController question2) async {
-    final Map<String, dynamic> passwordData =
-        await authService.getPinDetails();
+    final Map<String, dynamic> passwordData = await authService.getPinDetails();
 
     showDialog(
       context: context,
@@ -521,23 +362,14 @@ class AuthService {
     );
   }
 
-  //This is for the FlushBar
-  Future flushBarWidget(String message, BuildContext context, iconsValue) {
-    return Flushbar(
-        message: message,
-        duration: Duration(seconds: 3),
-        backgroundColor: Colors.orange,
-        margin: EdgeInsets.all(8),
-        borderRadius: BorderRadius.circular(8),
-        icon: Icon(
-          iconsValue,
-          color: Colors.white,
-        )).show(context);
-  }
 
 //Validate the Password
-  Future<bool> validatePassword(BuildContext context, String text,TextEditingController password,
-      bool isAppLockEnabled, bool biometricstatus) async {
+  Future<bool> validatePassword(
+      BuildContext context,
+      String text,
+      TextEditingController password,
+      bool isAppLockEnabled,
+      bool biometricstatus) async {
     final Map<String, dynamic> passwordData = await getPinDetails();
     if (passwordData['password'] == text) {
       debugPrint('\n isAppLockEnabled $isAppLockEnabled');
@@ -550,13 +382,103 @@ class AuthService {
 
       return true;
     } else if (text.isEmpty) {
-      flushBarWidget(
-          "Please Enter Password", context, Icons.error_outline);
+    uiObject.flushBarWidget("Please Enter Password", context, Icons.error_outline);
       return false;
     } else {
-     flushBarWidget("Wrong Pin", context, Icons.error_outline);
+     uiObject.flushBarWidget("Wrong Pin", context, Icons.error_outline);
     }
     password.clear();
     return false;
   }
+
+  //This Below Function is for the Moving of the File to the Folder
+  Future<void> movesFileToFolder(
+      List<FileSystemEntity> files,
+      Directory targetFolder,
+      BuildContext context,
+      int len,
+      Directory item
+
+      ) async {
+    for (final file in files) {
+      try {
+        final filename = basename(file.path);
+        final newPath = join(targetFolder.path, filename);
+        await file.rename(newPath);
+        Flushbar(
+          title: 'Successfully',
+          message: len == 0
+              ? '${len + 1} Document Move Successfully'
+              : len == 1
+              ? ' $len Document Move Successfully'
+              : '$len Documents Move Successfully',
+          duration: Duration(seconds: 3),
+          backgroundColor: Colors.orangeAccent,
+          icon: Icon(
+            Icons.check,
+            color: Colors.black,
+          ),
+        ).show(context).then((_) {
+          Navigator.push(context, MaterialPageRoute(builder: (context) {
+            return FileManagerScreenSub(path: item.path);
+          }));
+        });
+      } catch (e) {
+        debugPrint("Error moving file: $e");
+      }
+    }
+
+    fileObject.fetchFolderContent(); //For Refresh the Folder
+  }
+
+
+  //Code for Creating a Folder
+  Future<void> createFolder(BuildContext context,path) async {
+    TextEditingController folderNameController = TextEditingController();
+    String? errorText; // For feedback inside the dialog
+    showDialog(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(
+              builder: (context, setState) => AlertDialog(
+                  title: Text("Create a New Folder"),
+                  content: TextField(
+                    controller: folderNameController,
+                    decoration: InputDecoration(
+                      hintText: "Enter Folder Name",
+                      errorText: errorText,
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        folderNameController.clear();
+                        Navigator.of(context).pop();
+                      },
+                      child: Text("Cancel"),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        String newFolderName =
+                        folderNameController.text.trim();
+                        if (newFolderName.isNotEmpty) {
+                          final folder =
+                          Directory("$path/$newFolderName");
+                          if (!await folder.exists()) {
+                            await folder.create();
+                            fileObject.fetchFolderContent();
+                            folderNameController.clear();
+                            Navigator.of(context).pop();
+                          } else {
+                            uiObject.flushBars("Error", "Error Occur",
+                                Colors.red, context);
+                          }
+                        }
+                      },
+                      child: Text("Create"),
+                    )
+                  ]));
+        });
+  }
+
 }
