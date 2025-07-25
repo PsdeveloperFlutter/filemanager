@@ -106,13 +106,14 @@ class _FileManagerScreenState extends State<FileManagerScreen>
   @override
   void initState() {
     super.initState();
-    fetchFolderContent();
+
     WidgetsBinding.instance.addObserver(this);
 
     // Request permissions and check privacy after UI is rendered
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _requestPermissionsAndFetchFiles();
       await checkPrivacyOption();
+      fetchFolderContent();
       // Ensure the widget is still mounted before calling checkLockOption
       // to prevent errors if the widget is disposed before the async operation completes.
       if (mounted) await checkLockOption();
