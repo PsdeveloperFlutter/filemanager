@@ -21,8 +21,6 @@ class _appLockState extends State<applock> {
   //Create instance of Flutter Local Storage
   final storage = FlutterSecureStorage();
   bool _visible = false; // Variable to control visibility of the widget
-  bool _bioVisible =
-      false; // Variable to control visibility of the biometric option
   final TextEditingController question1 = TextEditingController();
   final TextEditingController question2 = TextEditingController();
   final TextEditingController pinController =
@@ -30,7 +28,8 @@ class _appLockState extends State<applock> {
   AuthService authService = AuthService();
   uiUtility uiobject = uiUtility();
   LockOption? _selectedOption = LockOption.screenLock;
-  bool bioValue=false;
+  bool bioValue = false;
+
   @override
   void initState() {
     super.initState();
@@ -39,14 +38,15 @@ class _appLockState extends State<applock> {
     bioMeteric(); // Check if biometric is available and show on Screen
   }
 
-  void bioMeteric()async{
-   if(await authService.isBiometricTrulyAvailable()==true){
+  void bioMeteric() async {
+    if (await authService.isBiometricTrulyAvailable() == true) {
       debugPrint("\n Biometric is available Show Value is: $bioValue");
       setState(() {
-        bioValue=true;
+        bioValue = true;
       });
-   }
+    }
   }
+
   @override
   void dispose() {
     question1.dispose();
@@ -64,52 +64,33 @@ class _appLockState extends State<applock> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Visibility(
-           visible: bioValue,
+            visible: bioValue,
             child: LockOptionTile(
-              value: LockOption.screenLock,
-              groupValue: _selectedOption,
-              title: 'Use your screen lock',
-              subtitle:
-                  'Use your existing PIN, pattern,\nface Id, or fingerprint',
-              onChanged: (value) async {
-                if (await authService.isBiometricTrulyAvailable() == true &&
-                    await authService.isBiometricAvailable() == true) {
-                  debugPrint("\n Biometric is available");
-                  setState(() {
-                    _selectedOption = value;
-                    _visible = false;
-                    _bioVisible = false;
-                  });
-                  debugPrint("\n Selected option is: $_bioVisible ");
-                  uiobject.showBottomSheets(
-                      context); // Show the bottom sheet for biometric authentication
-                } else {
-                  setState(() {
-                    _bioVisible = true;
-                  });
-                  debugPrint("\n Selected option is: $_bioVisible ");
-                  debugPrint("\n Biometric is not available");
-                  uiobject.flushBars(
-                      "Not Support",
-                      "Check your Biometric and Pin Setting",
-                      Colors.red,
-                      context);
-                  return;
-                }
-              },
-            ),
-          ),
-          sizedBoxs(10),
-          Visibility(
-            visible: _bioVisible,
-            child: Padding(
-              padding: const EdgeInsets.only(left: 15.0),
-              child: Text(
-                "Biometric is not Set or Available",
-                style:
-                    TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
-              ),
-            ),
+                value: LockOption.screenLock,
+                groupValue: _selectedOption,
+                title: 'Use your screen lock',
+                subtitle:
+                    'Use your existing PIN, pattern,\nface Id, or fingerprint',
+                onChanged: (value) async {
+                  if (await authService.isBiometricTrulyAvailable() == true &&
+                      await authService.isBiometricAvailable() == true) {
+                    debugPrint("\n Biometric is available");
+                    setState(() {
+                      _selectedOption = value;
+                      _visible = false;
+                    });
+                    uiobject.showBottomSheets(
+                        context); // Show the bottom sheet for biometric authentication
+                  } else {
+                    debugPrint("\n Biometric is not available");
+                    uiobject.flushBars(
+                        "Not Support",
+                        "Check your Biometric and Pin Setting",
+                        Colors.red,
+                        context);
+                    return;
+                  }
+                }),
           ),
           sizedBoxs(18),
           LockOptionTile(
@@ -172,7 +153,7 @@ class _appLockState extends State<applock> {
           ),
           sizedBoxs(18),
           Center(
-            child: Container(
+            child: SizedBox(
               width: 330,
               height: 50,
               child: ElevatedButton(
@@ -193,6 +174,8 @@ class _appLockState extends State<applock> {
                         'Your app lock settings have been saved successfully',
                         Colors.green,
                         context);
+                    authService.setPrivacyLockOption(
+                        'true'); // Set the privacy lock option to true
                     Future.delayed(Duration(seconds: 4), () {
                       Navigator.pop(context);
                     });
