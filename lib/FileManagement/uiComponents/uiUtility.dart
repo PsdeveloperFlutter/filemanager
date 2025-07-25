@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:another_flushbar/flushbar.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../projectSetting/AuthService.dart';
@@ -176,4 +179,140 @@ class uiUtility {
       flushbarPosition: FlushbarPosition.TOP,
     )..show(context);
   }
+
+
+// Function to show the bottom sheet for biometric authentication when user select option of biometric authentication
+
+  Future showBottomSheets(BuildContext context) {
+    if (Platform.isIOS) {
+      /// ✅ Cupertino ActionSheet for iOS
+      return showCupertinoModalPopup(
+        context: context,
+        builder: (BuildContext bottomSheetContext) {
+          return CupertinoActionSheet(
+            title: Text('Unlock Doc Scanner'),
+            message: Text('Use fingerprint or DocScanner password.'),
+            actions: [
+              CupertinoActionSheetAction(
+                onPressed: () async {
+                  AuthService authService = AuthService();
+                  bool isAuthenticated =
+                  await authService.authenticateWithBiometric();
+
+                  if (isAuthenticated) {
+                    Navigator.of(bottomSheetContext).pop();
+                    debugPrint("Fingerprint Authentication Successful");
+                  } else {
+                    debugPrint("Fingerprint Authentication Failed");
+                  }
+                },
+                child: Icon(
+                  CupertinoIcons.lock_shield,
+                  size: 40,
+                  color: CupertinoColors.activeBlue,
+                ),
+              ),
+              CupertinoActionSheetAction(
+                onPressed: () async {
+                  AuthService authService = AuthService();
+                  bool isAuthenticated =
+                  await authService.authenticateWithPinOrPattern();
+
+                  if (isAuthenticated) {
+                    Navigator.of(bottomSheetContext).pop();
+                    debugPrint("Pin/Password Authentication Successful");
+                  } else {
+                    debugPrint("Pin/Password Authentication Failed");
+                  }
+                },
+                child: Text("USE PASSWORD"),
+              ),
+            ],
+            cancelButton: CupertinoActionSheetAction(
+              onPressed: () => Navigator.of(bottomSheetContext).pop(),
+              child: Text('Cancel'),
+            ),
+          );
+        },
+      );
+    } else {
+      /// ✅ Material BottomSheet for Android
+      return showModalBottomSheet(
+        context: context,
+        isDismissible: false,
+        isScrollControlled: true,
+        enableDrag: false,
+        builder: (BuildContext bottomSheetContext) {
+          return WillPopScope(
+            onWillPop: () async => false,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              height: 300,
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Unlock Doc Scanner",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text("Use fingerprint or DocScanner password."),
+                  const SizedBox(height: 30),
+                  GestureDetector(
+                    onTap: () async {
+                      AuthService authService = AuthService();
+                      bool isAuthenticated =
+                      await authService.authenticateWithBiometric();
+
+                      if (isAuthenticated) {
+                        Navigator.of(bottomSheetContext).pop();
+                        debugPrint("Fingerprint Authentication Successful");
+                      } else {
+                        debugPrint("Fingerprint Authentication Failed");
+                      }
+                    },
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Icon(
+                          Icons.fingerprint,
+                          size: 55,
+                          color: Colors.blue.shade500,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 56),
+                  GestureDetector(
+                    onTap: () async {
+                      AuthService authService = AuthService();
+                      bool isAuthenticated =
+                      await authService.authenticateWithPinOrPattern();
+
+                      if (isAuthenticated) {
+                        Navigator.of(bottomSheetContext).pop();
+                        debugPrint("Pin/Password Authentication Successful");
+                      } else {
+                        debugPrint("Pin/Password Authentication Failed");
+                      }
+                    },
+                    child: Text(
+                      "USE PASSWORD",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    }
+  }
+
 }

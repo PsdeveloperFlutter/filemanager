@@ -1,5 +1,5 @@
 import 'dart:io';
-
+import 'package:filemanager/FileManagement/privacyScreen/privacyScreen.dart';
 import 'package:another_flushbar/flushbar.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:filemanager/FileManagement/appLockUi/LockScreen.dart';
@@ -13,7 +13,6 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../FileManagement/privacyScreen/privacyScreen.dart';
 
 void main() {
   runApp(MaterialApp(
