@@ -494,7 +494,7 @@ class _FileManagerScreenState extends State<FileManagerScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          title: isSelectionMode
+          title: isSelectionMode==false
               ? Text("File Manager")
               : GestureDetector(
                   onTap: () {

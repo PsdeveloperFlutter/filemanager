@@ -2,8 +2,8 @@ import 'package:another_flushbar/flushbar.dart';
 import 'package:filemanager/FileManagement/uiComponents/uiUtility.dart';
 import 'package:flutter/material.dart';
 
-import '../../mainFile/MainFile.dart';
 import '../createPasswordUi/CreatePasswordScreen.dart';
+import '../mainFile/MainFile.dart';
 import '../projectSetting/AuthService.dart';
 
 class LockScreen extends StatefulWidget {
