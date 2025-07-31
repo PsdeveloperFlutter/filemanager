@@ -93,6 +93,9 @@ class FileManagerScreenSubState extends State<FileManagerScreenSub> {
         final filename = basename(file.path);
         final newPath = join(targetFolder.path, filename);
         await file.rename(newPath);
+        Future.delayed(Duration(milliseconds: 1000),(){
+        return  fetchFolderContent();
+        });
         Flushbar(
           title: 'Successfully',
           message: len == 0
@@ -106,11 +109,7 @@ class FileManagerScreenSubState extends State<FileManagerScreenSub> {
             Icons.check,
             color: Colors.black,
           ),
-        ).show(context).then((_) {
-          Navigator.push(context, MaterialPageRoute(builder: (context) {
-            return FileManagerScreenSub(path: item.path);
-          }));
-        });
+        );
       } catch (e) {
         debugPrint("Error moving file: $e");
       }
@@ -125,7 +124,7 @@ class FileManagerScreenSubState extends State<FileManagerScreenSub> {
     return Scaffold(
         floatingActionButton: FloatingActionButton(
           backgroundColor: Colors.green,
-          onPressed: () => authService.createFolder(context,widget.path),
+          onPressed: () =>createFolder(context,widget.path),
           child: Icon(
             Icons.add,
             color: Colors.white,
@@ -248,7 +247,6 @@ class FileManagerScreenSubState extends State<FileManagerScreenSub> {
           },
           onDragEnd: (_) {
             setState(() {
-              selectedItems.clear();
               isDragging = false;
               isDragg = false;
             });
@@ -342,4 +340,54 @@ class FileManagerScreenSubState extends State<FileManagerScreenSub> {
       },
     );
   }
+
+  //Code for Creating a Folder
+  Future<void> createFolder(BuildContext context,path) async {
+    TextEditingController folderNameController = TextEditingController();
+    String? errorText; // For feedback inside the dialog
+    showDialog(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(
+              builder: (context, setState) => AlertDialog(
+                  title: Text("Create a New Folder"),
+                  content: TextField(
+                    controller: folderNameController,
+                    decoration: InputDecoration(
+                      hintText: "Enter Folder Name",
+                      errorText: errorText,
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        folderNameController.clear();
+                        Navigator.of(context).pop();
+                      },
+                      child: Text("Cancel"),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        String newFolderName =
+                        folderNameController.text.trim();
+                        if (newFolderName.isNotEmpty) {
+                          final folder =
+                          Directory("$path/$newFolderName");
+                          if (!await folder.exists()) {
+                            await folder.create();
+                            fetchFolderContent();
+                            folderNameController.clear();
+                            Navigator.of(context).pop();
+                          } else {
+                            uiObject.flushBars("Error", "Error Occur",
+                                Colors.red, context);
+                          }
+                        }
+                      },
+                      child: Text("Create"),
+                    )
+                  ]));
+        });
+  }
+
 }

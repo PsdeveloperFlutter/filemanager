@@ -20,6 +20,7 @@ class _privacyScreenState extends State<privacyScreen> {
 
   // Function to get the current value of the privacy lock option
   void getPrivacyLockValue() async {
+
     lock_option = await object.getStoredLockOption();
     debugPrint('\n Lock Option: $lock_option');
     final value = await object.getPrivacyLockOption() == 'true' ? true : false;
@@ -106,7 +107,9 @@ class _privacyScreenState extends State<privacyScreen> {
                       isLocked=val;
                     });
                     object.setPrivacyLockOption(isLocked? 'true' : 'false');
+                    object.getStoredLockOptionDelete();
                     object.resetPin(); // Reset the pin when disabling the lock
+
                   }
                 }),
             subtitle: 'Use your existing passcode to keep your app secure.',

@@ -11,6 +11,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:path/path.dart';
 
 import '../mainFile/MainFile.dart';
+import '../mainFile/filemanagerScreen.dart';
 
 void main() {
   AuthService obj = AuthService();
@@ -197,7 +198,9 @@ class AuthService {
   Future<String?> getStoredLockOption() async {
     return await _storage.read(key: 'lock_option'); // 'screenLock' ya 'pin'
   }
-
+   void getStoredLockOptionDelete()async{
+    await _storage.delete(key:'lock_option');
+   }
   //This function is for the Setting the Privacy Lock Option
   void setPrivacyLockOption(String option) async {
     await _storage.write(key: 'privacy_lock_option', value: option);
@@ -391,94 +394,6 @@ class AuthService {
     return false;
   }
 
-  //This Below Function is for the Moving of the File to the Folder
-  Future<void> movesFileToFolder(
-      List<FileSystemEntity> files,
-      Directory targetFolder,
-      BuildContext context,
-      int len,
-      Directory item
 
-      ) async {
-    for (final file in files) {
-      try {
-        final filename = basename(file.path);
-        final newPath = join(targetFolder.path, filename);
-        await file.rename(newPath);
-        Flushbar(
-          title: 'Successfully',
-          message: len == 0
-              ? '${len + 1} Document Move Successfully'
-              : len == 1
-              ? ' $len Document Move Successfully'
-              : '$len Documents Move Successfully',
-          duration: Duration(seconds: 3),
-          backgroundColor: Colors.orangeAccent,
-          icon: Icon(
-            Icons.check,
-            color: Colors.black,
-          ),
-        ).show(context).then((_) {
-          Navigator.push(context, MaterialPageRoute(builder: (context) {
-            return FileManagerScreenSub(path: item.path);
-          }));
-        });
-      } catch (e) {
-        debugPrint("Error moving file: $e");
-      }
-    }
-
-    fileObject.fetchFolderContent(); //For Refresh the Folder
-  }
-
-
-  //Code for Creating a Folder
-  Future<void> createFolder(BuildContext context,path) async {
-    TextEditingController folderNameController = TextEditingController();
-    String? errorText; // For feedback inside the dialog
-    showDialog(
-        context: context,
-        builder: (context) {
-          return StatefulBuilder(
-              builder: (context, setState) => AlertDialog(
-                  title: Text("Create a New Folder"),
-                  content: TextField(
-                    controller: folderNameController,
-                    decoration: InputDecoration(
-                      hintText: "Enter Folder Name",
-                      errorText: errorText,
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        folderNameController.clear();
-                        Navigator.of(context).pop();
-                      },
-                      child: Text("Cancel"),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        String newFolderName =
-                        folderNameController.text.trim();
-                        if (newFolderName.isNotEmpty) {
-                          final folder =
-                          Directory("$path/$newFolderName");
-                          if (!await folder.exists()) {
-                            await folder.create();
-                            fileObject.fetchFolderContent();
-                            folderNameController.clear();
-                            Navigator.of(context).pop();
-                          } else {
-                            uiObject.flushBars("Error", "Error Occur",
-                                Colors.red, context);
-                          }
-                        }
-                      },
-                      child: Text("Create"),
-                    )
-                  ]));
-        });
-  }
 
 }

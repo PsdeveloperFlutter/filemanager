@@ -100,15 +100,12 @@ class _appLockState extends State<applock> {
             subtitle: 'Use your 4-digit PIN to unlock',
             onChanged: (value) async {
               // Handle pin selection
-              await handlePinSelection(context);
-              // Update the selected option
-              setState(() {
-                _selectedOption = value;
-              });
-              showmethod().then((value) {
-                if (value) {
+              await handlePinSelection(context,value);
+              showmethod().then((values) {
+                if (values) {
                   setState(() {
                     _visible = true;
+                     _selectedOption=value;
                   }); // Show the widget if pin is set
                 } else {
                   setState(() {
@@ -181,7 +178,7 @@ class _appLockState extends State<applock> {
                     });
                   },
                   child: Text(
-                    'Save',
+                    'Continue',
                     style: TextStyle(color: Colors.white, fontSize: 20),
                   )),
             ),
@@ -192,10 +189,11 @@ class _appLockState extends State<applock> {
   }
 
   // Function to handle pin selection
-  Future<void> handlePinSelection(BuildContext context) async {
+  Future<void> handlePinSelection(BuildContext context,value) async {
     final String? pin = await authService.getPin();
     debugPrint("\n Pin is $pin");
     if (pin == null) {
+      // Update the selected option
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -206,14 +204,21 @@ class _appLockState extends State<applock> {
       ).then((result) {
         if (result is bool) {
           debugPrint("\n Returned value is: $result");
+
           setState(() {
             _visible = result;
           });
           if (result) {
             uiobject.flushBars('Pin Set', 'Pin Set Successfully',
                 Colors.orangeAccent, context);
+            setState(() {
+              _selectedOption =value;
+            });
           } else {
             uiobject.flushBars('Not Set', 'Pin not set', Colors.red, context);
+            setState(() {
+              _selectedOption;
+            });
           }
         } else {
           debugPrint("\n Returned value is not a boolean");
