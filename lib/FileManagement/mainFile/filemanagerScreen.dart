@@ -284,7 +284,7 @@ class FileManagerScreenSubState extends State<FileManagerScreenSub> {
                       OpenFilex.open(item.path); // ✅ Open file on tap
                     }
                   },
-                  onLongPress: !isSelectionMode && !isFolder  && selectedItems.isNotEmpty
+                  onLongPress: !isSelectionMode && !isFolder
                       ? () {
                     setState(() {
                       isSelectionMode = true;
@@ -293,10 +293,7 @@ class FileManagerScreenSubState extends State<FileManagerScreenSub> {
                       }
                     });
                   }
-                      : (){
-                    selectedItems.add(item);
-                    null;
-                  },
+                   :null,
                   leading: isSelectionMode && !isFolder
                       ? Checkbox(
                     value: isSelected,
