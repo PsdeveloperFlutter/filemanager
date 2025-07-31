@@ -101,18 +101,6 @@ class _appLockState extends State<applock> {
             onChanged: (value) async {
               // Handle pin selection
               await handlePinSelection(context,value);
-              showmethod().then((values) {
-                if (values) {
-                  setState(() {
-                    _visible = true;
-                     _selectedOption=value;
-                  }); // Show the widget if pin is set
-                } else {
-                  setState(() {
-                    _visible = false;
-                  }); // Hide the widget if pin is not set
-                }
-              });
             },
           ),
           sizedBoxs(18),
@@ -192,7 +180,7 @@ class _appLockState extends State<applock> {
   Future<void> handlePinSelection(BuildContext context,value) async {
     final String? pin = await authService.getPin();
     debugPrint("\n Pin is $pin");
-    if (pin == null) {
+    if (pin == null  || await authService.getPrivacyLockOption()=='false') {
       // Update the selected option
       Navigator.push(
         context,
@@ -217,7 +205,7 @@ class _appLockState extends State<applock> {
           } else {
             uiobject.flushBars('Not Set', 'Pin not set', Colors.red, context);
             setState(() {
-              _selectedOption;
+              _selectedOption=null;
             });
           }
         } else {
