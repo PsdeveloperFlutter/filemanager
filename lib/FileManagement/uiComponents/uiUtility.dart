@@ -132,16 +132,15 @@ class uiUtility {
                             child: ElevatedButton(
                               onPressed: () {
                                 if (pinController.text == pin) {
+                                  Navigator.pop(context);
                                   flushBars(
                                     'Pin Verified',
                                     'Your PIN is verified successfully',
                                     Colors.green,
                                     context,
                                   );
-                                  Future.delayed(const Duration(seconds: 2), () {
+                                  authService.setPrivacyLockOption('Pin');
                                     pinController.clear();
-                                    Navigator.pop(context);
-                                  });
                                 } else if (pinController.text.isEmpty ||
                                     pinController.text.length < 4) {
                                   flushBars(
