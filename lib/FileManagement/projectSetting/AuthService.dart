@@ -217,6 +217,7 @@ class AuthService {
     TextEditingController question1,
     TextEditingController question2,
     Map<String, dynamic> passwordData,
+      AuthService authService
   ) async {
     if (question1.text.isEmpty || question2.text.isEmpty) {
       uiObject.flushBars("Please Answer Both Questions", "Both questions are required",
@@ -342,7 +343,7 @@ class AuthService {
                 ElevatedButton(
                   onPressed: () {
                     validateSecurityAnswers(
-                        context, question1, question2, passwordData);
+                        context, question1, question2, passwordData,authService);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade500,

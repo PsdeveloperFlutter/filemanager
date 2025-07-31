@@ -230,14 +230,14 @@ class _appLockState extends State<applock> {
     final pin = await authService.getPin(); // Fetch the PIN using AuthService
     if (pin != null && pin.isNotEmpty) {
       // If the PIN is set, show the password dialog box
-      forgetPasswordDialogBox(context);
+      forgetPasswordDialogBox(context,authService);
     } else {
       uiobject.flushBars(
           'No PIN Set', 'Please set a PIN first', Colors.red, context);
     }
   }
 
-  void forgetPasswordDialogBox(BuildContext context) async {
+  void forgetPasswordDialogBox(BuildContext context,AuthService authService) async {
     final Map<String, dynamic> passwordData = await authService.getPinDetails();
 
     showDialog(
@@ -337,7 +337,7 @@ class _appLockState extends State<applock> {
                 ElevatedButton(
                   onPressed: () {
                     authService.validateSecurityAnswers(
-                        context, question1, question2, passwordData);
+                        context, question1, question2, passwordData,authService);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade500,
