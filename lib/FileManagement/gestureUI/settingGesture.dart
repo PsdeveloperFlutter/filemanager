@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:filemanager/FileManagement/uiComponents/uiUtility.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'checkGestureScreen.dart';
 import 'gestureScreen.dart';
@@ -36,24 +37,44 @@ class _SettingGestureState extends State<SettingGesture> {
     loadGestureImages(); //Load images from Flutter Secure storage
   }
 
-  //Load images from Flutter Secure storage
+// List to store loaded gesture images
   List<Uint8List> gestureImages = [];
 
+// Load gesture images from shared preferences
   Future<void> loadGestureImages() async {
-    final storedData = await storage.read(key: 'gesture_image');
+    final prefs = await SharedPreferences.getInstance();
+    final storedData = prefs.getString('gesture_image');
 
     if (storedData != null) {
       try {
         List<String> base64List = List<String>.from(jsonDecode(storedData));
         debugPrint("\n Base64 List :- $base64List");
-        // Decode all base64 strings to Uint8List
+
+        // Decode base64 to Uint8List
         gestureImages = base64List.map((b64) => base64Decode(b64)).toList();
         debugPrint("\n Gesture Images :- $gestureImages");
       } catch (e) {
         print("Error loading gesture images: $e");
       }
     } else {
-      debugPrint("\n Error Occur make sure of that gesture images ");
+      debugPrint("\n No gesture images found.");
+    }
+  }
+
+// Delete a specific gesture image by index
+  Future<void> deleteGestureImage(int index) async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedData = prefs.getString('gesture_image');
+
+    if (storedData != null) {
+      List<String> base64List = List<String>.from(jsonDecode(storedData));
+
+      if (index >= 0 && index < base64List.length) {
+        base64List.removeAt(index); // Remove image at index
+        await prefs.setString('gesture_image', jsonEncode(base64List)); // Save updated list
+        await loadGestureImages(); // Reload updated images
+        setState(() {}); // Update UI
+      }
     }
   }
 
@@ -151,6 +172,10 @@ class _SettingGestureState extends State<SettingGesture> {
               child: ListView.builder(
                   itemCount: gestureImages.length,
                   itemBuilder: (context, index) {
+                    if (index < 0) {
+                      return Center(child: Text("No Gesture Found"));
+                    }
+
                     return Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: Card(
@@ -173,13 +198,59 @@ class _SettingGestureState extends State<SettingGesture> {
                                   )),
                             ),
                             ElevatedButton(
-                              onPressed: () {},
+                              onPressed: () async {
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) {
+                                    return AlertDialog(
+                                      title: Text("Delete Gesture"),
+                                      content: Text(
+                                          "Are you sure you want to delete this gesture?"),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, false),
+                                          child: Text("Cancel"),
+                                        ),
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, true),
+                                          child: Text("Delete",
+                                              style:
+                                                  TextStyle(color: Colors.red)),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+
+                                if (confirmed == true) {
+                                  showDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    // User can't dismiss progress dialog
+                                    builder: (context) {
+                                      return Center(
+                                          child: CircularProgressIndicator());
+                                    },
+                                  );
+                                  Future.delayed(Duration(seconds: 3))
+                                      .then((_) {
+                                    // Call your delete function
+                                    deleteGestureImage(index);
+                                  }).then((_){
+                                    // Close the progress indicator
+                                    Navigator.pop(context);
+                                  });
+
+                                }
+                              },
                               style: ElevatedButton.styleFrom(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  backgroundColor:
-                                      Colors.orangeAccent.shade200),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                backgroundColor: Colors.orangeAccent.shade200,
+                              ),
                               child: Text(
                                 "Delete",
                                 style: TextStyle(color: Colors.white),

@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:signature/signature.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:crypto/crypto.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(GestureApp());
 
@@ -24,14 +23,12 @@ class GestureScreen extends StatefulWidget {
 }
 
 class _GestureScreenState extends State<GestureScreen> {
-  final SignatureController controller = SignatureController(
-    penColor: Colors.black
-  );
-  final storage = FlutterSecureStorage();
+  final SignatureController controller = SignatureController(penColor: Colors.black);
   String status = '';
   Uint8List? _signatureImage;
 
   Future<void> saveGesture() async {
+    final prefs = await SharedPreferences.getInstance();
     final points = controller.points?.map((e) => Offset(e.offset.dx, e.offset.dy)).toList() ?? [];
     if (points.length < 2) {
       setState(() => status = 'Gesture और draw करें।');
@@ -40,44 +37,40 @@ class _GestureScreenState extends State<GestureScreen> {
 
     // Generate and store the shape signature
     final signature = generateShapeSignature(points);
-    final encoded = jsonEncode(signature); // angle list ko string bana lo
-    await storage.write(key: 'gesture_signature', value: encoded);
+    final encoded = jsonEncode(signature);
+    await prefs.setString('gesture_signature', encoded);
 
-    // Generate and store the image of the signature
-   List<String>imageList=[];
-   //Reading Existing Image from the storage image list and storing it in
-    final fetchData=await storage.read(key: 'gesture_image');
-    if(fetchData!=null){
-      imageList=List<String>.from(jsonDecode(fetchData));
+    // Save gesture image
+    List<String> imageList = [];
+    final fetchData = prefs.getString('gesture_image');
+    if (fetchData != null) {
+      imageList = List<String>.from(jsonDecode(fetchData));
     }
-    //convert signature to image Bytes
-    final Uint8List? data=await controller.toPngBytes();
-    if(data!=null) {
+
+    final Uint8List? data = await controller.toPngBytes();
+    if (data != null) {
       final image64base = base64Encode(data);
-      //Add new Image image64base in list
       imageList.add(image64base);
-      //save updated list to secure storage as Json string
-      debugPrint("\n${jsonEncode(imageList)}");
-      await storage.write(key: 'gesture_image', value: jsonEncode(imageList));
+      await prefs.setString('gesture_image', jsonEncode(imageList));
 
       setState(() {
         status = "✔ Gesture and Image Saved!";
       });
-    }
-    else{
+    } else {
       setState(() => status = "✔ Gesture Saved, but failed to save image.");
     }
     controller.clear();
   }
 
   Future<void> verifyGesture() async {
-    final stored = await storage.read(key: 'gesture_signature');
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString('gesture_signature');
     if (stored == null) {
       setState(() => status = '❌ कोई Gesture Save नहीं है');
       return;
     }
 
-    final points = controller.points.map((e) => Offset(e.offset.dx, e.offset.dy)).toList() ?? [];
+    final points = controller.points.map((e) => Offset(e.offset.dx, e.offset.dy)).toList();
     if (points.length < 2) {
       setState(() => status = 'Gesture और draw करें।');
       return;
@@ -111,11 +104,9 @@ class _GestureScreenState extends State<GestureScreen> {
     return dot / (sqrt(normA) * sqrt(normB)); // Cosine similarity
   }
 
-
   List<double> generateShapeSignature(List<Offset> points, {int sampleSize = 32}) {
     if (points.isEmpty) return [];
 
-    // Normalize
     final minX = points.map((e) => e.dx).reduce(min);
     final maxX = points.map((e) => e.dx).reduce(max);
     final minY = points.map((e) => e.dy).reduce(min);
@@ -130,10 +121,7 @@ class _GestureScreenState extends State<GestureScreen> {
       );
     }).toList();
 
-    // Resample
     final resampled = resamplePoints(normalized, sampleSize);
-
-    // Convert to directional shape signature
     return calculateAngleSignature(resampled);
   }
 
