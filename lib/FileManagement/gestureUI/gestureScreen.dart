@@ -5,19 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:signature/signature.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-void main() => runApp(GestureApp());
 
-class GestureApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Gesture Hashing',
-      home: GestureScreen(),
-    );
-  }
-}
 
 class GestureScreen extends StatefulWidget {
+  final String operation;
+  GestureScreen({Key?key ,required this.operation}):super(key:key);
   @override
   _GestureScreenState createState() => _GestureScreenState();
 }

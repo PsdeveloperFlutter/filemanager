@@ -1,13 +1,15 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:filemanager/FileManagement/uiComponents/uiUtility.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path/path.dart' as p;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'checkGestureScreen.dart';
-import 'gestureScreen.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -29,6 +31,7 @@ class _SettingGestureState extends State<SettingGesture> {
   bool isGestureEnabled = false;
   final storage = const FlutterSecureStorage();
   final uiObj = uiUtility();
+  String? selectedpath;
 
   @override
   void initState() {
@@ -71,7 +74,8 @@ class _SettingGestureState extends State<SettingGesture> {
 
       if (index >= 0 && index < base64List.length) {
         base64List.removeAt(index); // Remove image at index
-        await prefs.setString('gesture_image', jsonEncode(base64List)); // Save updated list
+        await prefs.setString(
+            'gesture_image', jsonEncode(base64List)); // Save updated list
         await loadGestureImages(); // Reload updated images
         setState(() {}); // Update UI
       }
@@ -98,39 +102,15 @@ class _SettingGestureState extends State<SettingGesture> {
           "Gesture Lock is Disabled", "Enable it first", Colors.red, context);
       return;
     }
-
-    // showModalBottomSheet(
-    //   context: context,
-    //   builder: (_) {
-    //     return Wrap(
-    //       children: [
-    //         ListTile(
-    //           leading: Icon(Icons.create_new_folder),
-    //           title: Text("Create New Folder"),
-    //           onTap: () {
-    //             Navigator.pop(context);
-    //             Future.delayed(Duration(milliseconds: 2000), () {
-    //               Navigator.push(
-    //                 context,
-    //                 MaterialPageRoute(
-    //                   builder: (_) =>
-    //                       SetSignatureScreen(operation: "Create_Folder"),
-    //                 ),
-    //               );
-    //             });
-    //           },
-    //         ),
-    //         // Add more operations here
-    //       ],
-    //     );
-    //   },
-    // );
-    Navigator.push(context, MaterialPageRoute(builder: (context) {
-      return GestureScreen();
-    })).then((value) {
-      loadGestureImages();
-      setState(() {});
-    });
+    showFolderDialog();
+    // Navigator.push(context, MaterialPageRoute(builder: (context) {
+    //   return GestureScreen(
+    //     operation: 'CreateFolder',
+    //   );
+    // })).then((value) {
+    //   loadGestureImages();
+    //   setState(() {});
+    // });
   }
 
   @override
@@ -238,11 +218,10 @@ class _SettingGestureState extends State<SettingGesture> {
                                       .then((_) {
                                     // Call your delete function
                                     deleteGestureImage(index);
-                                  }).then((_){
+                                  }).then((_) {
                                     // Close the progress indicator
                                     Navigator.pop(context);
                                   });
-
                                 }
                               },
                               style: ElevatedButton.styleFrom(
@@ -265,7 +244,7 @@ class _SettingGestureState extends State<SettingGesture> {
                                   backgroundColor:
                                       Colors.orangeAccent.shade200),
                               child: Text(
-                                "Redraw",
+                                "Edit",
                                 style: TextStyle(color: Colors.white),
                               ),
                             ),
@@ -278,4 +257,88 @@ class _SettingGestureState extends State<SettingGesture> {
       ),
     );
   }
+
+  // make sure of that
+  Future<void> showFolderDialog() async {
+    // Request storage permission
+    final status = await Permission.manageExternalStorage.request();
+    if (!status.isGranted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Storage permission not granted')),
+      );
+      return;
+    }
+
+    Directory currentDir = Directory('/storage/emulated/0');
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            List<FileSystemEntity> contents = [];
+            if (currentDir.existsSync()) {
+              contents = currentDir
+                  .listSync()
+                  .where((entity) => FileSystemEntity.isDirectorySync(entity.path))
+                  .toList();
+            }
+
+            return AlertDialog(
+              title: Row(
+                children: [
+                  // Prevent going above root or the initial '/storage/emulated/0'
+                  if (p.dirname(currentDir.path) != currentDir.path && currentDir.path != '/storage/emulated/0')
+                    IconButton(
+                      icon: Icon(Icons.arrow_back),
+                      onPressed: () {
+                        setState(() {
+                          currentDir = Directory(p.dirname(currentDir.path));
+                        });
+                      },
+                    ),
+                  Expanded(
+                    child: Text( // Check if the path is the root directory
+                      currentDir.path == '/storage/emulated/0'
+                          ? 'Internal Storage' : p.basename(currentDir.path),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 300,
+                child: ListView.builder(
+                  itemCount: contents.length,
+                  itemBuilder: (context, index) {
+                    final folder = contents[index];
+                    return Card(
+                      elevation: 2,
+                      child: ListTile(
+                        leading: Icon(folder is File ? Icons.insert_drive_file:Icons.folder,color: Colors.blue.shade500,),
+                        title: Text(p.basename(folder.path)),
+                        onTap: () {
+                          setState(() {
+                            currentDir = Directory(folder.path); // Navigate deeper
+                          });
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Close'),
+                )
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 }
+
