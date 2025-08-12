@@ -14,6 +14,7 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../gestureUI/settingGesture.dart';
 import 'filemanagerScreen.dart';
 
 void main() {
@@ -265,7 +266,7 @@ class FileManagerScreenState extends State<FileManagerScreen>
   }
 
   //For Fetching the Folders
-  void fetchFolderContent() {
+  Future<void> fetchFolderContent() async{
     final dir = Directory(
         "/storage/emulated/0"); // Example path, replace with actual logic if needed
     if (dir.existsSync()) {
@@ -283,27 +284,8 @@ class FileManagerScreenState extends State<FileManagerScreen>
     }
   }
 
-  Future<void> handleDrop(String targetPath,
-      List<FileSystemEntity> draggedItems, BuildContext context) async {
-    await Future.wait(draggedItems.map((item) async {
-      final newPath = '$targetPath/${basename(item.path)}';
-      try {
-        if (await FileSystemEntity.type(newPath) ==
-            FileSystemEntityType.notFound) {
-          await item.rename(newPath);
-        }
-      } catch (e) {
-        debugPrint("Error moving file: $e");
-      }
-    }));
-    fetchFolderContent();
-    setState(() {
-      selectedItems.clear();
-      isSelectionMode = false;
-    });
-  }
 
-  //This Below Function is for the Moving of the File to the Folder
+
   Future<void> movesFileToFolder(
       List<FileSystemEntity> files,
       Directory targetFolder,
@@ -315,23 +297,27 @@ class FileManagerScreenState extends State<FileManagerScreen>
         final filename = basename(file.path);
         final newPath = join(targetFolder.path, filename);
         await file.rename(newPath);
-        Future.delayed(Duration(milliseconds: 1000), () {
-          return fetchFolderContent();
-        }).then((_) {
+
+        Future.delayed(Duration(milliseconds: 1000), () async {
+          await fetchFolderContent();
           Flushbar(
             title: 'Successfully',
             message: len == 0
                 ? '${len + 1} Document Move Successfully'
                 : len == 1
-                    ? ' $len Document Move Successfully'
-                    : '$len Documents Move Successfully',
+                ? ' $len Document Move Successfully'
+                : '$len Documents Move Successfully',
             duration: Duration(seconds: 3),
             backgroundColor: Colors.orangeAccent,
             icon: Icon(
               Icons.check,
               color: Colors.black,
             ),
-          );
+          ).show(context); // 👈 यहां show(context) call किया
+        });
+        setState(() {
+          selectedItems.clear();
+          isSelectionMode = false;
         });
       } catch (e) {
         debugPrint("Error moving file: $e");
@@ -396,12 +382,10 @@ class FileManagerScreenState extends State<FileManagerScreen>
       onWillAcceptWithDetails: (dragged) => isFolder,
       onAccept: (dragged) async {
         if (isFolder) {
+          debugPrint("\n This statement Is work make sure of that  1");
           await movesFileToFolder(
               dragged, item, context, selectedItems.length, item);
-          setState(() {
-            selectedItems.clear();
-            isSelectionMode = false;
-          });
+
         }
       },
       builder: (context, candidateData, rejectedData) {
@@ -557,6 +541,7 @@ class FileManagerScreenState extends State<FileManagerScreen>
         ),
       ),
       appBar: AppBar(
+
           title: isSelectionMode == false
               ? Text("File Manager")
               : GestureDetector(
@@ -578,7 +563,40 @@ class FileManagerScreenState extends State<FileManagerScreen>
                   }));
                 },
                 icon: Icon(Icons.settings))
-          ]),
+          ],
+        leading: Builder(
+          builder: (BuildContext context) {
+            return IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () { Scaffold.of(context).openDrawer(); },
+              tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
+            );
+          },
+        ),
+      ),
+      drawer: Drawer(
+        child: Column(
+          children: [
+            DrawerHeader(child: Text("File Manager Options")),
+            Divider(),
+            ListTile(
+              onTap: (){
+                Navigator.push(context, MaterialPageRoute(builder: (_) {
+                  return SettingGesture();
+                }));
+              },
+              leading:Icon(Icons.gesture,color: Colors.orangeAccent.shade700,),
+              title: Text(
+                "Gesture Settings",
+                style: GoogleFonts.lato(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            )
+          ],
+        ),
+      ),
       body: ListView.builder(
           itemCount: allItems.length,
           itemBuilder: (context, index) {

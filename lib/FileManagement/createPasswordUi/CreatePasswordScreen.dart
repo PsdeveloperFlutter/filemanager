@@ -150,7 +150,7 @@ class _PasswordScreenState extends State<PasswordScreen> {
                   InsertUserPassword();
                 },
                 child: Text(
-                  "Save",
+                  "Continue",
                   style: TextStyle(color: Colors.black),
                 ),
               ),

@@ -42,7 +42,7 @@ class FileManagerScreenSubState extends State<FileManagerScreenSub> {
   }
 
   //For Fetching the Folders
-  void fetchFolderContent() {
+  Future<void> fetchFolderContent()async {
     final dir = Directory(widget.path);
     if (dir.existsSync()) {
       List<FileSystemEntity> items = dir.listSync();
@@ -61,25 +61,6 @@ class FileManagerScreenSubState extends State<FileManagerScreenSub> {
 
 
 
-  Future<void> handleDrop(String targetPath,
-      List<FileSystemEntity> draggedItems, BuildContext context) async {
-    await Future.wait(draggedItems.map((item) async {
-      final newPath = '$targetPath/${basename(item.path)}';
-      try {
-        if (await FileSystemEntity.type(newPath) ==
-            FileSystemEntityType.notFound) {
-          await item.rename(newPath);
-        }
-      } catch (e) {
-        debugPrint("Error moving file: $e");
-      }
-    }));
-    fetchFolderContent();
-    setState(() {
-      selectedItems.clear();
-      isSelectionMode = false;
-    });
-  }
 
   Future<void> movesFileToFolder(
       List<FileSystemEntity> files,
@@ -93,9 +74,8 @@ class FileManagerScreenSubState extends State<FileManagerScreenSub> {
         final filename = basename(file.path);
         final newPath = join(targetFolder.path, filename);
         await file.rename(newPath);
-        Future.delayed(Duration(milliseconds: 1000),(){
-        return  fetchFolderContent();
-        });
+        Future.delayed(Duration(milliseconds: 1000),() async {
+        await  fetchFolderContent();
         Flushbar(
           title: 'Successfully',
           message: len == 0
@@ -109,7 +89,9 @@ class FileManagerScreenSubState extends State<FileManagerScreenSub> {
             Icons.check,
             color: Colors.black,
           ),
-        );
+        ).show(context);
+        });
+
       } catch (e) {
         debugPrint("Error moving file: $e");
       }

@@ -1,15 +1,14 @@
-import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:filemanager/FileManagement/uiComponents/uiUtility.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'checkGestureScreen.dart';
+import 'gestureEditScreen.dart';
+import 'gestureUi.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -18,68 +17,25 @@ void main() {
   ));
 }
 
-List<Uint8List> gestureImages = [];
-
 class SettingGesture extends StatefulWidget {
   const SettingGesture({Key? key}) : super(key: key);
 
   @override
-  State<SettingGesture> createState() => _SettingGestureState();
+  State<SettingGesture> createState() => SettingGestureState();
 }
 
-class _SettingGestureState extends State<SettingGesture> {
+class SettingGestureState extends State<SettingGesture> {
   bool isGestureEnabled = false;
   final storage = const FlutterSecureStorage();
   final uiObj = uiUtility();
   String? selectedpath;
+  GestureUi gestureUi = GestureUi();
 
   @override
   void initState() {
     super.initState();
     checkGestureEnable();
-    loadGestureImages(); //Load images from Flutter Secure storage
-  }
-
-// List to store loaded gesture images
-  List<Uint8List> gestureImages = [];
-
-// Load gesture images from shared preferences
-  Future<void> loadGestureImages() async {
-    final prefs = await SharedPreferences.getInstance();
-    final storedData = prefs.getString('gesture_image');
-
-    if (storedData != null) {
-      try {
-        List<String> base64List = List<String>.from(jsonDecode(storedData));
-        debugPrint("\n Base64 List :- $base64List");
-
-        // Decode base64 to Uint8List
-        gestureImages = base64List.map((b64) => base64Decode(b64)).toList();
-        debugPrint("\n Gesture Images :- $gestureImages");
-      } catch (e) {
-        print("Error loading gesture images: $e");
-      }
-    } else {
-      debugPrint("\n No gesture images found.");
-    }
-  }
-
-// Delete a specific gesture image by index
-  Future<void> deleteGestureImage(int index) async {
-    final prefs = await SharedPreferences.getInstance();
-    final storedData = prefs.getString('gesture_image');
-
-    if (storedData != null) {
-      List<String> base64List = List<String>.from(jsonDecode(storedData));
-
-      if (index >= 0 && index < base64List.length) {
-        base64List.removeAt(index); // Remove image at index
-        await prefs.setString(
-            'gesture_image', jsonEncode(base64List)); // Save updated list
-        await loadGestureImages(); // Reload updated images
-        setState(() {}); // Update UI
-      }
-    }
+    gestureUi.loadGestureImages(); //Load images from Flutter Secure storage
   }
 
   void checkGestureEnable() async {
@@ -102,15 +58,14 @@ class _SettingGestureState extends State<SettingGesture> {
           "Gesture Lock is Disabled", "Enable it first", Colors.red, context);
       return;
     }
-    showFolderDialog();
-    // Navigator.push(context, MaterialPageRoute(builder: (context) {
-    //   return GestureScreen(
-    //     operation: 'CreateFolder',
-    //   );
-    // })).then((value) {
-    //   loadGestureImages();
-    //   setState(() {});
-    // });
+
+    gestureUi.showMainOptionDialog(context, setState).whenComplete(() {
+      debugPrint("\n Gesture Images Loaded");
+      gestureUi.loadGestureImages();
+
+      setState(() {});
+      debugPrint("\n Gesture setState");
+    });
   }
 
   @override
@@ -150,7 +105,7 @@ class _SettingGestureState extends State<SettingGesture> {
           ),
           Expanded(
               child: ListView.builder(
-                  itemCount: gestureImages.length,
+                  itemCount: gestureUi.gestureImages.length,
                   itemBuilder: (context, index) {
                     if (index < 0) {
                       return Center(child: Text("No Gesture Found"));
@@ -168,12 +123,12 @@ class _SettingGestureState extends State<SettingGesture> {
                                 border: Border.all(color: Colors.black),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              width: 130,
-                              height: 130,
+                              width: 100,
+                              height: 100,
                               child: Padding(
                                   padding: EdgeInsets.all(8.0),
                                   child: Image.memory(
-                                    gestureImages[index],
+                                    gestureUi.gestureImages[index],
                                     fit: BoxFit.cover,
                                   )),
                             ),
@@ -205,23 +160,16 @@ class _SettingGestureState extends State<SettingGesture> {
                                 );
 
                                 if (confirmed == true) {
-                                  showDialog(
-                                    context: context,
-                                    barrierDismissible: false,
-                                    // User can't dismiss progress dialog
-                                    builder: (context) {
-                                      return Center(
-                                          child: CircularProgressIndicator());
-                                    },
-                                  );
-                                  Future.delayed(Duration(seconds: 3))
+
+                                  Future.delayed(Duration(seconds: 1))
                                       .then((_) {
                                     // Call your delete function
-                                    deleteGestureImage(index);
+                                    gestureUi.deleteGestureImage(
+                                        index, setState);
                                   }).then((_) {
-                                    // Close the progress indicator
-                                    Navigator.pop(context);
+                                    gestureUi.loadGestureImages();
                                   });
+                                  // set this
                                 }
                               },
                               style: ElevatedButton.styleFrom(
@@ -236,7 +184,24 @@ class _SettingGestureState extends State<SettingGesture> {
                               ),
                             ),
                             ElevatedButton(
-                              onPressed: () {},
+                              onPressed: () async {
+                                final result = await Navigator.push(
+                                   context,
+                                   MaterialPageRoute(
+                                     builder: (_) => EditGestureScreen(index: index), // Pass the index
+                                   ),
+                                 );
+
+                                // Check the result from EditGestureScreen
+                                if (result == true) {
+                                  // Handle true case: e.g., refresh data or show a success message
+                                  debugPrint("\n Gesture edit was successful.");
+                                  gestureUi.loadGestureImages(); // Reload images if needed
+                                  setState(() {});
+                                } else {
+                                  debugPrint("\n Gesture edit was cancelled or failed.");
+                                }
+                              },
                               style: ElevatedButton.styleFrom(
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
@@ -280,15 +245,17 @@ class _SettingGestureState extends State<SettingGesture> {
             if (currentDir.existsSync()) {
               contents = currentDir
                   .listSync()
-                  .where((entity) => FileSystemEntity.isDirectorySync(entity.path))
+                  .where(
+                      (entity) => FileSystemEntity.isDirectorySync(entity.path))
                   .toList();
             }
 
             return AlertDialog(
               title: Row(
                 children: [
-                  // Prevent going above root or the initial '/storage/emulated/0'
-                  if (p.dirname(currentDir.path) != currentDir.path && currentDir.path != '/storage/emulated/0')
+                  if (p.dirname(currentDir.path) != currentDir.path &&
+                      p.dirname(currentDir.path) !=
+                          '/storage/emulated/0') // Prevent going above root
                     IconButton(
                       icon: Icon(Icons.arrow_back),
                       onPressed: () {
@@ -298,9 +265,11 @@ class _SettingGestureState extends State<SettingGesture> {
                       },
                     ),
                   Expanded(
-                    child: Text( // Check if the path is the root directory
+                    child: Text(
+                      // Check if the path is the root directory
                       currentDir.path == '/storage/emulated/0'
-                          ? 'Internal Storage' : p.basename(currentDir.path),
+                          ? 'Internal Storage'
+                          : p.basename(currentDir.path),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -316,11 +285,12 @@ class _SettingGestureState extends State<SettingGesture> {
                     return Card(
                       elevation: 2,
                       child: ListTile(
-                        leading: Icon(folder is File ? Icons.insert_drive_file:Icons.folder,color: Colors.blue.shade500,),
+                        leading: Icon(Icons.folder),
                         title: Text(p.basename(folder.path)),
                         onTap: () {
                           setState(() {
-                            currentDir = Directory(folder.path); // Navigate deeper
+                            currentDir =
+                                Directory(folder.path); // Navigate deeper
                           });
                         },
                       ),
@@ -341,4 +311,3 @@ class _SettingGestureState extends State<SettingGesture> {
     );
   }
 }
-

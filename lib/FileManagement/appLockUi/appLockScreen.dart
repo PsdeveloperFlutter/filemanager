@@ -136,7 +136,7 @@ class _appLockState extends State<applock> {
               ),
             ),
           ),
-          sizedBoxs(18),
+          sizedBoxs(330),
           Center(
             child: SizedBox(
               width: 330,
@@ -166,7 +166,7 @@ class _appLockState extends State<applock> {
                     });
                   },
                   child: Text(
-                    'Continue',
+                    'Save',
                     style: TextStyle(color: Colors.white, fontSize: 20),
                   )),
             ),
