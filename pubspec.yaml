@@ -58,6 +58,8 @@ dependencies:
   gesture_password_widget: ^2.0.1
   sqflite: ^2.3.2
   provider: ^6.1.2
+  url_launcher: ^6.3.2
+  external_app_launcher: ^4.0.3
   pdf: ^3.10.4
   share_plus: ^11.0.0
   printing: ^5.12.0

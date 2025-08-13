@@ -1,9 +1,12 @@
-import 'dart:convert';
+import
+'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:external_app_launcher/external_app_launcher.dart';
 import 'package:filemanager/FileManagement/gestureUI/gestureUi.dart';
 import 'package:filemanager/FileManagement/uiComponents/uiUtility.dart';
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signature/signature.dart';
 class VerifyGestureScreen extends StatefulWidget {
@@ -125,8 +128,17 @@ class _VerifyGestureScreenState extends State<VerifyGestureScreen> {
         matchedGestureImage = gestureImages[matchedGestureIndex]; // Match मिलने पर image सेट
         String operation = gestureOperations[matchedGestureIndex];
         debugPrint("\n Matched Gesture Operation: $operation");
-       // Launch the app by package name if operation is not empty
-        launchExternalApp(operation);
+        // Check if the operation is a folder path or an app package name
+        if (await Directory(operation).exists()) { // Use await here
+          openFolder(operation); // Use openFolder for directories
+        }
+        else if (await File(operation).exists()) { // Use await here
+         openFile(operation);
+        }
+        else {
+          // Assume it's an app package name
+          launchExternalApp(operation);
+        }
         break;
 
 
@@ -231,4 +243,26 @@ class _VerifyGestureScreenState extends State<VerifyGestureScreen> {
     }
   }
 
+  // Open Folder
+  Future<void> openFolder(String folderPath) async {
+    try {
+      // On Android, you can use OpenFile to open the folder with the default file manager
+      final result = await OpenFilex.open(folderPath);
+      debugPrint("Folder open result: $result");
+    } catch (e) {
+      debugPrint("Error opening folder: $e");
+      uiObject.flushBars("Error", "Could not open folder: $folderPath", Colors.red, context);
+    }
+  }
+
+  // Open File
+  Future<void> openFile(String filePath) async {
+    try {
+      final result = await OpenFilex.open(filePath);
+      debugPrint("File open result: $result");
+    } catch (e) {
+      debugPrint("Error opening file: $e");
+      uiObject.flushBars("Error", "Could not open file: $filePath", Colors.red, context);
+    }
+  }
 }
