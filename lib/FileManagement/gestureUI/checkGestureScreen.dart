@@ -18,8 +18,7 @@ class VerifyGestureScreen extends StatefulWidget {
 
 class _VerifyGestureScreenState extends State<VerifyGestureScreen> {
   final SignatureController controller = SignatureController(
-    penStrokeWidth: 4,
-    penColor: Colors.black,
+    penColor: Colors.blue.shade500, penStrokeWidth: 4.0,
   );
   GestureUi gestureObject = GestureUi();
   uiUtility uiObject = uiUtility();

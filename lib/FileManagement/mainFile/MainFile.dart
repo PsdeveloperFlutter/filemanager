@@ -14,7 +14,7 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../gestureUI/settingGesture.dart';
+import '../gestureUI/mainGestureScreen.dart';
 import 'filemanagerScreen.dart';
 
 void main() {
@@ -582,7 +582,7 @@ class FileManagerScreenState extends State<FileManagerScreen>
             ListTile(
               onTap: (){
                 Navigator.push(context, MaterialPageRoute(builder: (_) {
-                  return SettingGesture();
+                  return mainGesture();
                 }));
               },
               leading:Icon(Icons.gesture,color: Colors.orangeAccent.shade700,),

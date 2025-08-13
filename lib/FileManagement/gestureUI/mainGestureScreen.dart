@@ -13,18 +13,18 @@ import 'gestureUi.dart';
 void main() {
   runApp(MaterialApp(
     debugShowCheckedModeBanner: false,
-    home: SettingGesture(),
+    home: mainGesture(),
   ));
 }
 
-class SettingGesture extends StatefulWidget {
-  const SettingGesture({Key? key}) : super(key: key);
+class mainGesture extends StatefulWidget {
+  const mainGesture({Key? key}) : super(key: key);
 
   @override
-  State<SettingGesture> createState() => SettingGestureState();
+  State<mainGesture> createState() => SettingGestureState();
 }
 
-class SettingGestureState extends State<SettingGesture> {
+class SettingGestureState extends State<mainGesture> {
   bool isGestureEnabled = false;
   final storage = const FlutterSecureStorage();
   final uiObj = uiUtility();
@@ -134,43 +134,8 @@ class SettingGestureState extends State<SettingGesture> {
                             ),
                             ElevatedButton(
                               onPressed: () async {
-                                final confirmed = await showDialog<bool>(
-                                  context: context,
-                                  builder: (context) {
-                                    return AlertDialog(
-                                      title: Text("Delete Gesture"),
-                                      content: Text(
-                                          "Are you sure you want to delete this gesture?"),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context, false),
-                                          child: Text("Cancel"),
-                                        ),
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context, true),
-                                          child: Text("Delete",
-                                              style:
-                                                  TextStyle(color: Colors.red)),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-
-                                if (confirmed == true) {
-
-                                  Future.delayed(Duration(seconds: 1))
-                                      .then((_) {
-                                    // Call your delete function
-                                    gestureUi.deleteGestureImage(
-                                        index, setState);
-                                  }).then((_) {
-                                    gestureUi.loadGestureImages();
-                                  });
-                                  // set this
-                                }
+                                gestureUi.deleteDialogBox(index, context,
+                                    setState); // Show confirmation dialog before deleting
                               },
                               style: ElevatedButton.styleFrom(
                                 shape: RoundedRectangleBorder(
@@ -186,20 +151,23 @@ class SettingGestureState extends State<SettingGesture> {
                             ElevatedButton(
                               onPressed: () async {
                                 final result = await Navigator.push(
-                                   context,
-                                   MaterialPageRoute(
-                                     builder: (_) => EditGestureScreen(index: index), // Pass the index
-                                   ),
-                                 );
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => EditGestureScreen(
+                                        index: index), // Pass the index
+                                  ),
+                                );
 
                                 // Check the result from EditGestureScreen
                                 if (result == true) {
                                   // Handle true case: e.g., refresh data or show a success message
                                   debugPrint("\n Gesture edit was successful.");
-                                  gestureUi.loadGestureImages(); // Reload images if needed
+                                  gestureUi
+                                      .loadGestureImages(); // Reload images if needed
                                   setState(() {});
                                 } else {
-                                  debugPrint("\n Gesture edit was cancelled or failed.");
+                                  debugPrint(
+                                      "\n Gesture edit was cancelled or failed.");
                                 }
                               },
                               style: ElevatedButton.styleFrom(
@@ -223,7 +191,6 @@ class SettingGestureState extends State<SettingGesture> {
     );
   }
 
-  // make sure of that
   Future<void> showFolderDialog() async {
     // Request storage permission
     final status = await Permission.manageExternalStorage.request();
