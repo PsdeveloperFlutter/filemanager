@@ -577,20 +577,21 @@ class FileManagerScreenState extends State<FileManagerScreen>
       drawer: Drawer(
         child: Column(
           children: [
-            DrawerHeader(child: Text("File Manager Options")),
-            Divider(),
-            ListTile(
-              onTap: (){
-                Navigator.push(context, MaterialPageRoute(builder: (_) {
-                  return mainGesture();
-                }));
-              },
-              leading:Icon(Icons.gesture,color: Colors.orangeAccent.shade700,),
-              title: Text(
-                "Gesture Settings",
-                style: GoogleFonts.lato(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+            Card(
+              elevation: 2,
+              child: ListTile(
+                onTap: (){
+                  Navigator.push(context, MaterialPageRoute(builder: (_) {
+                    return mainGesture();
+                  }));
+                },
+                leading:Icon(Icons.gesture,color: Colors.orangeAccent.shade700,),
+                title: Text(
+                  "Gesture Settings",
+                  style: GoogleFonts.lato(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             )

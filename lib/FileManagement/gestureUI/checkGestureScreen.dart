@@ -13,11 +13,11 @@ class VerifyGestureScreen extends StatefulWidget {
   const VerifyGestureScreen({Key? key}) : super(key: key);
 
   @override
-  State<VerifyGestureScreen> createState() => _VerifyGestureScreenState();
+  State<VerifyGestureScreen> createState() => VerifyGestureScreenState();
 }
 
-class _VerifyGestureScreenState extends State<VerifyGestureScreen> {
-  final SignatureController controller = SignatureController(
+class VerifyGestureScreenState extends State<VerifyGestureScreen> {
+  final SignatureController controllers = SignatureController(
     penColor: Colors.blue.shade500, penStrokeWidth: 4.0,
   );
   GestureUi gestureObject = GestureUi();
@@ -99,7 +99,7 @@ class _VerifyGestureScreenState extends State<VerifyGestureScreen> {
       return;
     }
 
-    final points = controller.points
+    final points = controllers.points
             ?.map((e) => Offset(e.offset.dx, e.offset.dy))
             .toList() ??
         [];
@@ -156,18 +156,17 @@ class _VerifyGestureScreenState extends State<VerifyGestureScreen> {
     }
     debugPrint("\n Gesture Debug 8 ");
     // Gesture clear करो
-    controller.clear();
+    controllers.clear();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Verify Gesture")),
       body: Column(
         children: [
           Expanded(
             child: Signature(
-              controller: controller,
+              controller: controllers,
               backgroundColor: Colors.grey[200]!,
             ),
           ),
@@ -193,13 +192,13 @@ class _VerifyGestureScreenState extends State<VerifyGestureScreen> {
                 text: "Verify",
               ),
               _buildElevatedButton(
-                onPressed: () => controller.clear(), // Gesture clear
+                onPressed: () => controllers.clear(), // Gesture clear
                 text: "Clear",
               ),
               _buildElevatedButton(
                 onPressed: () {
-                  if (controller.isNotEmpty) {
-                    controller.undo(); // Gesture undo
+                  if (controllers.isNotEmpty) {
+                    controllers.undo(); // Gesture undo
                   }
                 },
                 text: "Undo",
@@ -218,11 +217,15 @@ class _VerifyGestureScreenState extends State<VerifyGestureScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 4.0),
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15.0),
+            ),
+            elevation: 2,
             padding: const EdgeInsets.symmetric(vertical: 16.0),
             backgroundColor: Colors.orangeAccent.shade200,
           ),
           onPressed: onPressed,
-          child: Text(text),
+          child: Text(text,style: const TextStyle(color: Colors.white)),
         ),
       ),
     );
