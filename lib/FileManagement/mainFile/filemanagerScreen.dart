@@ -67,36 +67,38 @@ class FileManagerScreenSubState extends State<FileManagerScreenSub> {
       Directory targetFolder,
       BuildContext context,
       int len,
-      Directory item
+      Directory item,
       ) async {
-    for (final file in files) {
+    // make a safe copy of files to avoid concurrent modification
+    final filesCopy = List<FileSystemEntity>.from(files);
+
+    for (final file in filesCopy) {
       try {
         final filename = basename(file.path);
         final newPath = join(targetFolder.path, filename);
         await file.rename(newPath);
-        Future.delayed(Duration(milliseconds: 1000),() async {
-        await  fetchFolderContent();
-        Flushbar(
-          title: 'Successfully',
-          message: len == 0
-              ? '${len + 1} Document Move Successfully'
-              : len == 1
-              ? ' $len Document Move Successfully'
-              : '$len Documents Move Successfully',
-          duration: Duration(seconds: 3),
-          backgroundColor: Colors.orangeAccent,
-          icon: Icon(
-            Icons.check,
-            color: Colors.black,
-          ),
-        ).show(context);
-        });
-
       } catch (e) {
         debugPrint("Error moving file: $e");
       }
     }
+
+    // Refresh once after all moves
+    await fetchFolderContent();
+
+    // Show one success message
+    Flushbar(
+      title: 'Successfully',
+      message: len == 0
+          ? '${len + 1} Document Move Successfully'
+          : len == 1
+          ? ' $len Document Move Successfully'
+          : '$len Documents Move Successfully',
+      duration: Duration(seconds: 3),
+      backgroundColor: Colors.orangeAccent,
+      icon: Icon(Icons.check, color: Colors.black),
+    ).show(context);
   }
+
 
 
 

@@ -19,7 +19,9 @@ class EditGestureScreen extends StatefulWidget {
 class _EditGestureScreenState extends State<EditGestureScreen> {
   final SignatureController _controller = SignatureController(
     penStrokeWidth: 5,
-    penColor: Colors.black,
+    penColor: Colors.blue,
+    exportBackgroundColor: Colors.white,
+
   );
 
   bool _gestureSaved = false;
@@ -62,6 +64,24 @@ class _EditGestureScreenState extends State<EditGestureScreen> {
     }
   }
 
+  Widget _buildButton(String text, VoidCallback onPressed) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.orangeAccent.shade200,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0), // Rounded corners
+          ),
+          elevation: 2,
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 15), // Button padding
+        ),
+        onPressed: onPressed,
+        child: Text(text,style: TextStyle(color: Colors.white),),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -82,10 +102,15 @@ class _EditGestureScreenState extends State<EditGestureScreen> {
             height: 300,
           ),
           SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () => _controller.clear(),
-            child: Text("Clear"),
-          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _buildButton("Clear", () => _controller.clear()),
+              _buildButton("Undo",()=>_controller.undo()),
+              _buildButton("Redo",()=> _controller.redo()),
+             ],
+          )
         ],
       ),
     );

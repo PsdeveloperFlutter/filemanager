@@ -291,39 +291,40 @@ class FileManagerScreenState extends State<FileManagerScreen>
       Directory targetFolder,
       BuildContext context,
       int len,
-      Directory item) async {
-    for (final file in files) {
+      Directory item
+      ) async {
+    // Make a safe copy to avoid concurrent modification
+    final filesCopy = List<FileSystemEntity>.from(files);
+
+    for (final file in filesCopy) {
       try {
         final filename = basename(file.path);
         final newPath = join(targetFolder.path, filename);
+
         await file.rename(newPath);
 
-        Future.delayed(Duration(milliseconds: 1000), () async {
-          await fetchFolderContent();
-          Flushbar(
-            title: 'Successfully',
-            message: len == 0
-                ? '${len + 1} Document Move Successfully'
-                : len == 1
-                ? ' $len Document Move Successfully'
-                : '$len Documents Move Successfully',
-            duration: Duration(seconds: 3),
-            backgroundColor: Colors.orangeAccent,
-            icon: Icon(
-              Icons.check,
-              color: Colors.black,
-            ),
-          ).show(context); // 👈 यहां show(context) call किया
-        });
-        setState(() {
-          selectedItems.clear();
-          isSelectionMode = false;
-        });
+        // run flushbar and refresh *after* loop finishes instead
       } catch (e) {
         debugPrint("Error moving file: $e");
       }
     }
+
+    // After loop completes, refresh and show flushbar once
+    await fetchFolderContent();
+
+    Flushbar(
+      title: 'Successfully',
+      message: len == 0
+          ? '${len + 1} Document Move Successfully'
+          : len == 1
+          ? ' $len Document Move Successfully'
+          : '$len Documents Move Successfully',
+      duration: Duration(seconds: 3),
+      backgroundColor: Colors.orangeAccent,
+      icon: Icon(Icons.check, color: Colors.black),
+    ).show(context);
   }
+
 
   Future<void> createFolder(BuildContext context, path) async {
     TextEditingController folderNameController = TextEditingController();
@@ -356,10 +357,10 @@ class FileManagerScreenState extends State<FileManagerScreen>
                             if (newFolderName.isNotEmpty) {
                               final folder = Directory("$path/$newFolderName");
                               if (!await folder.exists()) {
-                                await folder.create();
-                                fetchFolderContent();
-                                folderNameController.clear();
-                                Navigator.of(context).pop();
+                                await folder.create().whenComplete((){
+                                  folderNameController.clear();
+                                  Navigator.of(context).pop();
+                                });
                               } else {
                                 uiObject.flushBars("Error", "Error Occur",
                                     Colors.red, context);
@@ -385,7 +386,10 @@ class FileManagerScreenState extends State<FileManagerScreen>
           debugPrint("\n This statement Is work make sure of that  1");
           await movesFileToFolder(
               dragged, item, context, selectedItems.length, item);
-
+          setState(() {
+            selectedItems.clear();
+            isSelectionMode = false;
+          });
         }
       },
       builder: (context, candidateData, rejectedData) {
@@ -533,7 +537,9 @@ class FileManagerScreenState extends State<FileManagerScreen>
         backgroundColor: Colors.green,
         onPressed: () async {
           Directory? dir = await getExternalStorageDirectory();
-          createFolder(context, dir!.path);
+          createFolder(context, dir!.path).whenComplete((){
+            fetchFolderContent();
+          });
         },
         child: Icon(
           Icons.add,
