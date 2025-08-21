@@ -85,6 +85,9 @@ class SettingGestureState extends State<mainGesture> {
           IconButton(
             icon: const Icon(Icons.location_on, color: Colors.white),
             onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context);
+
               showModalBottomSheet(
                   isScrollControlled: true, // Allows the bottom sheet to take full height if needed
                   context: context,

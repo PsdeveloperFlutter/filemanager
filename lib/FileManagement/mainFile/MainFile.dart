@@ -32,19 +32,61 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   final storage = FlutterSecureStorage();
   final _authService = AuthService();
   final uiObject = uiUtility();
 
+  bool _showingLock = false;
+
+  // ✅ Global navigator key banate hain
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // ✅ ab navigatorKey se context le lo
+      final ctx = navigatorKey.currentContext;
+      if (ctx != null) {
+        _showLockIfNeeded(ctx);
+      }
+    }
+  }
+
+  Future<void> _showLockIfNeeded(BuildContext context) async {
+    if (_showingLock) return;
+    _showingLock = true;
+
+    final lockOption = await _authService.getStoredLockOption();
+    if (lockOption == 'pin') {
+      final pin = await _authService.getPin();
+      if (pin != null) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => LockScreen()),
+        );
+      }
+    } else if (lockOption == 'screenLock') {
+      uiObject.showBottomSheets(context);
+    }
+
+    _showingLock = false;
   }
 
   Future<Widget> _decideStartScreen() async {
-    final lockOption =
-        await _authService.getStoredLockOption(); // yeh await karo!
+    final lockOption = await _authService.getStoredLockOption();
     if (lockOption == 'pin') {
       final pin = await _authService.getPin();
       if (pin == null) {
@@ -52,12 +94,8 @@ class _MyAppState extends State<MyApp> {
       } else {
         return LockScreen();
       }
-    } else if (lockOption == 'screenLock' && mounted) {
-      // Added 'mounted' check
-      // It's important to check if the widget is still in the tree
-      // before interacting with its context, especially in async methods.
-      uiObject.showBottomSheets(this.context); // Show biometric options
-      return FileManagerScreen(); // Return a default screen while bottom sheet is shown
+    } else if (lockOption == 'screenLock') {
+      return FileManagerScreen();
     } else {
       return FileManagerScreen();
     }
@@ -66,6 +104,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey, // ✅ yeh important hai
       debugShowCheckedModeBanner: false,
       home: FutureBuilder<Widget>(
         future: _decideStartScreen(),
@@ -82,6 +121,7 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
+
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 // This is the Code For the File Manager Screen
@@ -93,7 +133,7 @@ class FileManagerScreen extends StatefulWidget {
 }
 
 class FileManagerScreenState extends State<FileManagerScreen>
-    with WidgetsBindingObserver {
+ {
   bool shouldLock = false;
   List<FileSystemEntity> allItems = [];
   AuthService authService = AuthService();
@@ -110,7 +150,6 @@ class FileManagerScreenState extends State<FileManagerScreen>
   void initState() {
     super.initState();
 
-    WidgetsBinding.instance.addObserver(this);
 
     // Request permissions and check privacy after UI is rendered
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -125,20 +164,10 @@ class FileManagerScreenState extends State<FileManagerScreen>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  // 📲 App lifecycle events: handle screen lock/resume
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      shouldLock = true;
-    } else if (state == AppLifecycleState.resumed && shouldLock) {
-      shouldLock = false;
-      _handleAppUnlock();
-    }
-  }
+
 
   // 🔐 Check user privacy setting
   Future<void> checkPrivacyOption() async {
@@ -170,33 +199,7 @@ class FileManagerScreenState extends State<FileManagerScreen>
     }
   }
 
-  // 🔄 Handle app resume from screen lock
-  void _handleAppUnlock() async {
-    if (!privacyEnable) return;
 
-    final lockOption = await authService.getStoredLockOption();
-
-    if (lockOption == 'screenLock') {
-      final isAvailable = await authService.isBiometricTrulyAvailable();
-      if (isAvailable) {
-        // Ensure context is still valid.
-        if (navigatorKey.currentContext != null)
-          uiObject.showBottomSheets(navigatorKey.currentContext!);
-      }
-    } else if (lockOption == 'pin') {
-      navigatorKey.currentState?.push(MaterialPageRoute(
-        builder: (_) => LockScreen(),
-      ));
-    }
-  }
-
-  // Note: didChangeAppLifeCycleState seems to be a typo and might conflict with didChangeAppLifecycleState.
-  // If it's intended to be an override, it should match the framework's method signature exactly.
-  // For now, I'm commenting it out as it might be redundant or incorrectly implemented.
-  /* @override
-  void didChangeAppLifeCycleState(AppLifecycleState state) {
-    // ... existing logic ...
-  } */
 
   //request permission and fetch
   Future<void> _requestPermissionsAndFetchFiles() async {
@@ -583,6 +586,7 @@ class FileManagerScreenState extends State<FileManagerScreen>
       drawer: Drawer(
         child: Column(
           children: [
+            SizedBox(height: 50,),
             Card(
               elevation: 2,
               child: ListTile(
