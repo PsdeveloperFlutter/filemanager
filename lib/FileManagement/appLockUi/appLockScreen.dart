@@ -60,118 +60,120 @@ class _appLockState extends State<applock> {
       appBar: AppBar(
         title: Text('Enable App Lock'),
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Visibility(
-            visible: bioValue,
-            child: LockOptionTile(
-                value: LockOption.screenLock,
-                groupValue: _selectedOption,
-                title: 'Use your screen lock',
-                subtitle:
-                    'Use your existing PIN, pattern,\nface Id, or fingerprint',
-                onChanged: (value) async {
-                  if (await authService.isBiometricTrulyAvailable() == true &&
-                      await authService.isBiometricAvailable() == true) {
-                    debugPrint("\n Biometric is available");
-                    setState(() {
-                      _selectedOption = value;
-                      _visible = false;
-                    });
-                    uiobject.showBottomSheets(
-                        context); // Show the bottom sheet for biometric authentication
-                  } else {
-                    debugPrint("\n Biometric is not available");
-                    uiobject.flushBars(
-                        "Not Support",
-                        "Check your Biometric and Pin Setting",
-                        Colors.red,
-                        context);
-                    return;
-                  }
-                }),
-          ),
-          sizedBoxs(18),
-          LockOptionTile(
-            value: LockOption.pin,
-            groupValue: _selectedOption,
-            title: 'Use your 4-Digit PIN',
-            subtitle: 'Use your 4-digit PIN to unlock',
-            onChanged: (value) async {
-              // Handle pin selection
-              await handlePinSelection(context,value);
-            },
-          ),
-          sizedBoxs(18),
-          Visibility(
-            visible: _visible,
-            child: Padding(
-              padding: const EdgeInsets.only(left: 15.0),
-              child: GestureDetector(
-                onTap: () {
-                  passwordSetOrNot(context);
-                },
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    CircleAvatar(
-                        backgroundColor: Colors.white,
-                        radius: 15,
-                        child: Icon(
-                          size: 12,
-                          Icons.question_mark_rounded,
-                          color: Colors.blue,
-                        )),
-                    SizedBox(
-                      width: 15,
-                    ),
-                    Text(
-                      "Did you forget pin?",
-                      style: TextStyle(
-                          color: Colors.blue, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Visibility(
+              visible: bioValue,
+              child: LockOptionTile(
+                  value: LockOption.screenLock,
+                  groupValue: _selectedOption,
+                  title: 'Use your screen lock',
+                  subtitle:
+                      'Use your existing PIN, pattern,\nface Id, or fingerprint',
+                  onChanged: (value) async {
+                    if (await authService.isBiometricTrulyAvailable() == true &&
+                        await authService.isBiometricAvailable() == true) {
+                      debugPrint("\n Biometric is available");
+                      setState(() {
+                        _selectedOption = value;
+                        _visible = false;
+                      });
+                      uiobject.showBottomSheets(
+                          context); // Show the bottom sheet for biometric authentication
+                    } else {
+                      debugPrint("\n Biometric is not available");
+                      uiobject.flushBars(
+                          "Not Support",
+                          "Check your Biometric and Pin Setting",
+                          Colors.red,
+                          context);
+                      return;
+                    }
+                  }),
+            ),
+            sizedBoxs(18),
+            LockOptionTile(
+              value: LockOption.pin,
+              groupValue: _selectedOption,
+              title: 'Use your 4-Digit PIN',
+              subtitle: 'Use your 4-digit PIN to unlock',
+              onChanged: (value) async {
+                // Handle pin selection
+                await handlePinSelection(context,value);
+              },
+            ),
+            sizedBoxs(18),
+            Visibility(
+              visible: _visible,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 15.0),
+                child: GestureDetector(
+                  onTap: () {
+                    passwordSetOrNot(context);
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                          backgroundColor: Colors.white,
+                          radius: 15,
+                          child: Icon(
+                            size: 12,
+                            Icons.question_mark_rounded,
+                            color: Colors.blue,
+                          )),
+                      SizedBox(
+                        width: 15,
+                      ),
+                      Text(
+                        "Did you forget pin?",
+                        style: TextStyle(
+                            color: Colors.blue, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          sizedBoxs(330),
-          Center(
-            child: SizedBox(
-              width: 330,
-              height: 50,
-              child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade500,
-                      padding: EdgeInsets.all(10),
-                      fixedSize: Size(330, 50),
-                      alignment: Alignment.center,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: Colors.yellow.shade50))),
-                  onPressed: () async {
-                    if (await storeOptions() == false) {
-                      return;
-                    }
-                    uiobject.flushBars(
-                        'App Lock Enabled',
-                        'Your app lock settings have been saved successfully',
-                        Colors.green,
-                        context);
-                    authService.setPrivacyLockOption(
-                        'true'); // Set the privacy lock option to true
-                    Future.delayed(Duration(seconds: 4), () {
-                      Navigator.pop(context);
-                    });
-                  },
-                  child: Text(
-                    'Save',
-                    style: TextStyle(color: Colors.white, fontSize: 20),
-                  )),
-            ),
-          )
-        ],
+            sizedBoxs(330),
+            Center(
+              child: SizedBox(
+                width: 330,
+                height: 50,
+                child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade500,
+                        padding: EdgeInsets.all(10),
+                        fixedSize: Size(330, 50),
+                        alignment: Alignment.center,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: Colors.yellow.shade50))),
+                    onPressed: () async {
+                      if (await storeOptions() == false) {
+                        return;
+                      }
+                      uiobject.flushBars(
+                          'App Lock Enabled',
+                          'Your app lock settings have been saved successfully',
+                          Colors.green,
+                          context);
+                      authService.setPrivacyLockOption(
+                          'true'); // Set the privacy lock option to true
+                      Future.delayed(Duration(seconds: 4), () {
+                        Navigator.pop(context);
+                      });
+                    },
+                    child: Text(
+                      'Save',
+                      style: TextStyle(color: Colors.white, fontSize: 20),
+                    )),
+              ),
+            )
+          ],
+        ),
       ),
     );
   }

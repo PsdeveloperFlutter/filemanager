@@ -89,16 +89,7 @@ class _privacyScreenState extends State<privacyScreen> {
                 inactiveColor: Colors.grey,
                 value: isLocked,
                 onToggle: (val) {
-                  // if(isLocked==true){
-                  //   object.setPrivacyLockOption('false');
-                  //   setState(() {
-                  //     isLocked = false;
-                  //   });
-                  //   object.resetPin(); // Reset the pin when disabling the lock
-                  // }
-                  // else{
-                  //   onTapFunction();
-                  // }
+
                   if(isLocked==false){
                     onTapFunction();
                   }
@@ -144,14 +135,7 @@ class _privacyScreenState extends State<privacyScreen> {
 
   // Function to handle the tap on the switch and Navigate to the app lock screen
   void onTapFunction() async {
-    // setState(() {
-    //   isLocked = !isLocked;
-    // });
-    // if (isLocked) {
-    //   object.setPrivacyLockOption('true');
-    // } else {
-    //   object.setPrivacyLockOption('false');
-    // }
+
     await Navigator.push(context, MaterialPageRoute(builder: (context) {
       return applock();
     }));
