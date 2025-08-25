@@ -129,13 +129,16 @@ class VerifyGestureScreenState extends State<VerifyGestureScreen> {
         debugPrint("\n Matched Gesture Operation: $operation");
         // Check if the operation is a folder path or an app package name
         if (await Directory(operation).exists()) { // Use await here
+          Navigator.pop(context);
           openFolder(operation); // Use openFolder for directories
         }
         else if (await File(operation).exists()) { // Use await here
+         Navigator.pop(context);
          openFile(operation);
         }
         else {
           // Assume it's an app package name
+          Navigator.pop(context);
           launchExternalApp(operation);
         }
         break;

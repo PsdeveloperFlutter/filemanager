@@ -17,43 +17,45 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.green,
       ),
-      home: MyHomePage(),
+      home: settingpage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class settingpage extends StatefulWidget {
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _Mysettingpage createState() => _Mysettingpage();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _Mysettingpage extends State<settingpage> {
   final TextEditingController _password =
       TextEditingController(); //Controller for password
   final TextEditingController question1 = TextEditingController();
   final TextEditingController question2 = TextEditingController();
   final TextEditingController enterPin = TextEditingController();
-  bool? pinstatus;
-  bool? biometricstatus;
-  bool? isAppLockEnabled;
+
+  // Non-nullable flags with sane defaults
+  bool pinStatus = false;
+  bool biometricStatus = false;
+  bool isAppLockEnabled = false;
+  bool biometricAvailable = false;
 
   final uiObject = uiUtility(); // Create an instance of uiUtility
   final authService = AuthService(); // Create an instance of AuthService
-  bool? Biometric;
 
   //This Function help to get value from isBiometricAvailable or not
   void getBiometricAvilablity() async {
     bool result = await authService.isBiometricTrulyAvailable();
-    print('\n Biometric available ${result}');
+    print('\n Biometric available $result');
     setState(() {
-      Biometric = result;
+      biometricAvailable = result;
     });
   }
 
 // This Function help to get the Value of the AppLock
   void getValueOfAppLock() async {
     bool result = await authService.isAppLockEnabled();
-    print('\n AppLock available ${result}');
+    print('\n AppLock available $result');
     setState(() {
       isAppLockEnabled = result;
     });
@@ -63,19 +65,23 @@ class _MyHomePageState extends State<MyHomePage> {
   void pinFetch() async {
     String? result = await authService.getPin();
     if (result != null) {
-      pinstatus = true;
       print("Pin is Available $result");
+      setState(() {
+        pinStatus = true;
+      });
     } else {
       print("Pin is Available $result");
-      pinstatus = false;
+      setState(() {
+        pinStatus = false;
+      });
     }
   }
 
   //Load the Biometric Toggle
   void loadBiometricToggle() async {
     bool enabled = await authService.isBiometricToggleEnabled();
-    print("\n Biometric Stauts ${enabled}");
-    setState(() => biometricstatus = enabled);
+    print("\n Biometric Stauts $enabled");
+    setState(() => biometricStatus = enabled);
   }
 
 // Fetch Biometric Availability
@@ -128,7 +134,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         height: 25.0,
                         valueFontSize: 12.0,
                         toggleSize: 18.0,
-                        value: isAppLockEnabled ?? false,
+                        value: isAppLockEnabled,
                         borderRadius: 30.0,
                         padding: 4.0,
                         activeColor: Colors.green,
@@ -149,15 +155,14 @@ class _MyHomePageState extends State<MyHomePage> {
                   subtitle: Text("Click to update your existing password"),
                 ),
               ),
-              Biometric == true
+              biometricAvailable
                   ? Card(
                       elevation: 1,
                       child: ListTile(
-                        onTap: ()
-                            //set the Functionality of the Toggle functionality
-                            async {
-                          bool newvalue = !(biometricstatus ?? false);
-                          enableBiometric(newvalue, context);
+                        onTap: () async {
+                          //set the Functionality of the Toggle functionality
+                          bool newValue = !biometricStatus;
+                          enableBiometric(newValue);
                         },
                         title: Text("Enable Biometric"),
                         subtitle: Text(
@@ -169,14 +174,14 @@ class _MyHomePageState extends State<MyHomePage> {
                             height: 25.0,
                             valueFontSize: 12.0,
                             toggleSize: 18.0,
-                            value: biometricstatus ?? false,
+                            value: biometricStatus,
                             borderRadius: 30.0,
                             padding: 4.0,
                             activeColor: Colors.green,
                             inactiveColor: Colors.grey,
                             onToggle: (val) async {
-                              enableBiometric(val,
-                                  context); //set the Functionality of the Toggle functionality
+                              //set the Functionality of the Toggle functionality
+                              enableBiometric(val);
                             },
                           ),
                         ),
@@ -261,9 +266,8 @@ class _MyHomePageState extends State<MyHomePage> {
                         context,
                         _password.text,
                         _password,
-                        isAppLockEnabled ?? false,
-                        biometricstatus ??
-                            false); //Check if password valid or not
+                        isAppLockEnabled,
+                        biometricStatus); //Check if password valid or not
                     _password.clear(); //Clear text Fields
                     Navigator.of(context).pop();
                   },
@@ -407,10 +411,12 @@ class _MyHomePageState extends State<MyHomePage> {
       await authService.resetPin();
       await authService.setAppLockEnabled(false);
       await authService.setBiometricToggle(false);
+      authService.setPrivacyLockOption('false');
       setState(() {
-        biometricstatus = false;
+        biometricStatus = false;
         isAppLockEnabled = false;
       });
+
       Navigator.pop(context);
     } else if (question1.text == passwordData['answer1'] &&
         question2.text == passwordData['answer2'] &&
@@ -524,9 +530,10 @@ class _MyHomePageState extends State<MyHomePage> {
   void setPinFunctionality(BuildContext context) async {
     final pin = await authService.getPin();
     // Define `val` as a placeholder or pass it as a parameter
-    bool val = !(isAppLockEnabled ?? false);
+    bool val = !isAppLockEnabled;
     final appLockEnabled = await authService.isAppLockEnabled();
-    // Case 1: PIN exists and app lock is enabled → verify user
+
+    // Case 1: PIN exists and app lock is enabled → verify user (likely disabling)
     if (pin != null && appLockEnabled == true) {
       verifyUserPin(context, enterPin, val); // your existing logic
     }
@@ -543,15 +550,18 @@ class _MyHomePageState extends State<MyHomePage> {
         if (result == true) {
           // User set password successfully
           setState(() => isAppLockEnabled = true);
-          authService.setAppLockEnabled(true);
+          await authService.setAppLockEnabled(true);
+          authService.setPrivacyLockOption('true');
         } else {
           // User cancelled setting password → revert switch
           setState(() => isAppLockEnabled = false);
+          authService.setPrivacyLockOption('false');
         }
       } else {
-        // Toggling OFF when no password exists
+        // Toggling OFF when already disabled
         setState(() => isAppLockEnabled = false);
-        authService.setAppLockEnabled(false);
+        await authService.setAppLockEnabled(false);
+        authService.setPrivacyLockOption('false');
       }
     }
     // Case 3: No PIN set → navigate to password screen
@@ -568,25 +578,29 @@ class _MyHomePageState extends State<MyHomePage> {
           // User set password successfully
           setState(() {
             isAppLockEnabled = true;
-            biometricstatus = true;
+            biometricStatus = true;
           });
-          authService.setAppLockEnabled(true);
-          authService.setBiometricToggle(true);
+          await authService.setAppLockEnabled(true);
+          await authService.setBiometricToggle(true);
+          authService.setPrivacyLockOption('true');
         } else {
           // User cancelled setting password → revert switch
           setState(() {
             isAppLockEnabled = false;
-            biometricstatus = false;
+            biometricStatus = false;
           });
+          authService.setPrivacyLockOption('false');
         }
       } else {
         // Toggling OFF when no password exists
         setState(() {
           isAppLockEnabled = false;
-          biometricstatus = false;
+          biometricStatus = false;
+          pinStatus = false;
         });
-        authService.setAppLockEnabled(false);
-        authService.setBiometricToggle(false);
+        await authService.setAppLockEnabled(false);
+        await authService.setBiometricToggle(false);
+        authService.setPrivacyLockOption('false');
       }
     }
   }
@@ -601,17 +615,21 @@ class _MyHomePageState extends State<MyHomePage> {
     if (result == enterPin.text.toString()) {
       setState(() {
         isAppLockEnabled = val;
-        biometricstatus = val;
+        biometricStatus = val;
       });
-      authService.resetPin();
-      authService.setAppLockEnabled(isAppLockEnabled ?? false);
-      //authService.setBiometricToggle(biometricstatus??false);
+
+      // DO NOT reset the PIN on disable (better UX)
+      await authService.setAppLockEnabled(isAppLockEnabled);
+
       //This Below Code Help to disable Biometric with App Lock
-      if (!isAppLockEnabled!) {
+      if (!isAppLockEnabled) {
         setState(() {
-          biometricstatus = false;
+          biometricStatus = false;
         });
-        authService.setBiometricToggle(false);
+        await authService.setBiometricToggle(false);
+        authService.setPrivacyLockOption('false');
+      } else {
+        authService.setPrivacyLockOption('true');
       }
       Navigator.pop(context); //For Navigate Back
     } else {
@@ -626,12 +644,14 @@ class _MyHomePageState extends State<MyHomePage> {
     final pin = await authService.getPin();
     final appLockEnabled = await authService.isAppLockEnabled();
 
-    // Case 1: PIN exists and app lock is enabled → verify user
+    // Case 1: PIN exists and app lock is enabled → verify user (likely disabling)
     if (pin != null && appLockEnabled == true) {
-      verifyUserPin(context, enterPin, val); // your existing logic
+      verifyUserPin(
+          context, enterPin, val); // verification handles privacy flag
+      return;
     }
 
-    // Case 2: PIN exists but app lock is disabled → just enable
+    // Case 2: PIN exists but app lock is disabled → enable
     else if (pin != null && appLockEnabled == false) {
       if (val == true) {
         final result = await Navigator.push<bool>(
@@ -645,29 +665,33 @@ class _MyHomePageState extends State<MyHomePage> {
           // User set password successfully
           setState(() {
             isAppLockEnabled = true;
-            biometricstatus = true;
+            biometricStatus = true;
           });
-          authService.setAppLockEnabled(true);
-          authService.setBiometricToggle(true);
+          await authService.setAppLockEnabled(true);
+          await authService.setBiometricToggle(true);
+          authService.setPrivacyLockOption('true');
         } else {
           // User cancelled setting password → revert switch
           setState(() {
             isAppLockEnabled = false;
-            biometricstatus = false;
+            biometricStatus = false;
           });
+          authService.setPrivacyLockOption('false');
         }
       } else {
-        // Toggling OFF when no password exists
+        // Turning OFF while already disabled
         setState(() {
           isAppLockEnabled = false;
-          biometricstatus = false;
+          biometricStatus = false;
         });
-        authService.setAppLockEnabled(false);
-        authService.setBiometricToggle(false);
+        await authService.setAppLockEnabled(false);
+        await authService.setBiometricToggle(false);
+        authService.setPrivacyLockOption('false');
       }
+      return;
     }
 
-    // Case 3: No PIN set → navigate to password screen
+    // Case 3: No PIN set → navigate to password screen if enabling
     else {
       if (val == true) {
         final result = await Navigator.push<bool>(
@@ -681,31 +705,34 @@ class _MyHomePageState extends State<MyHomePage> {
           // User set password successfully
           setState(() {
             isAppLockEnabled = true;
-            biometricstatus = true;
+            biometricStatus = true;
           });
-          authService.setAppLockEnabled(true);
-          authService.setBiometricToggle(true);
+          await authService.setAppLockEnabled(true);
+          await authService.setBiometricToggle(true);
+          authService.setPrivacyLockOption('true');
         } else {
           // User cancelled setting password → revert switch
           setState(() {
             isAppLockEnabled = false;
-            biometricstatus = false;
+            biometricStatus = false;
           });
+          authService.setPrivacyLockOption('false');
         }
       } else {
         // Toggling OFF when no password exists
         setState(() {
           isAppLockEnabled = false;
-          biometricstatus = false;
+          biometricStatus = false;
         });
-        authService.setAppLockEnabled(false);
-        authService.setBiometricToggle(false);
+        await authService.setAppLockEnabled(false);
+        await authService.setBiometricToggle(false);
+        authService.setPrivacyLockOption('false');
       }
     }
   }
 
   //Enable Biometric
-  void enableBiometric(bool val, BuildContext context) async {
+  void enableBiometric(bool val) async {
     if (await authService.isAppLockEnabled() == false) {
       uiObject.flushBarWidget(
           "First Enable App Lock", context, Icons.warning_amber_rounded);
@@ -713,7 +740,7 @@ class _MyHomePageState extends State<MyHomePage> {
       bool result = await authService.setBiometricToggle(val);
       if (result) {
         setState(() {
-          biometricstatus = val;
+          biometricStatus = val;
         });
       }
     }

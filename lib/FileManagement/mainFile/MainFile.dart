@@ -60,7 +60,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       // ✅ ab navigatorKey se context le lo
       final ctx = navigatorKey.currentContext;
       if (ctx != null) {
-        _showLockIfNeeded(ctx);
+        // Delay showing lock screen slightly to avoid issues when resuming from a notification interaction
+        Future.delayed(const Duration(milliseconds: 300), () {
+          _showLockIfNeeded(ctx);
+        });
       }
     }
   }
@@ -72,10 +75,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     final lockOption = await _authService.getStoredLockOption();
     if (lockOption == 'pin') {
       final pin = await _authService.getPin();
-      if (pin != null) {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => LockScreen()),
+      if (pin != null && ModalRoute.of(context)?.isCurrent != true) { // Check if not already on top
+        // Ensure we are not trying to push if LockScreen is already the top-most route
+        // or if another dialog/modal is already present.
+        await Navigator.pushReplacement( // Use pushReplacement to avoid stacking lock screens
+          navigatorKey.currentContext!, // Use navigatorKey's context
+          MaterialPageRoute(builder: (_) => LockScreen(), settings: RouteSettings(name: "/lockScreen")), // Add a name for checking
         );
       }
     } else if (lockOption == 'screenLock') {

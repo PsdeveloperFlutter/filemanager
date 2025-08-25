@@ -3,6 +3,7 @@ import 'package:flutter_switch/flutter_switch.dart';
 
 import '../appLockUi/appLockScreen.dart';
 import '../projectSetting/AuthService.dart';
+import '../projectSetting/Setting.dart';
 
 // Assuming you have an AuthService class for authentication
 class privacyScreen extends StatefulWidget {
@@ -137,7 +138,7 @@ class _privacyScreenState extends State<privacyScreen> {
   void onTapFunction() async {
 
     await Navigator.push(context, MaterialPageRoute(builder: (context) {
-      return applock();
+      return settingpage();
     }));
     getPrivacyLockValue();
   }

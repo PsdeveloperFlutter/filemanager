@@ -1,16 +1,11 @@
 import 'dart:convert';
-import 'dart:io';
-
-import 'package:another_flushbar/flushbar.dart';
 import 'package:filemanager/FileManagement/createPasswordUi/CreatePasswordScreen.dart';
 import 'package:filemanager/FileManagement/uiComponents/uiUtility.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:path/path.dart';
 
-import '../mainFile/MainFile.dart';
 import '../mainFile/filemanagerScreen.dart';
 
 void main() {
@@ -238,9 +233,6 @@ class AuthService {
     question1.clear();
     question2.clear();
   }
-
-  //Function to show Enter Password Dialog Box for App Lock Screen
-
   // Function to show the forget password dialog box
   void forgetPasswordDialogBox(BuildContext context, AuthService authService,
       TextEditingController question1, TextEditingController question2) async {
@@ -394,7 +386,4 @@ class AuthService {
     password.clear();
     return false;
   }
-
-
-
 }
