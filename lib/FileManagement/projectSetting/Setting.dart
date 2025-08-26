@@ -429,8 +429,16 @@ class _Mysettingpage extends State<settingpage> {
           passwordValue: "Change password",
         );
       }));
-    } else {
-      uiObject.flushBarWidget("Wrong Answers", context, Icons.error_outline);
+    }
+    else if (question1.text != passwordData['answer1'] &&
+        question2.text != passwordData['answer2']) {
+      uiObject.flushBarWidget("Both Answers Wrong", context, Icons.error_outline);
+    }
+    else if (question1.text !=passwordData['answer1']){
+      uiObject.flushBarWidget("First Answer Is Wrong", context, Icons.error_outline);
+    }
+    else if (question1.text !=passwordData['answer2']){
+      uiObject.flushBarWidget("Second Answer Is Wrong", context, Icons.error_outline);
     }
     question1.clear();
     question2.clear();
