@@ -82,34 +82,6 @@ class SettingGestureState extends State<mainGesture> {
             icon: const Icon(Icons.add, color: Colors.white),
             onPressed: _selectOperationAndAddGesture,
           ),
-          IconButton(
-            icon: const Icon(Icons.location_on, color: Colors.white),
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
-
-              showModalBottomSheet(
-                  isScrollControlled: true, // Allows the bottom sheet to take full height if needed
-                  context: context,
-                  backgroundColor: Colors.transparent, // Makes the background transparent
-                  elevation: 2,
-                  useRootNavigator: true, // Use the root navigator to avoid conflicts with other navigators
-                  shape: const RoundedRectangleBorder( // Adds rounded corners to the top
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-
-                  ),
-                  builder: (context) {
-                    return Container(
-                      height: 500,
-                      padding: const EdgeInsets.all(16.0),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).canvasColor, // Use theme's canvas color for background
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                      ),
-                      child: VerifyGestureScreen());
-                  });
-            },
-          ),
         ],
       ),
       body: Column(
