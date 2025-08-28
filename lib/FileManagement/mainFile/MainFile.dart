@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:another_flushbar/flushbar.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:filemanager/FileManagement/appLockUi/LockScreen.dart';
-import 'package:filemanager/FileManagement/privacyScreen/privacyScreen.dart';
 import 'package:filemanager/FileManagement/projectSetting/AuthService.dart';
 import 'package:filemanager/FileManagement/uiComponents/uiUtility.dart';
 import 'package:flutter/material.dart';
@@ -14,6 +13,8 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../appLockUi/newAppLock.dart';
+import '../gestureUI/checkGestureScreen.dart';
 import '../gestureUI/mainGestureScreen.dart';
 import 'filemanagerScreen.dart';
 
@@ -47,7 +48,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
   }
-
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -56,8 +56,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
-      // ✅ ab navigatorKey se context le lo
       final ctx = navigatorKey.currentContext;
       if (ctx != null) {
         // Delay showing lock screen slightly to avoid issues when resuming from a notification interaction
@@ -75,12 +75,17 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     final lockOption = await _authService.getStoredLockOption();
     if (lockOption == 'pin') {
       final pin = await _authService.getPin();
-      if (pin != null && ModalRoute.of(context)?.isCurrent != true) { // Check if not already on top
+      if (pin != null && ModalRoute
+          .of(context)
+          ?.isCurrent != true) { // Check if not already on top
         // Ensure we are not trying to push if LockScreen is already the top-most route
         // or if another dialog/modal is already present.
-        await Navigator.pushReplacement( // Use pushReplacement to avoid stacking lock screens
+        await Navigator
+            .pushReplacement( // Use pushReplacement to avoid stacking lock screens
           navigatorKey.currentContext!, // Use navigatorKey's context
-          MaterialPageRoute(builder: (_) => LockScreen(), settings: RouteSettings(name: "/lockScreen")), // Add a name for checking
+          MaterialPageRoute(builder: (_) => LockScreen(),
+              settings: RouteSettings(
+                  name: "/lockScreen")), // Add a name for checking
         );
       }
     } else if (lockOption == 'screenLock') {
@@ -91,21 +96,61 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   Future<Widget> _decideStartScreen() async {
-    final lockOption = await _authService.getStoredLockOption();
-    if (lockOption == 'pin') {
-      final pin = await _authService.getPin();
-      if (pin == null) {
-        return FileManagerScreen();
-      } else {
-        return LockScreen();
-      }
-    } else if (lockOption == 'screenLock') {
-      return FileManagerScreen();
-    } else {
+    final isAppLockEnabled = await _authService.isAppLockEnabled();
+    if (!isAppLockEnabled) {
       return FileManagerScreen();
     }
-  }
+    else{
+      final result=await _authService.authenticateWithBiometric();
+      if(result){
+        return FileManagerScreen();
+      }
+      else{
+        // Agar biometric authentication fail hota hai, toh app ko initial screen pe redirect karna hai
+        // Is case mein, hum LockScreen dikha sakte hain ya fir decideStartScreen ko dobara call kar sakte hain
+        // Forcing back to the initial decision point.
+        return await _decideStartScreen();
+      }
+    }
 
+    // final lockOption = await _authService.getStoredLockOption();
+    // final isAppLockEnabled = await _authService.isAppLockEnabled();
+    //
+    // if (isAppLockEnabled) {
+    //   if (lockOption == 'pin') {
+    //     final pin = await _authService.getPin();
+    //     if (pin == null) {
+    //       // No PIN set, but app lock is on. This case might need review.
+    //       // For now, proceed to FileManager if PIN isn't set.
+    //       return FileManagerScreen();
+    //     } else {
+    //       return LockScreen(); // Show PIN lock screen
+    //     }
+    //   } else if (lockOption == 'screenLock') {
+    //     // If screen lock is the method, attempt biometric auth.
+    //     // The actual biometric prompt will likely be handled by _showLockIfNeeded or a similar mechanism.
+    //     // For initial screen decision, if biometrics are expected, you might show a loading/waiting screen
+    //     // or directly try to authenticate. For simplicity here, let's assume FileManagerScreen and
+    //     // _showLockIfNeeded will handle the biometric prompt upon app resume/start.
+    //     return FileManagerScreen(); // Biometric will be triggered by lifecycle events
+    //   }
+    // }
+    // // If app lock is not enabled, or if the lock option is not PIN/ScreenLock (or some other unhandled case)
+    // if (lockOption == 'pin') {
+    //   final pin = await _authService.getPin();
+    //   if (pin == null) {
+    //     return FileManagerScreen();
+    //   } else {
+    //     return LockScreen();
+    //   }
+    // } else if (lockOption == 'screenLock') {
+    //   // If screen lock is enabled but app lock is globally off, proceed to file manager
+    //   return FileManagerScreen();
+    // } else {
+    //   // Default: no lock or unknown lock type
+    //   return FileManagerScreen();
+    // }
+  }
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -137,8 +182,7 @@ class FileManagerScreen extends StatefulWidget {
   State<FileManagerScreen> createState() => FileManagerScreenState();
 }
 
-class FileManagerScreenState extends State<FileManagerScreen>
- {
+class FileManagerScreenState extends State<FileManagerScreen> {
   bool shouldLock = false;
   List<FileSystemEntity> allItems = [];
   AuthService authService = AuthService();
@@ -173,12 +217,11 @@ class FileManagerScreenState extends State<FileManagerScreen>
   }
 
 
-
   // 🔐 Check user privacy setting
   Future<void> checkPrivacyOption() async {
     final value = await authService.getPrivacyLockOption();
     privacyEnable = value == 'true';
-    debugPrint("Privacy Enabled: $privacyEnable");
+    debugPrint("\n Privacy Enabled ✔:- $privacyEnable");
   }
 
   // 🔐 Initial check when app starts
@@ -187,7 +230,9 @@ class FileManagerScreenState extends State<FileManagerScreen>
 
     final lockOption = await authService.getStoredLockOption();
 
-    if (lockOption == 'screenLock') {
+    if (lockOption == 'screenLock')
+
+    {
       final isAvailable = await authService.isBiometricTrulyAvailable();
       if (isAvailable) {
         // Ensure context is still valid before using it.
@@ -203,7 +248,6 @@ class FileManagerScreenState extends State<FileManagerScreen>
       ));
     }
   }
-
 
 
   //request permission and fetch
@@ -274,7 +318,7 @@ class FileManagerScreenState extends State<FileManagerScreen>
   }
 
   //For Fetching the Folders
-  Future<void> fetchFolderContent() async{
+  Future<void> fetchFolderContent() async {
     final dir = Directory(
         "/storage/emulated/0"); // Example path, replace with actual logic if needed
     if (dir.existsSync()) {
@@ -293,14 +337,11 @@ class FileManagerScreenState extends State<FileManagerScreen>
   }
 
 
-
-  Future<void> movesFileToFolder(
-      List<FileSystemEntity> files,
+  Future<void> movesFileToFolder(List<FileSystemEntity> files,
       Directory targetFolder,
       BuildContext context,
       int len,
-      Directory item
-      ) async {
+      Directory item) async {
     // Make a safe copy to avoid concurrent modification
     final filesCopy = List<FileSystemEntity>.from(files);
 
@@ -334,52 +375,52 @@ class FileManagerScreenState extends State<FileManagerScreen>
   }
 
 
-  Future<void> createFolder(BuildContext context, path) async {
-    TextEditingController folderNameController = TextEditingController();
-    String? errorText; // For feedback inside the dialog
-    showDialog(
-        context: context,
-        builder: (context) {
-          return StatefulBuilder(
-              builder: (context, setState) => AlertDialog(
-                      title: Text("Create a New Folder"),
-                      content: TextField(
-                        controller: folderNameController,
-                        decoration: InputDecoration(
-                          hintText: "Enter Folder Name",
-                          errorText: errorText,
-                        ),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () {
-                            folderNameController.clear();
-                            Navigator.of(context).pop();
-                          },
-                          child: Text("Cancel"),
-                        ),
-                        TextButton(
-                          onPressed: () async {
-                            String newFolderName =
-                                folderNameController.text.trim();
-                            if (newFolderName.isNotEmpty) {
-                              final folder = Directory("$path/$newFolderName");
-                              if (!await folder.exists()) {
-                                await folder.create().whenComplete((){
-                                  folderNameController.clear();
-                                  Navigator.of(context).pop();
-                                });
-                              } else {
-                                uiObject.flushBars("Error", "Error Occur",
-                                    Colors.red, context);
-                              }
-                            }
-                          },
-                          child: Text("Create"),
-                        )
-                      ]));
-        });
-  }
+  // Future<void> createFolder(BuildContext context, path) async {
+  //   TextEditingController folderNameController = TextEditingController();
+  //   String? errorText; // For feedback inside the dialog
+  //   showDialog(
+  //       context: context,
+  //       builder: (context) {
+  //         return StatefulBuilder(
+  //             builder: (context, setState) => AlertDialog(
+  //                     title: Text("Create a New Folder"),
+  //                     content: TextField(
+  //                       controller: folderNameController,
+  //                       decoration: InputDecoration(
+  //                         hintText: "Enter Folder Name",
+  //                         errorText: errorText,
+  //                       ),
+  //                     ),
+  //                     actions: [
+  //                       TextButton(
+  //                         onPressed: () {
+  //                           folderNameController.clear();
+  //                           Navigator.of(context).pop();
+  //                         },
+  //                         child: Text("Cancel"),
+  //                       ),
+  //                       TextButton(
+  //                         onPressed: () async {
+  //                           String newFolderName =
+  //                               folderNameController.text.trim();
+  //                           if (newFolderName.isNotEmpty) {
+  //                             final folder = Directory("$path/$newFolderName");
+  //                             if (!await folder.exists()) {
+  //                               await folder.create().whenComplete((){
+  //                                 folderNameController.clear();
+  //                                 Navigator.of(context).pop();
+  //                               });
+  //                             } else {
+  //                               uiObject.flushBars("Error", "Error Occur",
+  //                                   Colors.red, context);
+  //                             }
+  //                           }
+  //                         },
+  //                         child: Text("Create"),
+  //                       )
+  //                     ]));
+  //       });
+  // }
 
   //This Below Code is for the Drag and Drop Functionality of the File Manager
   Widget buildDraggableItems(int index, BuildContext context) {
@@ -416,7 +457,8 @@ class FileManagerScreenState extends State<FileManagerScreen>
               ),
               child: Center(
                 child: Text(
-                  "${selectedItems.isEmpty ? 1 : selectedItems.length} File${(selectedItems.length <= 1) ? '' : 's'}",
+                  "${selectedItems.isEmpty ? 1 : selectedItems
+                      .length} File${(selectedItems.length <= 1) ? '' : 's'}",
                   style: GoogleFonts.lato(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -430,7 +472,8 @@ class FileManagerScreenState extends State<FileManagerScreen>
               isDragging = true;
             });
             print(
-                "Drag started with: ${selectedItems.map((e) => e.path).toList()}");
+                "Drag started with: ${selectedItems.map((e) => e.path)
+                    .toList()}");
           },
           onDraggableCanceled: (_, __) {
             setState(() {
@@ -481,36 +524,36 @@ class FileManagerScreenState extends State<FileManagerScreen>
                   },
                   onLongPress: !isSelectionMode && !isFolder
                       ? () {
-                          setState(() {
-                            isSelectionMode = true;
-                            if (!isSelected) {
-                              selectedItems.add(item);
-                            }
-                          });
-                        }
+                    setState(() {
+                      isSelectionMode = true;
+                      if (!isSelected) {
+                        selectedItems.add(item);
+                      }
+                    });
+                  }
                       : null,
                   leading: isSelectionMode && !isFolder
                       ? Checkbox(
-                          value: isSelected,
-                          onChanged: (checked) {
-                            setState(() {
-                              if (checked == true) {
-                                selectedItems.add(item);
-                              } else {
-                                selectedItems
-                                    .removeWhere((e) => e.path == item.path);
-                              }
-                            });
-                          },
-                        )
+                    value: isSelected,
+                    onChanged: (checked) {
+                      setState(() {
+                        if (checked == true) {
+                          selectedItems.add(item);
+                        } else {
+                          selectedItems
+                              .removeWhere((e) => e.path == item.path);
+                        }
+                      });
+                    },
+                  )
                       : Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 18.0),
-                          child: Icon(
-                            isFolder ? Icons.folder : Icons.insert_drive_file,
-                            color: Colors.green,
-                            size: 25,
-                          ),
-                        ),
+                    padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                    child: Icon(
+                      isFolder ? Icons.folder : Icons.insert_drive_file,
+                      color: Colors.green,
+                      size: 25,
+                    ),
+                  ),
                   title: Text(
                     basename(item.path),
                     style: TextStyle(
@@ -541,83 +584,121 @@ class FileManagerScreenState extends State<FileManagerScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.green,
-        onPressed: () async {
-          Directory? dir = await getExternalStorageDirectory();
-          createFolder(context, dir!.path).whenComplete((){
-            fetchFolderContent();
-          });
-        },
-        child: Icon(
-          Icons.add,
-          color: Colors.white,
-        ),
-      ),
-      appBar: AppBar(
+        appBar: AppBar(
 
-          title: isSelectionMode == false
-              ? Text("File Manager")
-              : GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      isSelectionMode = false;
-                      selectedItems.clear();
-                    });
-                  },
-                  child: Icon(
-                    Icons.cancel,
-                    color: Colors.green,
-                  )),
-          actions: [
-            IconButton(
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) {
-                    return privacyScreen(); //PrivacyScreen();
-                  }));
+            title: isSelectionMode == false
+                ? Text("File Manager")
+                : GestureDetector(
+                onTap: () {
+                  setState(() {
+                    isSelectionMode = false;
+                    selectedItems.clear();
+                  });
                 },
-                icon: Icon(Icons.settings))
-          ],
-        leading: Builder(
-          builder: (BuildContext context) {
-            return IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () { Scaffold.of(context).openDrawer(); },
-              tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
-            );
-          },
-        ),
-      ),
-      drawer: Drawer(
-        child: Column(
-          children: [
-            SizedBox(height: 50,),
-            Card(
-              elevation: 2,
-              child: ListTile(
-                onTap: (){
-                  Navigator.push(context, MaterialPageRoute(builder: (_) {
-                    return mainGesture();
-                  }));
+                child: Icon(
+                  Icons.cancel,
+                  color: Colors.green,
+                )),
+            actions: [
+              PopupMenuButton<int>(
+                itemBuilder: (context) {
+                  return [
+                    PopupMenuItem<int>(
+                      value: 0,
+                      child: Row(
+                        children: [
+                          Icon(Icons.settings, color: Colors.blue.shade700),
+                          const SizedBox(width: 10),
+                          const Text("Settings"),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem<int>(
+                      value: 1,
+                      child: Row(
+                        children: [
+                          Icon(Icons.verified, color: Colors.red.shade700),
+                          const SizedBox(width: 10),
+                          const Text("Verify Gesture"),
+                        ],
+                      ),
+                    ),
+                  ];
                 },
-                leading:Icon(Icons.gesture,color: Colors.orangeAccent.shade700,),
-                title: Text(
-                  "Gesture Settings",
-                  style: GoogleFonts.lato(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            )
-          ],
-        ),
-      ),
-      body: ListView.builder(
-          itemCount: allItems.length,
-          itemBuilder: (context, index) {
-            return buildDraggableItems(index, context);
-          }),
+                onSelected: (value) async {
+                  if (value == 0) {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) {
+                      return NewAppLock();
+                    }));
+                  } else if (value == 1) {
+                    // ✅ Show bottom sheet here
+                    showModalBottomSheet(
+                      isScrollControlled: true,
+                      context: context,
+                      backgroundColor: Colors.transparent,
+                      elevation: 2,
+                      useRootNavigator: true,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                      ),
+                      builder: (context) {
+                        return Container(
+                          height: 500,
+                          padding: const EdgeInsets.all(16.0),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).canvasColor,
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                          ),
+                          child: VerifyGestureScreen(),
+                        );
+                      },
+                    );
+                  }
+                },
+              )
+
+            ],
+    leading: Builder(
+    builder: (BuildContext context) {
+    return IconButton(
+    icon: const Icon(Icons.menu),
+    onPressed: () { Scaffold.of(context).openDrawer(); },
+    tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
+    );
+    },
+    ),
+    ),
+    drawer: Drawer(
+    child: Column(
+    children: [
+    SizedBox(height: 50,),
+    Card(
+    elevation: 2,
+    child: ListTile(
+    onTap: (){
+    Navigator.push(context, MaterialPageRoute(builder: (_) {
+    return mainGesture();
+    }));
+    },
+    leading:Icon(Icons.gesture,color: Colors.orangeAccent.shade700,),
+    title: Text(
+    "Gesture Settings",
+    style: GoogleFonts.lato(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    ),
+    ),
+    ),
+    )
+    ],
+    ),
+    ),
+    body: ListView.builder(
+    itemCount: allItems.length,
+    itemBuilder: (context, index) {
+    return buildDraggableItems(index, context);
+    })
+    ,
     );
   }
 }

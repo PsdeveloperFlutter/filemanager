@@ -1,93 +1,126 @@
-// Description: New App Lock Screen UI and some basic functionality with biometric and passcode options
 import 'package:another_flushbar/flushbar.dart';
+import 'package:filemanager/FileManagement/appLockUi/appLockScreen.dart';
 import 'package:flutter/material.dart';
 
 import '../projectSetting/AuthService.dart';
 
 AuthService objAuth = AuthService();
 
-class newAppLock extends StatefulWidget {
-  const newAppLock({super.key});
+class NewAppLock extends StatefulWidget {
+  const NewAppLock({super.key});
 
   @override
-  State<newAppLock> createState() => _newAppLockState();
+  State<NewAppLock> createState() => _NewAppLockState();
 }
 
-class _newAppLockState extends State<newAppLock> {
-  bool biometricAvailable = false;
+class _NewAppLockState extends State<NewAppLock> {
+  bool biometricAvailable = false; // Biometric or PIN available
   bool isAppLockEnabled = false;
 
-  //Function to check the isApplockenabled or not
-  void isAppLockEnabledOrNot() async {
+  /// Function to check saved app lock state
+  Future<void> isAppLockEnabledOrNot() async {
     isAppLockEnabled = await objAuth.isAppLockEnabled();
-    setState(() {}); // Update the UI after fetching the value
-    debugPrint("\n App Lock Enabled: $isAppLockEnabled");
+    setState(() {});
+    debugPrint("\n App Lock Enabled (from storage): $isAppLockEnabled");
   }
 
-  /// Function to check biometric availability
-  fetchBiometricAvailability() async {
-    biometricAvailable = await objAuth.isBiometricTrulyAvailable();
-    debugPrint("\n Biometric Available: $biometricAvailable");
+  /// Function to check biometric + PIN availability
+  Future<void> fetchBiometricAvailability() async {
+    biometricAvailable = await objAuth.isBiometricTrulyAvailableOrNot();
+    setState(() {}); // refresh UI after checking
+    debugPrint(
+        "\n Secure Lock Available (Biometric or PIN): $biometricAvailable");
   }
 
   @override
   void initState() {
     super.initState();
-    // You can add initialization code here if needed
-    fetchBiometricAvailability(); // Check biometric availability on init
-    isAppLockEnabledOrNot(); // Check if App Lock is enabled on init
+    fetchBiometricAvailability();
+    isAppLockEnabledOrNot();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: Text("New App Lock Screen"),
-        ),
-        body: Column(
-          children: [
-            Card(
-              color: biometricAvailable ? Colors.white:Colors.grey.shade100,
-              elevation: 1,
-              child: SwitchListTile(
-                title: Text("App Lock"),
-                subtitle: Text("This app lock according to Screen Lock "),
-                value: isAppLockEnabled,
-                onChanged: (bool value) {
-                  // Handle switch toggle
-                  // Handle switch toggle
-                  if (biometricAvailable == true) {
+      appBar: AppBar(
+        title: const Text("New App Lock Screen"),
+      ),
+      body: Column(
+        children: [
+          Card(
+            color: biometricAvailable ? Colors.white : Colors.grey.shade100,
+            elevation: 1,
+            child: SwitchListTile(
+              title: const Text("App Lock"),
+              subtitle:
+              const Text("This app lock works with Biometric or Screen Lock"),
+              value: isAppLockEnabled,
+              onChanged: (bool value) async {
+                if (!biometricAvailable) {
+                  // ❌ No security available at all
+                  Flushbar(
+                    title: "No Security Found",
+                    message:
+                    "Please set PIN/Password or enable Biometric in your device settings.",
+                    duration: const Duration(seconds: 3),
+                    flushbarPosition: FlushbarPosition.BOTTOM,
+                    backgroundColor: Colors.red,
+                  ).show(context);
+
+                  setState(() {
+                    isAppLockEnabled = false;
+                  });
+                  await objAuth.setAppLockEnabled(false);
+                  objAuth.setPrivacyLockOption("false");
+                  return;
+                }
+
+                if (value == true) {
+                  // ✅ Ask authentication before enabling
+                  final bool success = await objAuth.authenticateWithBiometric();
+                  if (success) {
                     setState(() {
-                      isAppLockEnabled = value;
+                      isAppLockEnabled = true;
                     });
-                    // Prompt biometric authentication when enabling
-                    objAuth.authenticateWithBiometric().whenComplete(() {
-                      objAuth.setAppLockEnabled(
-                          isAppLockEnabled); // Save the state using AuthService set AppLockEnabled to true
-                      debugPrint("\n App Lock Enabled: $isAppLockEnabled");
-                    });
+                    await objAuth.setAppLockEnabled(true);
+                    objAuth.setPrivacyLockOption("true");
+
+                    debugPrint("App Lock Enabled ✅");
                   } else {
+                    // ❌ Authentication failed
+                    setState(() {
+                      isAppLockEnabled = false;
+                    });
+                    await objAuth.setAppLockEnabled(false);
+                    objAuth.setPrivacyLockOption("false");
+
                     Flushbar(
-                      title: "Biometric Not Available",
+                      title: "Authentication Failed",
                       message:
-                          "Please enable biometric authentication in your device settings.",
-                      duration: Duration(seconds: 3),
+                      "Could not enable App Lock. Please try again with correct authentication.",
+                      duration: const Duration(seconds: 3),
                       flushbarPosition: FlushbarPosition.BOTTOM,
                       backgroundColor: Colors.red,
                     ).show(context);
-                    setState(() {
-                      // Keep the switch off if biometric is not available
-                      isAppLockEnabled = false;
-                    });
-                    objAuth.setAppLockEnabled(
-                        isAppLockEnabled); // Save the state using AuthService set to false and set applockenabled to false
                   }
-                },
-              ),
+                } else {
+                  // 🔓 Turning off App Lock
+                  setState(() {
+                    isAppLockEnabled = false;
+                  });
+                  await objAuth.setAppLockEnabled(false);
+                  objAuth.setPrivacyLockOption("false");
+                  debugPrint("App Lock Disabled ❌");
+
+                  // cleanup
+                  objAuth.getStoredLockOptionDelete();
+                  await objAuth.resetPin();
+                }
+              },
             ),
-          ],
-        ));
+          ),
+        ],
+      ),
+    );
   }
 }
-
-//isBiometricAvailable()
