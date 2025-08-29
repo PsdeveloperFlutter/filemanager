@@ -57,29 +57,32 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.paused) {
       final ctx = navigatorKey.currentContext;
       if (ctx != null) {
         // Delay showing lock screen slightly to avoid issues when resuming from a notification interaction
         Future.delayed(const Duration(milliseconds: 300), () {
-          _showLockIfNeeded(ctx);
+          _decideStartScreen();// Call karega phir se jab screen Resume hoga
         });
       }
     }
   }
 
-  Future<void> _showLockIfNeeded(BuildContext context) async {
+  /*Future<void> _showLockIfNeeded(BuildContext context) async {
+    debugPrint("\n Checking if lock screen is needed...1");
     if (_showingLock) return;
     _showingLock = true;
-
+    debugPrint("\n Checking if lock screen is needed...2");
     final lockOption = await _authService.getStoredLockOption();
     if (lockOption == 'pin') {
+      debugPrint("\n Checking if lock screen is needed...3");
       final pin = await _authService.getPin();
       if (pin != null && ModalRoute
           .of(context)
           ?.isCurrent != true) { // Check if not already on top
         // Ensure we are not trying to push if LockScreen is already the top-most route
         // or if another dialog/modal is already present.
+        debugPrint("\n Checking if lock screen is needed...4");
         await Navigator
             .pushReplacement( // Use pushReplacement to avoid stacking lock screens
           navigatorKey.currentContext!, // Use navigatorKey's context
@@ -87,13 +90,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               settings: RouteSettings(
                   name: "/lockScreen")), // Add a name for checking
         );
+        debugPrint("\n Checking if lock screen is needed...5");
       }
     } else if (lockOption == 'screenLock') {
       uiObject.showBottomSheets(context);
+      debugPrint("\n Checking if lock screen is needed...6");
     }
 
     _showingLock = false;
-  }
+  }*/
 
   Future<Widget> _decideStartScreen() async {
     final isAppLockEnabled = await _authService.isAppLockEnabled();

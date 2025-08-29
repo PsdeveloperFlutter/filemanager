@@ -114,29 +114,80 @@ class AuthService {
     }
   }
 
-  //This code is for the authenticate with Biometric
-  Future<bool> authenticateWithBiometric() async {
+
+
+
+
+  Future<bool> isBiometricTrulyAvailableOrNot() async {
     try {
-      bool isAvailable = await isBiometricAvailable();
-      bool isSupported = await isBiometricTrulyAvailable();
+      // Pehle check karo device support karta hai ya nahi
+      final bool isSupported = await _auth.isDeviceSupported();
+      if (!isSupported) return false;
 
-      if (!isAvailable || !isSupported) {
-        debugPrint("Biometric not available or not supported.");
-        return false;
+      // Ab check karo biometric list
+      final List<BiometricType> biometrics = await _auth.getAvailableBiometrics();
+
+      if (biometrics.isNotEmpty) {
+        // ✅ Fingerprint/Face available hai
+        return true;
+      } else {
+        // ❌ Biometric nahi hai → system screen lock (PIN/Password) ke liye test karo
+        final bool didAuthenticate = await _auth.authenticate(
+          localizedReason: 'Please authenticate to continue',
+          options: const AuthenticationOptions(
+            biometricOnly: false, // PIN/Pattern allowed
+            useErrorDialogs: true,
+            stickyAuth: false,
+          ),
+        );
+
+        return didAuthenticate;
       }
+    } catch (e) {
+      debugPrint("Error checking biometrics: $e");
+      return false;
+    }
+  }
 
+  //Ye function check karta hai ki device secure hai ya nhi
+  Future<bool> isDeviceSecure() async {
+    try {
+      // Pehle check karo ki device support karta hai auth
+      final isSupported = await _auth.isDeviceSupported();
+
+      if (!isSupported) return false;
+
+      // Ab authentication try karo (biometric + device PIN/Pattern/Password)
       final didAuthenticate = await _auth.authenticate(
-        localizedReason: "Authenticate to unlock the app",
+        localizedReason: 'Please authenticate to continue',
         options: const AuthenticationOptions(
-          biometricOnly: true, // ✅ No fallback to PIN and pattern and password
-          stickyAuth: true, // ✅ Keep auth active across screens
-          useErrorDialogs: true, // ✅ Show system dialogs if errors occur
+          biometricOnly: false, // false rakha to PIN/Password bhi chalega
+          useErrorDialogs: true,
+          stickyAuth: true,
         ),
       );
 
       return didAuthenticate;
     } catch (e) {
-      debugPrint("Biometric error: $e");
+      return false;
+    }
+  }
+
+
+  //This code is for the authenticate with Biometric
+  Future<bool> authenticateWithBiometric() async {
+    try {
+      final bool didAuthenticate = await _auth.authenticate(
+        localizedReason: 'Please authenticate to enable App Lock',
+        options: const AuthenticationOptions(
+          biometricOnly: false, // ✅ allow Biometric + PIN/Password
+          useErrorDialogs: true,
+          stickyAuth: true,
+        ),
+      );
+      return didAuthenticate;
+    } catch (e) {
+      debugPrint("Authentication error: $e");
       return false;
     }
   }
@@ -150,7 +201,7 @@ class AuthService {
               'Please authenticate using your device PIN, pattern, password ',
           options: const AuthenticationOptions(
             biometricOnly: false,
-            // ✅ False rakhein taki sirf PIN, pattern, password chale
+            // ✅ Isme kya hoga ki biometric ke alawa bhi option dega make sure of that
             useErrorDialogs: true,
             stickyAuth: true,
             sensitiveTransaction: false,
