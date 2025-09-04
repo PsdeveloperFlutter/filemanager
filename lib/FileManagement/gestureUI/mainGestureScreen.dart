@@ -59,12 +59,11 @@ class SettingGestureState extends State<mainGesture> {
       return;
     }
 
-    gestureUi.showMainOptionDialog(context, setState).whenComplete(() {
-      debugPrint("\n Gesture Images Loaded");
-      gestureUi.loadGestureImages();
-
-      setState(() {});
-      debugPrint("\n Gesture setState");
+    gestureUi.showMainOptionDialog(context, (fn) {
+      setState(fn); // pass main screen setState, not dialog’s
+    }).whenComplete(() async {
+      await gestureUi.loadGestureImages();
+      setState(() {}); // ✅ rebuild with updated list
     });
   }
 
@@ -80,8 +79,46 @@ class SettingGestureState extends State<mainGesture> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add, color: Colors.white),
-            onPressed: _selectOperationAndAddGesture,
+            onPressed: _selectOperationAndAddGesture, // Add new gesture
           ),
+          IconButton(
+            icon: const Icon(Icons.location_on, color: Colors.white),
+            onPressed: () {
+              final parentContext = Navigator.of(context).context;
+               Navigator.pop(context); // पहले current screen/dialog बंद करो
+               Navigator.pop(context);
+              Future.delayed(const Duration(milliseconds: 300), () {
+              showModalBottomSheet(
+                useRootNavigator: true,
+                context: parentContext, // ✅ parent context use करो
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                builder: (BuildContext modalContext) { // Renamed to avoid conflict
+                  return Stack(
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(modalContext).size.height, // Set to full screen height
+                        child: const VerifyGestureScreen(), // ✅ अब ये show होगा
+                      ),
+                      Positioned(
+                        top: 10,
+                        right: 10,
+                        child: IconButton(
+                          icon: Icon(Icons.close, color: Colors.white, size: 30),
+                          onPressed: () => Navigator.pop(modalContext), // Use modalContext here
+                        ),
+                      ),
+                    ],
+                  );
+                },
+                enableDrag: false, // Optional: disable dragging to dismiss
+              );
+               });
+            },
+          )
         ],
       ),
       body: Column(

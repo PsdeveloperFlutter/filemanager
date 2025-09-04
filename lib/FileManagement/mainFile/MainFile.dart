@@ -605,63 +605,15 @@ class FileManagerScreenState extends State<FileManagerScreen> {
                   color: Colors.green,
                 )),
             actions: [
-              PopupMenuButton<int>(
-                itemBuilder: (context) {
-                  return [
-                    PopupMenuItem<int>(
-                      value: 0,
-                      child: Row(
-                        children: [
-                          Icon(Icons.settings, color: Colors.blue.shade700),
-                          const SizedBox(width: 10),
-                          const Text("Settings"),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem<int>(
-                      value: 1,
-                      child: Row(
-                        children: [
-                          Icon(Icons.verified, color: Colors.red.shade700),
-                          const SizedBox(width: 10),
-                          const Text("Verify Gesture"),
-                        ],
-                      ),
-                    ),
-                  ];
+              IconButton(
+                icon: Icon(Icons.settings, color: Colors.blue.shade700),
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) {
+                    return NewAppLock();
+                  }));
                 },
-                onSelected: (value) async {
-                  if (value == 0) {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) {
-                      return NewAppLock();
-                    }));
-                  } else if (value == 1) {
-                    // ✅ Show bottom sheet here
-                    showModalBottomSheet(
-                      isScrollControlled: true,
-                      context: context,
-                      backgroundColor: Colors.transparent,
-                      elevation: 2,
-                      useRootNavigator: true,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                      ),
-                      builder: (context) {
-                        return Container(
-                          height: 500,
-                          padding: const EdgeInsets.all(16.0),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).canvasColor,
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                          ),
-                          child: VerifyGestureScreen(),
-                        );
-                      },
-                    );
-                  }
-                },
-              )
-
+                tooltip: "Settings",
+              ),
             ],
     leading: Builder(
     builder: (BuildContext context) {

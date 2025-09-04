@@ -379,7 +379,10 @@ class GestureUi {
                       ? () {
                           Navigator.pop(context);
                           showGestureSaveDialog(
-                              selectedItem!.path, context, setState);
+                              selectedItem!.path, context, ()async{
+                                await loadGestureImages();
+                                setState((){});// ✅ now it refreshes mainGesture list
+                          });
                         }
                       : null,
                   child: Text("Use Selected"),
@@ -392,7 +395,7 @@ class GestureUi {
 
   // This function is responsible for showing the dialog of save gesture
   void showGestureSaveDialog(
-      String folderPath, BuildContext context, StateSetter setState) {
+      String folderPath, BuildContext context, VoidCallback onGestureSaved) {
     showDialog(
       context: context,
       builder: (context) {
@@ -420,7 +423,7 @@ class GestureUi {
                 ],
               ),
               actions: [
-                _buildGestureDialogActions(context, folderPath)
+                _buildGestureDialogActions(context, folderPath, onGestureSaved)
               ], //This builds the actions for the dialog and return List of the Widgets
             );
           },
@@ -430,7 +433,7 @@ class GestureUi {
   }
 
   // This function builds the actions for the gesture dialog
-  Widget _buildGestureDialogActions(BuildContext context, String folderPath) {
+  Widget _buildGestureDialogActions(BuildContext context, String folderPath,VoidCallback onGestureSaved) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -478,16 +481,13 @@ class GestureUi {
                 backgroundColor: Colors.orangeAccent.shade200,
               ),
               onPressed: () async {
-                debugPrint("\nSave Button Pressed");
                 await saveGesture(folderPath);
-                if (Navigator.canPop(context)) {
-                  Navigator.pop(context);
-                }
-                controller
-                    .clear(); // Already called in saveGesture, but kept for explicitness
-                debugPrint("\nSave Flow Completed ✅");
-                loadGestureImages();
+                if (Navigator.canPop(context)) Navigator.pop(context);
+                await loadGestureImages();
+                onGestureSaved(); // Notify parent to refresh UI
+
               },
+
               child: const Text("Save", style: TextStyle(color: Colors.white)),
             ),
           ),
@@ -523,7 +523,10 @@ class GestureUi {
                       showGestureSaveDialog(
                         app.packageName, // Folder path की जगह app package name
                         context,
-                        setState,
+                              ()async{
+                            await loadGestureImages();
+                            setState((){});// ✅ now it refreshes mainGesture list
+                          }
                       );
                     },
                   ),
@@ -627,3 +630,4 @@ class GestureUi {
     }
   }
 }
+
