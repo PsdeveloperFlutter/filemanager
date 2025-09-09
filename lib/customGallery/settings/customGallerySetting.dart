@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -8,7 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class CustomGallerySetting {
-  //Allowed File Extensions
+// Allowed File Extensions
   List<String> allowedExtensions = [
     "pdf",
     "doc",
@@ -20,26 +21,36 @@ class CustomGallerySetting {
     "odt"
   ];
 
-  // Function to request storage permission
+// ✅ Request Storage Permission for Android 10, 11, 12, 13+
   Future<bool> requestStoragePermission() async {
-    var status = await Permission.storage.status;
-    //Request permission if not granted
-    if (!status.isGranted) {
-      status = await Permission.storage.request();
+    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+    int sdkInt = androidInfo.version.sdkInt;
+
+    if (sdkInt >= 30) {
+      // ✅ Android 11+ → Full access
+      var status = await Permission.manageExternalStorage.status;
+      if (!status.isGranted) {
+        status = await Permission.manageExternalStorage.request();
+      }
+      return status.isGranted;
+    } else {
+      // ✅ Android 10 & Below
+      var status = await Permission.storage.status;
+      if (!status.isGranted) {
+        status = await Permission.storage.request();
+      }
+      return status.isGranted;
     }
-    return status.isGranted;
   }
 
-  //Get Files by Extension
-  // We’ll scan the device storage for files with the required extensions.
-  /// ✅ SAFE: Get files from directory without infinite loops
+// ✅ Recursive file fetching for all Android versions
   Future<List<File>> getFilesFromDirectory(Directory dir,
       {Set<String>? visited}) async {
     visited ??= {};
     List<File> files = [];
     List<String> restrictedFolders = ["Android", "data", "obb"];
 
-    // Avoid scanning the same folder twice
     if (visited.contains(dir.path)) return files;
     visited.add(dir.path);
 
@@ -53,8 +64,6 @@ class CustomGallerySetting {
           }
         } else if (entity is Directory) {
           String folderName = p.basename(entity.path);
-
-          // Skip restricted and hidden folders
           if (!restrictedFolders.contains(folderName) &&
               !folderName.startsWith(".")) {
             try {
@@ -65,7 +74,7 @@ class CustomGallerySetting {
         }
       }
     } catch (e) {
-      // Ignore folders we can't access
+      // Ignore permission denied errors
     }
     return files;
   }
@@ -126,7 +135,7 @@ class CustomGallerySetting {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Files imported successfully!")),
       );
-      Navigator.pop(context,true); // Close the modal after a short delay
+      Navigator.pop(context, true); // Close the modal after a short delay
       setState(() {
         importFiles.clear(); // Clear after importing
       });
@@ -160,35 +169,36 @@ class CustomGallerySetting {
           .where(((e) => FileSystemEntity.isDirectorySync(e.path)))
           .map((e) => e.path)
           .toList();
-    }
-    else{
+    } else {
       return [];
     }
   }
 
-
   // Icon set for Various Extension Files
- Icon getFileIcon(String fileName){
-    String ext=fileName.split('.').last.toLowerCase();
-    switch(ext){
+  Icon getFileIcon(String fileName) {
+    String ext = fileName.split('.').last.toLowerCase();
+    switch (ext) {
       case 'pdf':
-        return Icon(Icons.picture_as_pdf,color: Colors.red,);
+        return Icon(Icons.picture_as_pdf, color: Colors.red, size: 30);
       case 'doc':
       case 'docx':
-        return Icon(Icons.description,color: Colors.blue,);
+        return Icon(Icons.description, color: Colors.blue, size: 30);
       case 'xls':
       case 'xlsx':
-        return Icon(Icons.table_chart,color: Colors.green,);
+        return Icon(Icons.table_chart, color: Colors.green, size: 30);
       case 'ppt':
       case 'pptx':
-        return Icon(Icons.slideshow,color: Colors.orange,);
+        return Icon(Icons.slideshow, color: Colors.orange, size: 30);
       case 'odt':
-        return Icon(Icons.article,color: Colors.purple,);
+        return Icon(
+          Icons.article,
+          color: Colors.purple,
+          size: 30,
+        );
       default:
-        return Icon(Icons.insert_drive_file,color: Colors.purple,);
+        return Icon(Icons.insert_drive_file, color: Colors.purple, size: 22);
     }
- }
-
+  }
 
   // File Subtitle Widget and Info of File'S
   Widget getFileDetails(File file) {
@@ -207,7 +217,8 @@ class CustomGallerySetting {
       }
 
       // ✅ Created Date
-      String createdDate = DateFormat('dd MMM yyyy, hh:mm a').format(fileStat.changed);
+      String createdDate =
+          DateFormat('dd MMM yyyy, hh:mm a').format(fileStat.changed);
 
       // ✅ Internal vs SD Card Path
       String filePath = file.path;
@@ -219,49 +230,59 @@ class CustomGallerySetting {
         displayPath = "SD Card → ${p.basename(filePath)}";
       }
 
-      // ✅ Colors for Icons
-      Color pathColor = Colors.blueAccent;
+      // ✅ Colors
       Color dateColor = Colors.deepPurple;
       Color sizeColor = Colors.green;
+      Color pathColor = Colors.blueGrey;
 
-      // ✅ Return Row Layout with Icons
-      return Row(
+      // ✅ Return Column with Two Rows
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 📂 Path
-          Icon(Icons.folder, size: 16, color: pathColor),
-          SizedBox(width: 4),
-          Expanded(
-            flex: 3,
-            child: Text(
-              displayPath,
-              style: GoogleFonts.poppins(fontSize: 12, color: Colors.black87),
-              overflow: TextOverflow.ellipsis,
-            ),
+          // Row 1: Date + Size
+          Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.access_time, size: 16, color: dateColor),
+              SizedBox(width: 4),
+              Text(
+                createdDate,
+                style: GoogleFonts.poppins(fontSize: 11, color: Colors.black54),
+                overflow: TextOverflow.ellipsis,
+              ),
+              SizedBox(width: 12),
+              Icon(Icons.storage, size: 16, color: sizeColor),
+              SizedBox(width: 4),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  sizeText,
+                  style: GoogleFonts.poppins(fontSize: 11, color: Colors.black54),
+                ),
+              ),
+            ],
           ),
+          SizedBox(height: 2),
 
-          SizedBox(width: 10),
-
-          // 📅 Date
-          Icon(Icons.access_time, size: 16, color: dateColor),
-          SizedBox(width: 4),
-          Expanded(
-            flex: 2,
-            child: Text(
-              createdDate,
-              style: GoogleFonts.poppins(fontSize: 11, color: Colors.black54),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-
-          SizedBox(width: 10),
-
-          // 📦 Size
-          Icon(Icons.storage, size: 16, color: sizeColor),
-          SizedBox(width: 4),
-          Text(
-            sizeText,
-            style: GoogleFonts.poppins(fontSize: 11, color: Colors.black54),
-            overflow: TextOverflow.ellipsis,
+          // Row 2: File Path
+          Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.folder, size: 16, color: pathColor),
+              SizedBox(width: 4),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  displayPath,
+                  style:
+                      GoogleFonts.poppins(fontSize: 11, color: Colors.black87),
+                  overflow: TextOverflow.ellipsis, // ✅ Ellipses for long paths
+                  maxLines: 1,
+                ),
+              ),
+            ],
           ),
         ],
       );
@@ -271,5 +292,134 @@ class CustomGallerySetting {
         style: GoogleFonts.poppins(fontSize: 11, color: Colors.red),
       );
     }
+  }
+
+  //File Types UI
+// ✅ Show File Type Modal Bottom Sheet For User Selection of File Types
+// ✅ File Types UI — working version
+  void showFileTypeBottomSheet(
+    BuildContext context,
+    List<File> allFiles,
+    ValueChanged<List<File>> onFilterApplied,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (BuildContext context) {
+        final List<String> fileTypes = [
+          "All Files",
+          "PDF",
+          "DOC/DOCX",
+          "XLS/XLSX",
+          "TXT",
+          "PPT/PPTX",
+          "ODT",
+        ];
+        String? selectedFileType;
+
+        List<File> _filter(String? type) {
+          if (type == null || type == "All Files") {
+            return List<File>.from(allFiles);
+          }
+          return allFiles.where((file) {
+            final name = file.path.toLowerCase();
+            switch (type) {
+              case "PDF":
+                return name.endsWith(".pdf");
+              case "DOC/DOCX":
+                return name.endsWith(".doc") || name.endsWith(".docx");
+              case "XLS/XLSX":
+                return name.endsWith(".xls") || name.endsWith(".xlsx");
+              case "TXT":
+                return name.endsWith(".txt");
+              case "PPT/PPTX":
+                return name.endsWith(".ppt") || name.endsWith(".pptx");
+              case "ODT":
+                return name.endsWith(".odt");
+              default:
+                return false;
+            }
+          }).toList();
+        }
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return SizedBox(
+              height: MediaQuery.of(context).size.height * 0.5,
+              child: Column(
+                children: [
+                  // Title bar
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 16, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade600,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
+                      ),
+                    ),
+                    child: Text(
+                      "Select File Types",
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+
+                  // Options
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: fileTypes.length,
+                      itemBuilder: (context, index) {
+                        final fileType = fileTypes[index];
+                        return Card(
+                          elevation: 2,
+                          child: RadioListTile<String>(
+                            title: Text(
+                              fileType,
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: selectedFileType == fileType
+                                    ? Colors.blue.shade700
+                                    : Colors.black,
+                              ),
+                            ),
+                            value: fileType,
+                            groupValue: selectedFileType,
+                            onChanged: (String? newValue) {
+                              setState(() => selectedFileType = newValue);
+                              final filtered = _filter(newValue);
+                              onFilterApplied(filtered);
+
+                              if (filtered.isEmpty && newValue != "All Files") {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(
+                                          "No files found for ${newValue ?? 'this type'}")),
+                                );
+                              }
+                            },
+                            controlAffinity: ListTileControlAffinity.trailing,
+                            activeColor: Colors.blue.shade600,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 }

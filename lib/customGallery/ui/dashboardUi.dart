@@ -4,12 +4,6 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'customGalleryUi.dart';
 
-void main() {
-  runApp(MaterialApp(
-    debugShowCheckedModeBanner: false,
-    home: DashboardUi(),
-  ));
-}
 
 class DashboardUi extends StatefulWidget {
   const DashboardUi({super.key});
