@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:filemanager/customGallery/settings/customGallerySetting.dart';
@@ -25,6 +26,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
   List<File> allFiles = []; // All Files
   Map<String, List<String>> folders = {}; // Folders with Files
   String? selectedFolder; // Currently Selected Folder
+  String selectedFileType = "File Type"; // Currently Selected File Type
 
   // ✅ Files user clicked on → shown at the bottom horizontal list
   List<File> importFiles = [];
@@ -164,19 +166,23 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
             child: GestureDetector(
-                onTap: () =>
-                    settings.showFileTypeBottomSheet(
-                      context,
-                      allFiles, // ← pass the original, unfiltered list
-                          (filteredFiles) {
-                        setState(() {
-                          files = filteredFiles; // update main UI
-                        });
-                      },
-                    ),
+              onTap: () =>
+                  settings.showFileTypeBottomSheet(
+                    context,
+                    allFiles,
+                        (filteredFiles,
+                        selectedType) { // ✅ Now also receive selectedType
+                      setState(() {
+                        files = filteredFiles; // update file list
+                        selectedFileType =
+                            selectedType; // ✅ Set correct text in UI
+                      });
+                    },
+                  ),
+              child: buildImportFunctionalityOptions(
+                  selectedFileType ?? "File Type"),
+            ),
 
-                // Show File Type Bottom Sheet
-                child: buildImportFunctionalityOptions("File Type")),
           ),
         ),
         Expanded(
@@ -184,7 +190,12 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
             child: GestureDetector(
-                onTap: () =>showSortOptionsBottomSheet(context,files,(sortedFiles){setState(() {files=sortedFiles;});}),
+                onTap: () =>
+                    showSortOptionsBottomSheet(context, files, (sortedFiles) {
+                      setState(() {
+                        files = sortedFiles;
+                      });
+                    }),
                 child: buildImportFunctionalityOptions("Sort By")),
           ),
         ),
@@ -224,11 +235,17 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("File", style: GoogleFonts.poppins()),
+        backgroundColor: const Color(0xFF0A3D62),
+        iconTheme: const IconThemeData(color: Colors.white),
+        // ✅ All icons white
+        title: Text(
+          "File",
+          style: GoogleFonts.poppins(color: Colors.white),
+        ),
         leading: selectedFolder == null
             ? null
             : IconButton(
-          icon: Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () {
             setState(() {
               selectedFolder = null;
@@ -240,9 +257,9 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
           },
         ),
         actions: [
-          IconButton(onPressed: () {}, icon: Icon(Icons.grid_view)),
+          IconButton(onPressed: () {}, icon: const Icon(Icons.grid_view)),
           IconButton(
-            icon: Icon(Icons.folder),
+            icon: const Icon(Icons.folder),
             onPressed: pickFilesFromSystemGallery,
           )
         ],
@@ -368,7 +385,7 @@ Widget importListSection(BuildContext context,
     ElevatedButton(
       style: ElevatedButton.styleFrom(
         padding: EdgeInsets.symmetric(vertical: 15, horizontal: 16),
-        backgroundColor: Colors.blue.shade300,
+        backgroundColor: const Color(0xFF0A3D62), // Button color
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
@@ -452,7 +469,7 @@ Widget buildFolderSelectionSheet({
           padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
           width: double.infinity,
           decoration: BoxDecoration(
-            color: Colors.blue,
+            color: const Color(0xFF0A3D62),
             borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
           ),
           child: Row(
@@ -514,118 +531,160 @@ Widget buildFolderSelectionSheet({
   );
 }
 
-void showSortOptionsBottomSheet(BuildContext context,List<File>files,Function(List<File>)onSorted) {
+void showSortOptionsBottomSheet(BuildContext context, List<File> files,
+    Function(List<File>) onSorted) {
   showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        // List of sort options
-        final List<String> sortOptions = [
-          "A - Z",
-          "Z - A",
-          "Size (Ascending)",
-          "Size (Descending)",
-          "Date Created (Newest First)",
-          "Date Created (Oldest First)",
-          "Date Modified (Newest First)",
-          "Date Modified (Oldest First)",
-        ];
+    context: context,
+    builder: (BuildContext context) {
+      // ✅ Sort Criteria Options
+      final List<String> criteriaOptions = [
+        "By Name",
+        "By Size",
+        "By Date",
+      ];
 
-        String? selectedSortOption; // Track selected option
-        // ✅ Sorting Function
-        void sortFiles(String option){
-          List<File> sortedFiles=List.from(files); // Create a copy to sort
-          switch(option){
-            case "A - Z":
-              sortedFiles.sort((a,b)=>a.path.split('/').last.toLowerCase().compareTo(b.path.split('/').last.toLowerCase()));
-              break;
-            case "Z - A":
-              sortedFiles.sort((a,b)=>b.path.split('/').last.toLowerCase().compareTo(a.path.split('/').last.toLowerCase()));
-              break;
-            case "Size (Ascending)":
-              sortedFiles.sort((a,b)=>a.lengthSync().compareTo(b.lengthSync()));
-              break;
-            case "Size (Descending)":
-              sortedFiles.sort((a,b)=>b.lengthSync().compareTo(a.lengthSync()));
-              break;
-            case "Date Created (Newest First)":
-              sortedFiles.sort((a,b)=>b.statSync().changed.compareTo(a.statSync().changed));
-              break;
-            case "Date Created (Oldest First)":
-              sortedFiles.sort((a,b)=>a.statSync().changed.compareTo(b.statSync().changed));
-              break;
-            case "Date Modified (Newest First)":
-              sortedFiles.sort((a,b)=>b.statSync().modified.compareTo(a.statSync().modified));
-              break;
-            case "Date Modified (Oldest First)":
-              sortedFiles.sort((a,b)=>a.statSync().modified.compareTo(b.statSync().modified));
-              break;
-          }
-          // ✅ Update file list in parent widget
-          onSorted(sortedFiles);
+      String? selectedCriteria; // Track selected criteria
+
+      // ✅ Sorting Function
+      void sortFiles(String criteria, bool ascending) {
+        List<File> sortedFiles = List.from(files); // Copy original list
+        switch (criteria) {
+          case "By Name":
+            sortedFiles.sort((a, b) =>
+                a.path
+                    .split('/')
+                    .last
+                    .toLowerCase()
+                    .compareTo(b.path
+                    .split('/')
+                    .last
+                    .toLowerCase()));
+            break;
+          case "By Size":
+            sortedFiles.sort((a, b) =>
+                a.lengthSync().compareTo(b.lengthSync()));
+            break;
+          case "By Date":
+            sortedFiles.sort((a, b) =>
+                a
+                    .statSync()
+                    .changed
+                    .compareTo(b
+                    .statSync()
+                    .changed));
+            break;
         }
 
+        // ✅ Reverse if descending
+        if (!ascending) {
+          sortedFiles = sortedFiles.reversed.toList();
+        }
 
-        return StatefulBuilder(builder: (context, setState) {
+        // ✅ Update parent UI
+        onSorted(sortedFiles);
+      }
+
+      return StatefulBuilder(
+        builder: (context, setState) {
           return SizedBox(
-              height: MediaQuery
-                  .of(context)
-                  .size
-                  .height * 0.5, //HalfScreen
-              child: Column(
-                children: [
-                  // ✅ Title Bar
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 16, horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade600,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                        topRight: Radius.circular(16),
-                      ),
-                    ),
-                    child: Text(
-                      "Sort Files By",
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+            height: MediaQuery
+                .of(context)
+                .size
+                .height * 0.4, // Reduced height
+            child: Column(
+              children: [
+                // ✅ Title Bar
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                      vertical: 16, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0A3D62),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
                     ),
                   ),
-                  // ✅ Sorting Options with Radio Buttons
-                  Expanded(child:
-                    ListView.builder(
-                      itemCount: sortOptions.length,
-                      itemBuilder: (context, index) {
-                        String option = sortOptions[index];
-                        return Card(
-                          elevation: 2,
-                          child: RadioListTile<String>(
-                            title: Text(option, style: GoogleFonts.poppins()),
-                            value: option,
-                            groupValue: selectedSortOption,
-                            onChanged: (value) {
-                              setState(() {
-                                selectedSortOption = value;// ✅ Update selected option
-                              });
-                              if (value != null) {
-                                sortFiles(value); // ✅ Now actually sorts
-                              }
-                            },
-                            activeColor: Colors.blue,
-                            selected: selectedSortOption == option,
-                            controlAffinity: ListTileControlAffinity.trailing,
+                  child: Text(
+                    "Sort Files",
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+
+                // ✅ Sort Criteria Options
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: criteriaOptions.length,
+                    itemBuilder: (context, index) {
+                      String criteria = criteriaOptions[index];
+                      return Card(
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: RadioListTile<String>(
+                          title: Text(criteria, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w500)),
+                          value: criteria,
+                          groupValue: selectedCriteria,
+                          onChanged: (value) {
+                            setState(() {
+                              selectedCriteria = value;
+                            });
+                          },
+                          activeColor: const Color(0xFF0A3D62),
+                          controlAffinity: ListTileControlAffinity.trailing,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // ✅ Ascending / Descending Buttons
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            sortFiles(selectedCriteria!, true);
+                          },
+                          icon: const Icon(Icons.arrow_upward,color: Colors.white),
+                          label:  Text("Ascending",style:GoogleFonts.poppins(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5), // Rectangle shape
+                            ),
+                            backgroundColor:const Color(0xFF0A3D62),
 
                           ),
-                        );
-                      },
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            sortFiles(selectedCriteria!, false);
+                          },
+                          icon: const Icon(Icons.arrow_downward,color:Colors.white),
+                          label:  Text("Descending",style: GoogleFonts.poppins(color: Colors.white),),
+                          style: ElevatedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5), // Rectangle shape
+                            ),
+                            backgroundColor: const Color(0xFF0A3D62),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              )
+                  )
+              ],
+            ),
           );
-        });
-      });
+        },
+      );
+    },
+  );
 }

@@ -258,7 +258,8 @@ class CustomGallerySetting {
                 flex: 1,
                 child: Text(
                   sizeText,
-                  style: GoogleFonts.poppins(fontSize: 11, color: Colors.black54),
+                  style:
+                      GoogleFonts.poppins(fontSize: 11, color: Colors.black54),
                 ),
               ),
             ],
@@ -297,123 +298,103 @@ class CustomGallerySetting {
   //File Types UI
 // ✅ Show File Type Modal Bottom Sheet For User Selection of File Types
 // ✅ File Types UI — working version
-  void showFileTypeBottomSheet(
-    BuildContext context,
-    List<File> allFiles,
-    ValueChanged<List<File>> onFilterApplied,
-  ) {
+  void showFileTypeBottomSheet(BuildContext context, List<File> allFiles,
+      Function(List<File>, String) onFilterApplied) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (BuildContext context) {
-        final List<String> fileTypes = [
+      builder: (context) {
+        List<String> fileTypes = [
           "All Files",
           "PDF",
           "DOC/DOCX",
           "XLS/XLSX",
           "TXT",
           "PPT/PPTX",
-          "ODT",
+          "ODT"
         ];
         String? selectedFileType;
 
-        List<File> _filter(String? type) {
-          if (type == null || type == "All Files") {
-            return List<File>.from(allFiles);
-          }
-          return allFiles.where((file) {
-            final name = file.path.toLowerCase();
-            switch (type) {
-              case "PDF":
-                return name.endsWith(".pdf");
-              case "DOC/DOCX":
-                return name.endsWith(".doc") || name.endsWith(".docx");
-              case "XLS/XLSX":
-                return name.endsWith(".xls") || name.endsWith(".xlsx");
-              case "TXT":
-                return name.endsWith(".txt");
-              case "PPT/PPTX":
-                return name.endsWith(".ppt") || name.endsWith(".pptx");
-              case "ODT":
-                return name.endsWith(".odt");
-              default:
-                return false;
-            }
-          }).toList();
-        }
-
         return StatefulBuilder(
           builder: (context, setState) {
+            void filterFilesByType(String? type) {
+              setState(() {
+                selectedFileType = type;
+              });
+
+              List<File> filteredFiles;
+              if (type == "All Files" || type == null) {
+                filteredFiles = List.from(allFiles);
+              } else {
+                filteredFiles = allFiles.where((file) {
+                  String name = file.path.toLowerCase();
+                  switch (type) {
+                    case "PDF":
+                      return name.endsWith(".pdf");
+                    case "DOC/DOCX":
+                      return name.endsWith(".doc") || name.endsWith(".docx");
+                    case "XLS/XLSX":
+                      return name.endsWith(".xls") || name.endsWith(".xlsx");
+                    case "TXT":
+                      return name.endsWith(".txt");
+                    case "PPT/PPTX":
+                      return name.endsWith(".ppt") || name.endsWith(".pptx");
+                    case "ODT":
+                      return name.endsWith(".odt");
+                    default:
+                      return false;
+                  }
+                }).toList();
+              }
+              // ✅ Agar "All Files" select hai to main UI mein "File Type" show hoga
+              String displayText =
+                  (type == "All Files" || type == null) ? "File Type" : type;
+              // ✅ Pass both filtered files AND selected type to main UI
+              onFilterApplied(filteredFiles, displayText);
+            }
+
             return SizedBox(
               height: MediaQuery.of(context).size.height * 0.5,
               child: Column(
                 children: [
-                  // Title bar
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 16, horizontal: 16),
+                    padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade600,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                        topRight: Radius.circular(16),
-                      ),
+                      color: const Color(0xFF0A3D62),
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(16)),
                     ),
-                    child: Text(
-                      "Select File Types",
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
+                    child: Text("Select File Types",
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold)),
                   ),
-
-                  // Options
                   Expanded(
                     child: ListView.builder(
                       itemCount: fileTypes.length,
                       itemBuilder: (context, index) {
-                        final fileType = fileTypes[index];
+                        String fileType = fileTypes[index];
                         return Card(
                           elevation: 2,
                           child: RadioListTile<String>(
-                            title: Text(
-                              fileType,
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: selectedFileType == fileType
-                                    ? Colors.blue.shade700
-                                    : Colors.black,
-                              ),
-                            ),
+                            title: Text(fileType),
                             value: fileType,
                             groupValue: selectedFileType,
-                            onChanged: (String? newValue) {
-                              setState(() => selectedFileType = newValue);
-                              final filtered = _filter(newValue);
-                              onFilterApplied(filtered);
-
-                              if (filtered.isEmpty && newValue != "All Files") {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text(
-                                          "No files found for ${newValue ?? 'this type'}")),
-                                );
-                              }
+                            onChanged: (value) {
+                              filterFilesByType(value);
                             },
+                            activeColor: Colors.blue,
                             controlAffinity: ListTileControlAffinity.trailing,
-                            activeColor: Colors.blue.shade600,
                           ),
                         );
                       },
                     ),
-                  ),
+                  )
                 ],
               ),
             );

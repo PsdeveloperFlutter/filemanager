@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'package:filemanager/customGallery/ui/userPremissionUi.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import '../settings/customGallerySetting.dart';
 import 'customGalleryUi.dart';
 
 
@@ -17,7 +19,7 @@ class _DashboardUiState extends State<DashboardUi>
   late TabController _tabController;
 
   List<Map<String, dynamic>> importedFolders = []; // To store folder info
-
+  final settings = CustomGallerySetting();
   @override
   void initState() {
     super.initState();
@@ -109,22 +111,36 @@ class _DashboardUiState extends State<DashboardUi>
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          // Open file import UI and refresh after returning
-          final refresh = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const CustomGalleryApp()),
-          );
-          if (refresh == true) {
-            fetchImportedFolders(); // ✅ Refresh only after successful import
-          }
+          onPressed: () async {
+            bool granted = await settings.requestStoragePermission();
 
-        },
-        backgroundColor: Colors.deepPurple,
+            if (granted) {
+              // ✅ Agar permission pehle se granted hai
+              final refresh = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CustomGalleryApp()),
+              );
+              if(refresh == true){
+                fetchImportedFolders();
+              }
+            } else {
+              // ✅ Agar permission nahi hai to FilePermissionScreen open hoga
+              final refresh = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => FilePermissionScreen()),
+              );
+
+              if (refresh == true) {
+                fetchImportedFolders();
+              }
+            }
+          },
+          backgroundColor: const Color(0xFF0A3D62),
         child: const Icon(Icons.add, color: Colors.white),
-      ),
+      )
+      ,
       appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
+        backgroundColor:  const Color(0xFF0A3D62), // Dark blue color like in UI
         actions: [
           IconButton(
             icon: const Icon(Icons.search, color: Colors.white),
