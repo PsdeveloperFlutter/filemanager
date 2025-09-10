@@ -1,5 +1,7 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import '../settings/customGallerySetting.dart';
 import 'customGalleryUi.dart';
 
@@ -10,9 +12,18 @@ void main() {
   ));
 }
 
-class FilePermissionScreen extends StatelessWidget {
+final settings=CustomGallerySetting();
+class FilePermissionScreen extends StatefulWidget {
+
   FilePermissionScreen({super.key});
-  final settings=CustomGallerySetting();
+
+  @override
+  State<FilePermissionScreen> createState() => _FilePermissionScreenState();
+}
+
+class _FilePermissionScreenState extends State<FilePermissionScreen> {
+  List<File> files = [];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -32,7 +43,7 @@ class FilePermissionScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.folder, color: Colors.white),
-            onPressed: () {},
+            onPressed: ()=>pickFilesFromSystemGallery(setState ,files,context),
           )
         ],
       ),
@@ -87,9 +98,7 @@ class FilePermissionScreen extends StatelessWidget {
             SizedBox(
               width: 150,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context)=>CustomGalleryApp()));
-                },
+                onPressed: () =>pickFilesFromSystemGallery(setState ,files,context),
                 style: ElevatedButton.styleFrom(
                   backgroundColor:  const Color(0xFF0A3D62), // Button color
                   shape: RoundedRectangleBorder(
@@ -134,6 +143,46 @@ class FilePermissionScreen extends StatelessWidget {
           ],
         ),
       );
+    }
+  }
+}
+
+
+
+// ✅ Fetch Files from System File Manager
+void pickFilesFromSystemGallery(setState ,files,context) async {
+  List<String> allowedExtensions = [
+    "pdf",
+    "doc",
+    "docx",
+    "xls",
+    "xlsx",
+    "ppt",
+    "pptx",
+    "odt"
+  ];
+
+  FilePickerResult? result = await FilePicker.platform.pickFiles(
+    allowMultiple: true,
+    type: FileType.custom,
+    allowedExtensions: allowedExtensions,
+  );
+
+  if (result != null) {
+    List<String> selectedFiles = result.paths.whereType<String>().toList();
+
+    setState(() {
+      files = selectedFiles.map((path) => File(path)).toList();
+    });
+    try{
+
+      settings.importSelectedFiles(context, files, setState);
+      Future.delayed(Duration(milliseconds: 1000), () {
+        Navigator.pop(context);
+      });
+
+    }catch(e){
+      debugPrint("\n Error: $e");
     }
   }
 }

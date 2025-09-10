@@ -101,6 +101,31 @@ class _DashboardUiState extends State<DashboardUi>
     );
   }
 
+  /// ✅ Handle Floating Action Button tap
+  Future<void> _handleFabTap() async {
+    bool granted = await settings.requestStoragePermission();
+
+    if (granted) {
+      // ✅ Agar permission pehle se granted hai
+      final refresh = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => CustomGalleryApp()),
+      );
+      if (refresh == true) {
+        fetchImportedFolders();
+      }
+    } else {
+      // ✅ Agar permission nahi hai to FilePermissionScreen open hoga
+      final refresh = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => FilePermissionScreen()),
+      );
+
+      if (refresh == true) {
+        fetchImportedFolders();
+      }
+    }
+  }
   @override
   void dispose() {
     _tabController.dispose();
@@ -111,30 +136,7 @@ class _DashboardUiState extends State<DashboardUi>
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-          onPressed: () async {
-            bool granted = await settings.requestStoragePermission();
-
-            if (granted) {
-              // ✅ Agar permission pehle se granted hai
-              final refresh = await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => CustomGalleryApp()),
-              );
-              if(refresh == true){
-                fetchImportedFolders();
-              }
-            } else {
-              // ✅ Agar permission nahi hai to FilePermissionScreen open hoga
-              final refresh = await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => FilePermissionScreen()),
-              );
-
-              if (refresh == true) {
-                fetchImportedFolders();
-              }
-            }
-          },
+        onPressed: _handleFabTap,
           backgroundColor: const Color(0xFF0A3D62),
         child: const Icon(Icons.add, color: Colors.white),
       )

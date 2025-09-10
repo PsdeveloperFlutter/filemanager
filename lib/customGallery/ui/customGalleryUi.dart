@@ -180,7 +180,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                     },
                   ),
               child: buildImportFunctionalityOptions(
-                  selectedFileType ?? "File Type"),
+                  selectedFileType),
             ),
 
           ),
