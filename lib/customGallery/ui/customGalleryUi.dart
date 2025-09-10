@@ -218,7 +218,11 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
     if (result != null) {
       List<String> selectedFiles = result.paths.whereType<String>().toList();
       setState(() {
+        // Reset all details
         importFiles.clear();
+        files = List.from(allFiles); // Reset to all files
+        selectedFolder = null; // Reset selected folder
+        selectedFileType = "File Type"; // Reset selected file type
       }); // Clear previous selections
       settings.importSelectedFiles(
           context, selectedFiles.map((e) => File(e)).toList(), setState);

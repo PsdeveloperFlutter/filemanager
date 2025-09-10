@@ -445,4 +445,20 @@ class CustomGallerySetting {
       }
     }
   }
+
+
+//Only Check Status of Permission
+Future<bool>isStoragePermissionGranted()async{
+    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    AndroidDeviceInfo androidInfo=await deviceInfo.androidInfo;
+    int sdkInt=androidInfo.version.sdkInt;
+    if(sdkInt>=30){
+      // ✅ Android 11+
+      return await Permission.manageExternalStorage.isGranted;
+    }
+    else{
+      // ✅ Android 10 & below
+      return await Permission.storage.isGranted;
+    }
+}
 }

@@ -103,7 +103,7 @@ class _DashboardUiState extends State<DashboardUi>
 
   /// ✅ Handle Floating Action Button tap
   Future<void> _handleFabTap() async {
-    bool granted = await settings.requestStoragePermission();
+    bool granted = await settings.isStoragePermissionGranted();
 
     if (granted) {
       // ✅ Agar permission pehle se granted hai
@@ -136,7 +136,7 @@ class _DashboardUiState extends State<DashboardUi>
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        onPressed: _handleFabTap,
+        onPressed: _handleFabTap,//Check Status And After that send to CustomGalleryApp or FilePermissionScreen
           backgroundColor: const Color(0xFF0A3D62),
         child: const Icon(Icons.add, color: Colors.white),
       )
