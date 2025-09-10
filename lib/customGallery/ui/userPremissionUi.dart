@@ -43,7 +43,7 @@ class _FilePermissionScreenState extends State<FilePermissionScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.folder, color: Colors.white),
-            onPressed: ()=>pickFilesFromSystemGallery(setState ,files,context),
+            onPressed: ()=>settings.pickFilesFromSystemWithAutoFolder(setState ,files,context),
           )
         ],
       ),
@@ -98,7 +98,7 @@ class _FilePermissionScreenState extends State<FilePermissionScreen> {
             SizedBox(
               width: 150,
               child: ElevatedButton(
-                onPressed: () =>pickFilesFromSystemGallery(setState ,files,context),
+                onPressed: () =>settings.pickFilesFromSystemWithAutoFolder(setState ,files,context),
                 style: ElevatedButton.styleFrom(
                   backgroundColor:  const Color(0xFF0A3D62), // Button color
                   shape: RoundedRectangleBorder(
@@ -147,42 +147,3 @@ class _FilePermissionScreenState extends State<FilePermissionScreen> {
   }
 }
 
-
-
-// ✅ Fetch Files from System File Manager
-void pickFilesFromSystemGallery(setState ,files,context) async {
-  List<String> allowedExtensions = [
-    "pdf",
-    "doc",
-    "docx",
-    "xls",
-    "xlsx",
-    "ppt",
-    "pptx",
-    "odt"
-  ];
-
-  FilePickerResult? result = await FilePicker.platform.pickFiles(
-    allowMultiple: true,
-    type: FileType.custom,
-    allowedExtensions: allowedExtensions,
-  );
-
-  if (result != null) {
-    List<String> selectedFiles = result.paths.whereType<String>().toList();
-
-    setState(() {
-      files = selectedFiles.map((path) => File(path)).toList();
-    });
-    try{
-
-      settings.importSelectedFiles(context, files, setState);
-      Future.delayed(Duration(milliseconds: 1000), () {
-        Navigator.pop(context);
-      });
-
-    }catch(e){
-      debugPrint("\n Error: $e");
-    }
-  }
-}

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -402,5 +403,46 @@ class CustomGallerySetting {
         );
       },
     );
+  }
+
+
+
+
+// ✅ Fetch Files from System File Manager
+  void pickFilesFromSystemWithAutoFolder(setState ,files,context) async {
+    List<String> allowedExtensions = [
+      "pdf",
+      "doc",
+      "docx",
+      "xls",
+      "xlsx",
+      "ppt",
+      "pptx",
+      "odt"
+    ];
+
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      type: FileType.custom,
+      allowedExtensions: allowedExtensions,
+    );
+
+    if (result != null) {
+      List<String> selectedFiles = result.paths.whereType<String>().toList();
+
+      setState(() {
+        files = selectedFiles.map((path) => File(path)).toList();
+      });
+      try{
+
+        importSelectedFiles(context, files, setState);
+        Future.delayed(Duration(milliseconds: 1000), () {
+          Navigator.pop(context);
+        });
+
+      }catch(e){
+        debugPrint("\n Error: $e");
+      }
+    }
   }
 }
