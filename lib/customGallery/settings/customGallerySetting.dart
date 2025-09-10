@@ -136,10 +136,11 @@ class CustomGallerySetting {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Files imported successfully!")),
       );
-      Navigator.pop(context, true); // Close the modal after a short delay
+
       setState(() {
         importFiles.clear(); // Clear after importing
       });
+      Navigator.pop(context, true); // Close the modal after a short delay
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
@@ -292,6 +293,99 @@ class CustomGallerySetting {
       return Text(
         "Error loading file info",
         style: GoogleFonts.poppins(fontSize: 11, color: Colors.red),
+      );
+    }
+  }
+// ✅ File Details Widget for GridView
+  Widget getFileDetailsForGrid(File file) {
+    try {
+      final fileStat = file.statSync();
+
+      // ✅ File Size Formatting
+      int bytes = fileStat.size;
+      String sizeText;
+      if (bytes < 1024) {
+        sizeText = "$bytes B";
+      } else if (bytes < 1024 * 1024) {
+        sizeText = "${(bytes / 1024).toStringAsFixed(1)} KB";
+      } else {
+        sizeText = "${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB";
+      }
+
+      // ✅ Created Date
+      String createdDate =
+      DateFormat('dd MMM yyyy').format(fileStat.changed);
+
+      // ✅ Internal vs SD Card Path
+      String filePath = file.path;
+      String displayPath;
+      if (filePath.startsWith('/storage/emulated/0')) {
+        String relativePath = filePath.replaceFirst('/storage/emulated/0/', '');
+        displayPath = "Internal → $relativePath";
+      } else {
+        displayPath = "SD Card → ${p.basename(filePath)}";
+      }
+
+      // ✅ Colors for Icons
+      Color dateColor = Colors.deepPurple;
+      Color sizeColor = Colors.green;
+      Color pathColor = Colors.blueGrey;
+
+      // ✅ Compact UI for Grid View
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ✅ Date + Size in one line
+          Row(
+            children: [
+              Icon(Icons.access_time, size: 12, color: dateColor),
+              SizedBox(width: 2),
+              Expanded(
+                child: Text(
+                  createdDate,
+                  style: GoogleFonts.poppins(fontSize: 9, color: Colors.black54),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              Icon(Icons.storage, size: 12, color: sizeColor),
+              SizedBox(width: 2),
+              Expanded(
+                child: Text(
+                  sizeText,
+                  style: GoogleFonts.poppins(fontSize: 9, color: Colors.black54),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 2),
+          // ✅ File Path in one line
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.folder, size: 12, color: pathColor),
+              SizedBox(width: 2),
+              Expanded(
+                child: Text(
+                  displayPath,
+                  style: GoogleFonts.poppins(fontSize: 9, color: Colors.black87),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    } catch (e) {
+      return Text(
+        "Error loading file info",
+        style: GoogleFonts.poppins(fontSize: 10, color: Colors.red),
       );
     }
   }

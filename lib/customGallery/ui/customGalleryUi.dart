@@ -5,6 +5,8 @@ import 'package:filemanager/customGallery/settings/customGallerySetting.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'listViewAndGridViewUi.dart';
+
 void main() {
   runApp(MaterialApp(
     home: CustomGalleryApp(),
@@ -27,7 +29,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
   String? selectedFolder; // Currently Selected Folder
   String selectedFileType = "File Type"; // Currently Selected File Type
   bool _isLoading = true; // Added for loading state
-
+  bool isGridView=false; // Toggle between List and Grid View
   // ✅ Files user clicked on → shown at the bottom horizontal list
   List<File> importFiles = [];
 
@@ -113,7 +115,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
 // Dropdown-style option widget
   Widget buildImportFunctionalityOptions(String text) {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+      padding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
       decoration: BoxDecoration(
         color: Colors.white, // White background
         borderRadius: BorderRadius.circular(4),
@@ -131,17 +133,20 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
               text,
               style: GoogleFonts.poppins(
                 color: Colors.black87, // Black text for contrast
-                fontSize: 13,
+                fontSize: 12, // Adjusted for better fit
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(width: 6),
+            SizedBox(width: 4),
             Icon(Icons.arrow_drop_down, color: Colors.black54, size: 20),
           ],
         ),
@@ -160,6 +165,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
             child: GestureDetector(
                 onTap: showFolderSelection,
+                // Show Folder Selection Modal
                 child: buildImportFunctionalityOptions(
                     selectedFolder ?? "All Files")),
           ),
@@ -180,6 +186,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                   });
                 },
               ),
+              // Show File Type Selection Modal
               child: buildImportFunctionalityOptions(selectedFileType),
             ),
           ),
@@ -195,6 +202,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                         files = sortedFiles;
                       });
                     }),
+                // Show Sort Options Modal
                 child: buildImportFunctionalityOptions("Sort By")),
           ),
         ),
@@ -261,7 +269,11 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                 },
               ),
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.grid_view)),
+          IconButton(onPressed: () {
+            setState(() {
+              isGridView=!isGridView; // Toggle the boolean value
+            });
+          }, icon: Icon(isGridView ? Icons.list : Icons.grid_view)),
           IconButton(
             icon: const Icon(Icons.folder),
             onPressed: pickFilesFromSystemGallery,
@@ -279,66 +291,12 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                     ? Center(child: CircularProgressIndicator()) :// Show progress indicator
                 files.isEmpty
                     ? Center(child: Text("No files found"))
-                    : ListView.builder(
-                        // space for bottom bar
-                        padding: EdgeInsets.only(
-                            bottom: importFiles.isNotEmpty ? 60 : 0),
-                        // Add this line to remove default padding
-                        itemCount: files.length,
-                        itemBuilder: (context, index) {
-                          File file = files[index];
-                          String fileName = file.path.split('/').last;
-                          return Card(
-                            elevation: 2,
-                            child: ListTile(
-                              tileColor: importFiles.contains(file)
-                                  ? Colors.green.shade50
-                                  : Colors.white,
-                              style: ListTileStyle.list,
-                              shape: RoundedRectangleBorder(
-                                side: BorderSide(
-                                    color: importFiles.contains(file)
-                                        ? Colors.blue
-                                        : Colors.white,
-                                    width: importFiles.contains(file) ? 2 : 0),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              hoverColor: Colors.blue.shade50,
-                              selectedColor: Colors.blue.shade100,
-                              leading: settings.getFileIcon(fileName),
-
-                              // ✅ Wrap file name in Row -> Expanded -> Text
-                              title: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      fileName,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        color: importFiles.contains(file)
-                                            ? Colors
-                                                .blue.shade700 // Selected color
-                                            : Colors.black, // Default color
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                      // ✅ Ellipsis applied properly
-                                      maxLines: 2,
-                                      softWrap: false,
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              subtitle: settings.getFileDetails(file),
-                              onTap: () => toggleFileSelection(file),
-                              trailing: importFiles.contains(file)
-                                  ? Icon(Icons.check_circle,
-                                      color: Colors.green)
-                                  : null,
-                            ),
-                          );
-                        },
+                    : buildFilesView(  //From listViewAndGridViewUi.dart
+                        files: files,
+                        importFiles: importFiles,
+                        isGridView: isGridView, // Change to true for GridView
+                        toggleFileSelection: toggleFileSelection,
+                        settings: settings,
                       ),
 
                 // ✅ Import List Section at Bottom
