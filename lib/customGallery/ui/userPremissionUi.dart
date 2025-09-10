@@ -122,10 +122,11 @@ class _FilePermissionScreenState extends State<FilePermissionScreen> {
     // Request permission
     bool granted = await settings.requestStoragePermission();
     if (granted) {
-      Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => CustomGalleryApp()));
+    Navigator.pop(context);
+    Future.delayed(Duration(milliseconds: 200),(){
+      Navigator.push(context,MaterialPageRoute(builder: (context) => CustomGalleryApp()));
+    });
+
     } else {
       // Show dialog if permission is denied
       showDialog(

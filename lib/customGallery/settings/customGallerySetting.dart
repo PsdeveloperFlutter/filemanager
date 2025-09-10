@@ -436,9 +436,9 @@ class CustomGallerySetting {
       try{
 
         importSelectedFiles(context, files, setState);
-        Future.delayed(Duration(milliseconds: 1000), () {
-          Navigator.pop(context);
-        });
+        // Future.delayed(Duration(milliseconds: 1000), () {
+        //   Navigator.pop(context);
+        // });
 
       }catch(e){
         debugPrint("\n Error: $e");

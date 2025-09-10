@@ -26,6 +26,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
   Map<String, List<String>> folders = {}; // Folders with Files
   String? selectedFolder; // Currently Selected Folder
   String selectedFileType = "File Type"; // Currently Selected File Type
+  bool _isLoading = true; // Added for loading state
 
   // ✅ Files user clicked on → shown at the bottom horizontal list
   List<File> importFiles = [];
@@ -72,6 +73,11 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
       allFiles =
           await settings.getFilesFromDirectory(root); // Get File From Directory
       files = List.from(allFiles); //create Copy here
+      // Simulate a delay for loading files
+      await Future.delayed(Duration(seconds: 2));
+      setState(() {
+        _isLoading = false; // Set loading to false after files are loaded
+      });
       folders =
           await settings.getFoldersWithFiles(root.path); //Get File and folders
       setState(() {});
@@ -269,6 +275,8 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
             child: Stack(
               children: [
                 // ✅ Main File List
+                _isLoading // Check if loading
+                    ? Center(child: CircularProgressIndicator()) :// Show progress indicator
                 files.isEmpty
                     ? Center(child: Text("No files found"))
                     : ListView.builder(
