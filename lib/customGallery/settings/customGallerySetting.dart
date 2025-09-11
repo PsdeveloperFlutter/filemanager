@@ -249,26 +249,22 @@ class CustomGallerySetting {
         children: [
           // Row 1: Date + Size
           Row(
-            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(Icons.access_time, size: 16, color: dateColor),
-              SizedBox(width: 4),
+
               Text(
                 createdDate,
                 style: GoogleFonts.poppins(fontSize: 11, color: Colors.black54),
                 overflow: TextOverflow.ellipsis,
               ),
-              SizedBox(width: 12),
               Icon(Icons.storage, size: 16, color: sizeColor),
-              SizedBox(width: 4),
-              Expanded(
-                flex: 1,
-                child: Text(
-                  sizeText,
-                  style:
-                  GoogleFonts.poppins(fontSize: 11, color: Colors.black54),
-                ),
+              Text(
+                sizeText,
+                overflow: TextOverflow.ellipsis,
+                style:
+                GoogleFonts.poppins(fontSize: 11, color: Colors.black54),
               ),
             ],
           ),

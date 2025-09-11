@@ -79,7 +79,7 @@ Widget buildFilesView({
             subtitle: settings.getFileDetails(file),
             onTap: () => toggleFileSelection(file),
             trailing: importFiles.contains(file)
-                ? const Icon(Icons.check_circle, color: Colors.green)
+                ? const Icon(Icons.check_circle,size: 20, color: Colors.green)
                 : null,
           ),
         );

@@ -98,11 +98,17 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
         return buildFolderSelectionSheet(
           folders: folders,
           onFolderSelected: (folderPath) {
-            setState(() {
-              selectedFolder = folderPath.split('/').last;
-              files = folders[folderPath]!.map((path) => File(path)).toList();
-            });
-            Navigator.pop(context);
+            if (folderPath == "All files") {
+              setState(() {
+                selectedFolder = "All files";
+                files = List.from(allFiles); // Show all files
+              });
+            } else {
+              setState(() {
+                selectedFolder = folderPath.split('/').last;
+                files = folders[folderPath]!.map((path) => File(path)).toList();
+              });
+            }
           },
           selectedFolder: selectedFolder,
           setState: setState,
@@ -286,6 +292,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
               const PopupMenuItem<String>(
                 value: 'pickFiles',
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.folder_open, color: Colors.black), // Optional: Add an icon
                     SizedBox(width: 8),
@@ -453,6 +460,7 @@ Widget buildFolderSelectionSheet({
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Header
         Container(
           padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
           width: double.infinity,
@@ -475,6 +483,35 @@ Widget buildFolderSelectionSheet({
             ],
           ),
         ),
+
+        // All Files Option
+        Card(
+          elevation: 1,
+          margin: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          child: ListTile(
+            leading: Icon(Icons.folder_special, color: Colors.blueAccent),
+            trailing: Radio<String>(
+              value: "All files",
+              groupValue: selectedFolder,
+              onChanged: (value) {
+                setState(() {
+                  selectedFolder = value!;
+                });
+                onFolderSelected("All files");
+              },
+            ),
+            title: Text("All files"),
+            subtitle: Text("Display all retrieved files"),
+            onTap: () {
+              setState(() {
+                selectedFolder = "All files";
+              });
+              onFolderSelected("All files");
+            },
+          ),
+        ),
+
+        // Folder List
         Expanded(
           child: ListView.builder(
             padding: EdgeInsets.zero,
@@ -484,36 +521,38 @@ Widget buildFolderSelectionSheet({
               List<String> filesInFolder = folders[folderPath] ?? [];
               int fileCount = filesInFolder.length;
 
-              return Card(
-                elevation: 1,
-                margin: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                child: ListTile(
-                  leading: Icon(Icons.folder, color: Colors.orange),
-                  trailing: Radio<String>(
-                    value: folderPath,
-                    groupValue: selectedFolder,
-                    onChanged: (value) {
+              return
+                Card(
+                  elevation: 1,
+                  margin: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  child: ListTile(
+                    leading: Icon(Icons.folder, color: Colors.orange),
+                    trailing: Radio<String>(
+                      value: folderPath,
+                      groupValue: selectedFolder,
+                      onChanged: (value) {
+                        setState(() {
+                          selectedFolder = value;
+                        });
+                        onFolderSelected(value!);
+                      },
+                    ),
+                    title: Text(folderPath.split('/').last),
+                    subtitle: Text("$fileCount files"),
+                    onTap: () {
                       setState(() {
-                        selectedFolder = value;
+                        selectedFolder = folderPath;
                       });
                       onFolderSelected(folderPath);
                     },
                   ),
-                  title: Text(folderPath.split('/').last),
-                  subtitle: Text("$fileCount files"),
-                  onTap: () {
-                    setState(() {
-                      selectedFolder = folderPath;
-                    });
-                    onFolderSelected(folderPath);
-                  },
-                ),
-              );
+                );
             },
           ),
         )
       ],
-    ),
+    )
+
   );
 }
 
