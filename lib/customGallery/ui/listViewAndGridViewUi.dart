@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+// inside your State class
+final Map<String, ImageProvider> _pdfThumbCache = {};
+
 /// Widget to display files in List or Grid View
 Widget buildFilesView({
   required List<File> files,
@@ -38,8 +41,29 @@ Widget buildFilesView({
                   width: importFiles.contains(file) ? 2 : 0),
               borderRadius: BorderRadius.circular(8),
             ),
-            leading: settings.getFileIcon(fileName),
-            title: Text(
+            leading: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.grey.shade300)
+            ),
+            width: 50,
+            height: 60,
+            child: FutureBuilder<ImageProvider?>(
+              future: settings.getPdfFirstPageImage(file.path, cache: _pdfThumbCache),
+              builder: (context, snapshot) {
+                 if (snapshot.hasData && snapshot.data != null) {
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Image(image: snapshot.data!, fit: BoxFit.cover),
+                  );
+                } else {
+                  return settings.getFileIcon(fileName);
+                }
+              },
+            ),
+          ),
+
+          title: Text(
               fileName,
               style: GoogleFonts.poppins(
                 fontSize: 14,
@@ -71,7 +95,7 @@ Widget buildFilesView({
         crossAxisCount: 3, // ✅ 3 Items per Row
         crossAxisSpacing: 5,
         mainAxisSpacing: 3,
-        childAspectRatio: 0.65, // ✅ Adjust height of each card
+        childAspectRatio: 0.75, // ✅ Adjust height of each card
       ),
       itemCount: files.length,
       itemBuilder: (context, index) {
@@ -99,7 +123,23 @@ Widget buildFilesView({
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // ✅ File Icon
-                  settings.getFileIcon(fileName),
+                  SizedBox(
+                    width: 50,
+                    height: 60,
+                    child: FutureBuilder<ImageProvider?>(
+                      future: settings.getPdfFirstPageImage(file.path, cache: _pdfThumbCache),
+                      builder: (context, snapshot) {
+                       if (snapshot.hasData && snapshot.data != null) {
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: Image(image: snapshot.data!, fit: BoxFit.cover),
+                          );
+                        } else {
+                          return settings.getFileIcon(fileName);
+                        }
+                      },
+                    ),
+                  ),
 
                   const SizedBox(height: 8),
 
@@ -120,12 +160,12 @@ Widget buildFilesView({
 
                   const SizedBox(height: 4),
 
-                  // ✅ File Details below name
-                  Expanded(
-                    flex: 2,
-                    child: settings.getFileDetailsForGrid(file),
-                  ),
-                  Icon(
+                  // // ✅ File Details below name
+                  // Expanded(
+                  //   flex: 2,
+                  //   child: settings.getFileDetailsForGrid(file),
+                  // ),
+                   Icon(
                       importFiles.contains(file)
                           ? Icons.check_circle
                           :null,

@@ -30,6 +30,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
   String selectedFileType = "File Type"; // Currently Selected File Type
   bool _isLoading = true; // Added for loading state
   bool isGridView=false; // Toggle between List and Grid View
+  bool _showHiddenFiles = false; // Added to control visibility of hidden files
   // ✅ Files user clicked on → shown at the bottom horizontal list
   List<File> importFiles = [];
 
@@ -274,10 +275,36 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
               isGridView=!isGridView; // Toggle the boolean value
             });
           }, icon: Icon(isGridView ? Icons.list : Icons.grid_view)),
-          IconButton(
-            icon: const Icon(Icons.folder),
-            onPressed: pickFilesFromSystemGallery,
-          )
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onSelected: (String result) {
+              if (result == 'pickFiles') {
+                pickFilesFromSystemGallery();
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'pickFiles',
+                child: Row(
+                  children: [
+                    Icon(Icons.folder_open, color: Colors.black), // Optional: Add an icon
+                    SizedBox(width: 8),
+                    Text('System Files'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(child: Row(
+                children: [
+                  Checkbox(value: _showHiddenFiles, onChanged: (bool? value) { setState(() {
+                   _showHiddenFiles = value ?? false;
+                  }); },),
+                  Text("Show Hidden Files"),
+                ],
+              ))
+
+              // Add more options here if needed
+            ],
+          ),
         ],
       ),
       body: Column(
