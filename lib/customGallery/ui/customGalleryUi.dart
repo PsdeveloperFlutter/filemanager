@@ -74,7 +74,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
     if (granted) {
       Directory root = Directory('/storage/emulated/0/');
       allFiles =
-          await settings.getFilesFromDirectory(root); // Get File From Directory
+          await settings.getFilesFromDirectory(root, showHiddenFiles: _showHiddenFiles); // Get File From Directory
       files = List.from(allFiles); //create Copy here
       // Simulate a delay for loading files
       await Future.delayed(Duration(seconds: 2));
@@ -111,7 +111,11 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
             }
           },
           selectedFolder: selectedFolder,
-          setState: setState,
+          onSelectedFolderChanged: (folderPath){
+            setState(() {
+              selectedFolder=folderPath;
+            });
+          },
           context: context,
         );
       },
@@ -288,28 +292,66 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                 pickFilesFromSystemGallery();
               }
             },
+            offset: const Offset(0, 40), // Offset the menu downwards
+            color: const Color(0xFF0A3D62), // Set background color to match AppBar
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10), // Rounded corners
+            ),
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'pickFiles',
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.folder_open, color: Colors.black), // Optional: Add an icon
-                    SizedBox(width: 8),
-                    Text('System Files'),
+                    const Icon(Icons.folder_open, color: Colors.white), // Icon color white
+                    const SizedBox(width: 8),
+                    Text(
+                      'System Files',
+                      style: GoogleFonts.poppins(color: Colors.white), // Text color white
+                    ),
                   ],
                 ),
               ),
-              PopupMenuItem(child: Row(
-                children: [
-                  Checkbox(value: _showHiddenFiles, onChanged: (bool? value) { setState(() {
-                   _showHiddenFiles = value ?? false;
-                  }); },),
-                  Text("Show Hidden Files"),
-                ],
-              ))
+              const PopupMenuDivider(height: 1), // Divider with custom height
+              PopupMenuItem<String>(
+                value: 'toggleHiddenFiles',
+                child: StatefulBuilder(
+                  builder: (BuildContext context, StateSetter setStatePopup) {
+                    return Row(
+                      children: [
+                        Checkbox(
+                          fillColor: MaterialStateProperty.all(Colors.white),
+                          value: _showHiddenFiles,
+                          onChanged: (bool? value) async { // ✅ Make this async instead
+                            // First update the local popup UI state
+                            setStatePopup(() {
+                              _showHiddenFiles = value ?? false;
+                            });
 
-              // Add more options here if needed
+                            // Fetch files asynchronously
+                            List<File> updatedFiles = await settings.getFilesFromDirectory(
+                              Directory('/storage/emulated/0/'),
+                              showHiddenFiles: _showHiddenFiles,
+                            );
+
+                            // Then call setState synchronously to update main UI
+                            setState(() {
+                              files = updatedFiles;
+                            });
+                          },
+                          activeColor: Colors.white,
+                          checkColor: const Color(0xFF0A3D62),
+                        ),
+                        Text(
+                          "Show Hidden Files",
+                          style: GoogleFonts.poppins(color: Colors.white),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+
             ],
           ),
         ],
@@ -322,7 +364,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
               children: [
                 // ✅ Main File List
                 _isLoading // Check if loading
-                    ? Center(child: CircularProgressIndicator()) :// Show progress indicator
+                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF0A3D62),)) :// Show progress indicator with appbar color
                 files.isEmpty
                     ? Center(child: Text("No files found"))
                     : buildFilesView(  //From listViewAndGridViewUi.dart
@@ -448,113 +490,110 @@ Widget importListSection(BuildContext context,
 }
 
 // Show Folder Selection Modal
+// Show Folder Selection Modal
 Widget buildFolderSelectionSheet({
   required Map<String, List<String>> folders,
   required Function(String folderPath) onFolderSelected,
-  String? selectedFolder,
-  required StateSetter setState,
+  required String? selectedFolder,
+  required Function(String) onSelectedFolderChanged,
   required BuildContext context,
 }) {
-  return SizedBox(
-    height: 400,
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Header
-        Container(
-          padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: const Color(0xFF0A3D62),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.folder, color: Colors.white, size: 24),
-              SizedBox(width: 10),
-              Text(
-                "All System Folders",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+  return StatefulBuilder(
+    builder: (context, setModalState) {
+      return SizedBox(
+        height: 400,
+        child: Column(
+          children: [
+            // ✅ App Bar for Modal Bottom Sheet
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Color(0xFF0A3D62), // Dark blue background
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
                 ),
               ),
-            ],
-          ),
-        ),
-
-        // All Files Option
-        Card(
-          elevation: 1,
-          margin: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          child: ListTile(
-            leading: Icon(Icons.folder_special, color: Colors.blueAccent),
-            trailing: Radio<String>(
-              value: "All files",
-              groupValue: selectedFolder,
-              onChanged: (value) {
-                setState(() {
-                  selectedFolder = value!;
-                });
-                onFolderSelected("All files");
-              },
+              child: Text(
+                "Select Folder",
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white, // White text
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
-            title: Text("All files"),
-            subtitle: Text("Display all retrieved files"),
-            onTap: () {
-              setState(() {
-                selectedFolder = "All files";
-              });
-              onFolderSelected("All files");
-            },
-          ),
-        ),
 
-        // Folder List
-        Expanded(
-          child: ListView.builder(
-            padding: EdgeInsets.zero,
-            itemCount: folders.keys.length,
-            itemBuilder: (context, index) {
-              String folderPath = folders.keys.elementAt(index);
-              List<String> filesInFolder = folders[folderPath] ?? [];
-              int fileCount = filesInFolder.length;
+            // ✅ All Files Option
+            Card(
+              elevation: 1,
+              margin: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              child: ListTile(
+                leading: Icon(Icons.folder_special, color: Colors.blueAccent),
+                trailing: Radio<String>(
+                  value: "All files",
+                  groupValue: selectedFolder,
+                  onChanged: (value) {
+                    setModalState(() => selectedFolder = value); // ✅ Update modal state
+                    onSelectedFolderChanged(value!);
+                    onFolderSelected("All files");
+                  },
+                ),
+                title: Text("All files"),
+                subtitle: Text("Display all retrieved files"),
+                onTap: () {
+                  setModalState(() => selectedFolder = "All files");
+                  onSelectedFolderChanged("All files");
+                  onFolderSelected("All files");
+                },
+              ),
+            ),
 
-              return
-                Card(
-                  elevation: 1,
-                  margin: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  child: ListTile(
-                    leading: Icon(Icons.folder, color: Colors.orange),
-                    trailing: Radio<String>(
-                      value: folderPath,
-                      groupValue: selectedFolder,
-                      onChanged: (value) {
-                        setState(() {
-                          selectedFolder = value;
-                        });
-                        onFolderSelected(value!);
+            // ✅ Folder List with Radio Buttons
+            Expanded(
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                itemCount: folders.keys.length,
+                itemBuilder: (context, index) {
+                  String folderPath = folders.keys.elementAt(index);
+                  List<String> filesInFolder = folders[folderPath] ?? [];
+                  int fileCount = filesInFolder.length;
+
+                  return Card(
+                    elevation: 1,
+                    margin: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    child: ListTile(
+                      leading: Icon(Icons.folder, color: Colors.orange),
+                      trailing: Radio<String>(
+                        value: folderPath,
+                        groupValue: selectedFolder,
+                        onChanged: (value) {
+                          setModalState(() => selectedFolder = value);
+                          onSelectedFolderChanged(value!);
+                          onFolderSelected(folderPath);
+                        },
+                      ),
+                      title: Text(folderPath.split('/').last),
+                      subtitle: Text("$fileCount files"),
+                      onTap: () {
+                        setModalState(() => selectedFolder = folderPath);
+                        onSelectedFolderChanged(folderPath);
+                        onFolderSelected(folderPath);
                       },
                     ),
-                    title: Text(folderPath.split('/').last),
-                    subtitle: Text("$fileCount files"),
-                    onTap: () {
-                      setState(() {
-                        selectedFolder = folderPath;
-                      });
-                      onFolderSelected(folderPath);
-                    },
-                  ),
-                );
-            },
-          ),
-        )
-      ],
-    )
-
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    },
   );
 }
+
 
 void showSortOptionsBottomSheet(
     BuildContext context, List<File> files, Function(List<File>) onSorted) {

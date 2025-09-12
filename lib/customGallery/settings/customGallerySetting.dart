@@ -1,7 +1,6 @@
 import 'dart:io';
-import 'dart:typed_data';
-import 'package:pdf_render/pdf_render.dart';
-import 'package:pdf_render/pdf_render_widgets.dart';
+import 'dart:ui' as ui;
+
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -9,8 +8,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:pdf_render/pdf_render.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'dart:ui' as ui;
 
 class CustomGallerySetting {
 // Allowed File Extensions
@@ -49,8 +48,11 @@ class CustomGallerySetting {
   }
 
 // ✅ Recursive file fetching for all Android versions
-  Future<List<File>> getFilesFromDirectory(Directory dir,
-      {Set<String>? visited}) async {
+  Future<List<File>> getFilesFromDirectory(
+    Directory dir, {
+    Set<String>? visited,
+    bool showHiddenFiles = false,
+  }) async {
     visited ??= {};
     List<File> files = [];
     List<String> restrictedFolders = ["Android", "data", "obb"];
@@ -60,9 +62,14 @@ class CustomGallerySetting {
 
     try {
       await for (var entity in dir.list(followLinks: false)) {
+        String entityName=p.basename(entity.path);
+        // ✅ Skip hidden files/folders if showHiddenFiles = false
+        if (!showHiddenFiles && entityName.startsWith(".")) {
+          continue;
+        }
         if (entity is File) {
           String ext =
-          p.extension(entity.path).replaceAll('.', '').toLowerCase();
+              p.extension(entity.path).replaceAll('.', '').toLowerCase();
           if (allowedExtensions.contains(ext)) {
             files.add(entity);
           }
@@ -122,9 +129,9 @@ class CustomGallerySetting {
 
       // Step 2: Create folder with today's date + current time
       String folderName =
-      getDateTimeFolderName(); // e.g., "06-09-2025_10-30-15"
+          getDateTimeFolderName(); // e.g., "06-09-2025_10-30-15"
       Directory dateTimeFolder =
-      Directory(p.join(baseImportDir.path, folderName));
+          Directory(p.join(baseImportDir.path, folderName));
 
       if (!await dateTimeFolder.exists()) {
         await dateTimeFolder.create();
@@ -181,10 +188,7 @@ class CustomGallerySetting {
 
   // Icon set for Various Extension Files
   Icon getFileIcon(String fileName) {
-    String ext = fileName
-        .split('.')
-        .last
-        .toLowerCase();
+    String ext = fileName.split('.').last.toLowerCase();
     switch (ext) {
       case 'pdf':
         return Icon(Icons.picture_as_pdf, color: Colors.red, size: 30);
@@ -226,7 +230,7 @@ class CustomGallerySetting {
 
       // ✅ Created Date
       String createdDate =
-      DateFormat('dd MMM yyyy, hh:mm a').format(fileStat.changed);
+          DateFormat('dd MMM yyyy, hh:mm a').format(fileStat.changed);
 
       // ✅ Internal vs SD Card Path
       String filePath = file.path;
@@ -253,7 +257,6 @@ class CustomGallerySetting {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(Icons.access_time, size: 16, color: dateColor),
-
               Text(
                 createdDate,
                 style: GoogleFonts.poppins(fontSize: 11, color: Colors.black54),
@@ -263,8 +266,7 @@ class CustomGallerySetting {
               Text(
                 sizeText,
                 overflow: TextOverflow.ellipsis,
-                style:
-                GoogleFonts.poppins(fontSize: 11, color: Colors.black54),
+                style: GoogleFonts.poppins(fontSize: 11, color: Colors.black54),
               ),
             ],
           ),
@@ -282,7 +284,7 @@ class CustomGallerySetting {
                 child: Text(
                   displayPath,
                   style:
-                  GoogleFonts.poppins(fontSize: 11, color: Colors.black87),
+                      GoogleFonts.poppins(fontSize: 11, color: Colors.black87),
                   overflow: TextOverflow.ellipsis, // ✅ Ellipses for long paths
                   maxLines: 1,
                 ),
@@ -316,8 +318,7 @@ class CustomGallerySetting {
       }
 
       // ✅ Created Date
-      String createdDate =
-      DateFormat('dd MMM yyyy').format(fileStat.changed);
+      String createdDate = DateFormat('dd MMM yyyy').format(fileStat.changed);
 
       // ✅ Internal vs SD Card Path
       String filePath = file.path;
@@ -347,8 +348,8 @@ class CustomGallerySetting {
               Expanded(
                 child: Text(
                   createdDate,
-                  style: GoogleFonts.poppins(
-                      fontSize: 9, color: Colors.black54),
+                  style:
+                      GoogleFonts.poppins(fontSize: 9, color: Colors.black54),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -361,8 +362,8 @@ class CustomGallerySetting {
               Expanded(
                 child: Text(
                   sizeText,
-                  style: GoogleFonts.poppins(
-                      fontSize: 9, color: Colors.black54),
+                  style:
+                      GoogleFonts.poppins(fontSize: 9, color: Colors.black54),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -378,8 +379,8 @@ class CustomGallerySetting {
               Expanded(
                 child: Text(
                   displayPath,
-                  style: GoogleFonts.poppins(
-                      fontSize: 9, color: Colors.black87),
+                  style:
+                      GoogleFonts.poppins(fontSize: 9, color: Colors.black87),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                 ),
@@ -452,16 +453,13 @@ class CustomGallerySetting {
               }
               // ✅ Agar "All Files" select hai to main UI mein "File Type" show hoga
               String displayText =
-              (type == "All Files" || type == null) ? "File Type" : type;
+                  (type == "All Files" || type == null) ? "File Type" : type;
               // ✅ Pass both filtered files AND selected type to main UI
               onFilterApplied(filteredFiles, displayText);
             }
 
             return SizedBox(
-              height: MediaQuery
-                  .of(context)
-                  .size
-                  .height * 0.5,
+              height: MediaQuery.of(context).size.height * 0.5,
               child: Column(
                 children: [
                   Container(
@@ -470,7 +468,7 @@ class CustomGallerySetting {
                     decoration: BoxDecoration(
                       color: const Color(0xFF0A3D62),
                       borderRadius:
-                      BorderRadius.vertical(top: Radius.circular(16)),
+                          BorderRadius.vertical(top: Radius.circular(16)),
                     ),
                     child: Text("Select File Types",
                         style: TextStyle(
@@ -508,7 +506,6 @@ class CustomGallerySetting {
     );
   }
 
-
 // ✅ Fetch Files from System File Manager
   void pickFilesFromSystemWithAutoFolder(setState, files, context) async {
     List<String> allowedExtensions = [
@@ -539,13 +536,11 @@ class CustomGallerySetting {
         // Future.delayed(Duration(milliseconds: 1000), () {
         //   Navigator.pop(context);
         // });
-
       } catch (e) {
         debugPrint("\n Error: $e");
       }
     }
   }
-
 
 //Only Check Status of Permission
   Future<bool> isStoragePermissionGranted() async {
@@ -555,16 +550,16 @@ class CustomGallerySetting {
     if (sdkInt >= 30) {
       // ✅ Android 11+
       return await Permission.manageExternalStorage.isGranted;
-    }
-    else {
+    } else {
       // ✅ Android 10 & below
       return await Permission.storage.isGranted;
     }
   }
 
   Future<ImageProvider?> getPdfFirstPageImage(String path,
-      {int width = 150, int height = 200,
-        required Map<String, ImageProvider> cache}) async {
+      {int width = 150,
+      int height = 200,
+      required Map<String, ImageProvider> cache}) async {
     try {
       if (cache.containsKey(path)) return cache[path];
 
@@ -591,8 +586,4 @@ class CustomGallerySetting {
       return null;
     }
   }
-
-
-
-
 }
