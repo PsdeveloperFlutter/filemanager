@@ -268,7 +268,6 @@ class CustomGallerySetting {
               ),
             ],
           ),
-          SizedBox(height: 2),
 
           // Row 2: File Path
           Row(

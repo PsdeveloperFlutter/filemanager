@@ -285,6 +285,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
               isGridView=!isGridView; // Toggle the boolean value
             });
           }, icon: Icon(isGridView ? Icons.list : Icons.grid_view)),
+       // Popup Menu Buttons for additional options
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onSelected: (String result) {
@@ -294,23 +295,25 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
             },
             offset: const Offset(0, 40), // Offset the menu downwards
             color:  Colors.white, // Set background color to match AppBar
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10), // Rounded corners
-            ),
+
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
               PopupMenuItem<String>(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // Added padding
                 value: 'pickFiles',
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.folder_open, color: Colors.black), // Icon color white
-                    const SizedBox(width: 8),
-                    Text(
-                      'Open system files',
-                      style: GoogleFonts.poppins(color: Colors.black), // Text color white
-                    ),
-                  ],
+                child: Padding( // Added Padding widget
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.folder_open, color: Colors.black), // Icon color white
+                      const SizedBox(width: 8),
+                      Text(
+                        'Open system files',
+                        style: GoogleFonts.poppins(color: Colors.black), // Text color white
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const PopupMenuDivider(height: 1), // Divider with custom height
