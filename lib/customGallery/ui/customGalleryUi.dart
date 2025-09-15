@@ -293,7 +293,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
               }
             },
             offset: const Offset(0, 40), // Offset the menu downwards
-            color: const Color(0xFF0A3D62), // Set background color to match AppBar
+            color:  Colors.white, // Set background color to match AppBar
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10), // Rounded corners
             ),
@@ -301,13 +301,14 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
               PopupMenuItem<String>(
                 value: 'pickFiles',
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const Icon(Icons.folder_open, color: Colors.white), // Icon color white
+                    const Icon(Icons.folder_open, color: Colors.black), // Icon color white
                     const SizedBox(width: 8),
                     Text(
-                      'System Files',
-                      style: GoogleFonts.poppins(color: Colors.white), // Text color white
+                      'Open system files',
+                      style: GoogleFonts.poppins(color: Colors.black), // Text color white
                     ),
                   ],
                 ),
@@ -318,6 +319,9 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                 child: StatefulBuilder(
                   builder: (BuildContext context, StateSetter setStatePopup) {
                     return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+
                       children: [
                         Checkbox(
                           fillColor: MaterialStateProperty.all(Colors.white),
@@ -344,7 +348,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                         ),
                         Text(
                           "Show Hidden Files",
-                          style: GoogleFonts.poppins(color: Colors.white),
+                          style: GoogleFonts.poppins(color: Colors.black),
                         ),
                       ],
                     );

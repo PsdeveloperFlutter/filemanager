@@ -242,10 +242,6 @@ class CustomGallerySetting {
         displayPath = "SD Card → ${p.basename(filePath)}";
       }
 
-      // ✅ Colors
-      Color dateColor = Colors.deepPurple;
-      Color sizeColor = Colors.green;
-      Color pathColor = Colors.blueGrey;
 
       // ✅ Return Column with Two Rows
       return Column(
@@ -253,20 +249,22 @@ class CustomGallerySetting {
         children: [
           // Row 1: Date + Size
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.access_time, size: 16, color: dateColor),
               Text(
                 createdDate,
-                style: GoogleFonts.poppins(fontSize: 11, color: Colors.black54),
+                style: GoogleFonts.poppins(fontSize: 11, color: Colors.black87),
                 overflow: TextOverflow.ellipsis,
               ),
-              Icon(Icons.storage, size: 16, color: sizeColor),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                child: Text(","),
+              ),
               Text(
                 sizeText,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(fontSize: 11, color: Colors.black54),
+                style: GoogleFonts.poppins(fontSize: 11, color: Colors.black87),
               ),
             ],
           ),
@@ -277,14 +275,12 @@ class CustomGallerySetting {
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.folder, size: 16, color: pathColor),
-              SizedBox(width: 4),
               Expanded(
                 flex: 1,
                 child: Text(
                   displayPath,
                   style:
-                      GoogleFonts.poppins(fontSize: 11, color: Colors.black87),
+                      GoogleFonts.poppins(fontSize: 10, color: Colors.black87),
                   overflow: TextOverflow.ellipsis, // ✅ Ellipses for long paths
                   maxLines: 1,
                 ),
