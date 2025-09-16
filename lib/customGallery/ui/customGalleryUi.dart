@@ -307,7 +307,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                   .split('/')
                   .last
                   .toLowerCase()
-                  .contains(query.toLowerCase()))
+                  .contains(query.trim().toLowerCase()))
                   .toList();
             }
           });

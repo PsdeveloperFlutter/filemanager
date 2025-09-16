@@ -422,14 +422,16 @@ class CustomGallerySetting {
           'assets/icons/pptx.webp',
           'assets/icons/odt.webp',
         ];
-        String? selectedFileType;
+        String? selectedFileType = "All Files";
 
         return StatefulBuilder(
           builder: (context, setState) {
             void filterFilesByType(String? type) {
               setState(() {
                 selectedFileType = type;
+
               });
+
 
               List<File> filteredFiles;
               if (type == "All Files" || type == null) {
