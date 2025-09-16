@@ -413,6 +413,15 @@ class CustomGallerySetting {
           "PPT/PPTX",
           "ODT"
         ];
+        // Corresponding icons for each file type (ensure order matches fileTypes)
+        List<String>fileTypesIcons=[
+          'assets/icons/pdf.webp',
+          'assets/icons/doc.webp',
+          'assets/icons/xls.webp',
+          'assets/icons/txt.webp',
+          'assets/icons/pptx.webp',
+          'assets/icons/odt.webp',
+        ];
         String? selectedFileType;
 
         return StatefulBuilder(
@@ -461,24 +470,33 @@ class CustomGallerySetting {
                     width: double.infinity,
                     padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0A3D62),
+                      color:  Colors.white,
                       borderRadius:
                           BorderRadius.vertical(top: Radius.circular(16)),
                     ),
                     child: Text("Select File Types",
                         style: TextStyle(
-                            color: Colors.white,
+                            color: Colors.black,
                             fontSize: 18,
                             fontWeight: FontWeight.bold)),
                   ),
                   Expanded(
-                    child: ListView.builder(
+                    child: ListView.separated(
+                      separatorBuilder: (context, index) => Divider(
+                        color: Colors.grey,
+                        height: 0.5,
+                      ),
                       itemCount: fileTypes.length,
                       itemBuilder: (context, index) {
                         String fileType = fileTypes[index];
                         return Card(
-                          elevation: 2,
+                          margin: EdgeInsets.zero,
                           child: RadioListTile<String>(
+                            secondary: fileType == "All Files"
+                                ? Icon(Icons.folder,
+                                    color: Colors.orange, size: 30)
+                                : Image.asset(fileTypesIcons[index-1], // Adjust index for fileTypesIcons
+                                    width: 30, height: 30),
                             title: Text(fileType),
                             value: fileType,
                             groupValue: selectedFileType,

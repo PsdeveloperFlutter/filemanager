@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 // inside your State class
 final Map<String, ImageProvider> _pdfThumbCache = {};
 
+
 /// Widget to display files in List or Grid View
 Widget buildFilesView({
   required List<File> files,
@@ -21,26 +22,27 @@ Widget buildFilesView({
 
   // ✅ LIST VIEW MODE
   if (!isGridView) {
-    return ListView.builder(
-      padding: EdgeInsets.only(bottom: importFiles.isNotEmpty ? 60 : 0),
+    return ListView.separated(
+      separatorBuilder: (context, index) => const Divider(height: 0.5, color:Colors.grey), // Divider between items
+      padding: const EdgeInsets.symmetric(vertical: 0), // Remove vertical padding to eliminate margin between children
+
       itemCount: files.length,
       itemBuilder: (context, index) {
         File file = files[index];
         String fileName = file.path.split('/').last;
 
         return Card(
+          margin: EdgeInsets.zero, // Remove margin around the Card
           elevation: 2,
           child: ListTile(
+            // contentPadding: EdgeInsets.zero,
+            // visualDensity: VisualDensity.adaptivePlatformDensity,
+            // dense: true,
+
             tileColor: importFiles.contains(file)
                 ? Colors.green.shade50
                 : Colors.white,
-            shape: RoundedRectangleBorder(
-              side: BorderSide(
-                  color:
-                      importFiles.contains(file) ? Colors.blue : Colors.white,
-                  width: importFiles.contains(file) ? 2 : 0),
-              borderRadius: BorderRadius.circular(8),
-            ),
+
             leading: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(6),

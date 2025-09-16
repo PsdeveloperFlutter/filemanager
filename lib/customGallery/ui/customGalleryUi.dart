@@ -29,7 +29,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
   String? selectedFolder; // Currently Selected Folder
   String selectedFileType = "File Type"; // Currently Selected File Type
   bool _isLoading = true; // Added for loading state
-  bool isGridView=false; // Toggle between List and Grid View
+  bool isGridView = false; // Toggle between List and Grid View
   bool _showHiddenFiles = false; // Added to control visibility of hidden files
   // ✅ Files user clicked on → shown at the bottom horizontal list
   List<File> importFiles = [];
@@ -73,8 +73,8 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
     bool granted = await settings.requestStoragePermission();
     if (granted) {
       Directory root = Directory('/storage/emulated/0/');
-      allFiles =
-          await settings.getFilesFromDirectory(root, showHiddenFiles: _showHiddenFiles); // Get File From Directory
+      allFiles = await settings.getFilesFromDirectory(root,
+          showHiddenFiles: _showHiddenFiles); // Get File From Directory
       files = List.from(allFiles); //create Copy here
       // Simulate a delay for loading files
       await Future.delayed(Duration(seconds: 2));
@@ -111,9 +111,9 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
             }
           },
           selectedFolder: selectedFolder,
-          onSelectedFolderChanged: (folderPath){
+          onSelectedFolderChanged: (folderPath) {
             setState(() {
-              selectedFolder=folderPath;
+              selectedFolder = folderPath;
             });
           },
           context: context,
@@ -128,12 +128,16 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
       decoration: BoxDecoration(
-        color: Colors.white, // White background
-        borderRadius: BorderRadius.circular(4),
+        // Background color Selection for the Dropdown
+        color: (text == 'All Files' || text == 'Sort By' || text == 'File Type')
+            ? Colors.white
+            : Colors.blue.shade400, // White background
+
+        borderRadius: BorderRadius.circular(100),
         border: Border.all(color: Colors.grey.shade400, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.shade200,
+            color: Colors.white,
             blurRadius: 2,
             offset: Offset(0, 1), // subtle shadow for depth
           ),
@@ -152,13 +156,23 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
               maxLines: 1,
               text,
               style: GoogleFonts.poppins(
-                color: Colors.black87, // Black text for contrast
+                color: (text == 'All Files' ||
+                        text == 'Sort By' ||
+                        text == 'File Type')
+                    ? Colors.black
+                    : Colors.white,
                 fontSize: 12, // Adjusted for better fit
                 fontWeight: FontWeight.w500,
               ),
             ),
             SizedBox(width: 4),
-            Icon(Icons.arrow_drop_down, color: Colors.black54, size: 20),
+            Icon(Icons.arrow_drop_down,
+                color: (text == 'All Files' ||
+                        text == 'Sort By' ||
+                        text == 'File Type')
+                    ? Colors.black
+                    : Colors.white,
+                size: 20),
           ],
         ),
       ),
@@ -280,12 +294,26 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                 },
               ),
         actions: [
-          IconButton(onPressed: () {
-            setState(() {
-              isGridView=!isGridView; // Toggle the boolean value
-            });
-          }, icon: Icon(isGridView ? Icons.list : Icons.grid_view)),
-       // Popup Menu Buttons for additional options
+          // Padding(
+          //   padding: const EdgeInsets.only(right: 8.0),
+          //   child: AnimSearchBar(
+          //     width: MediaQuery.of(context).size.width * 0.5, // Responsive width
+          //     textController: TextEditingController(),
+          //     onSuffixTap: () {
+          //       // Clear search or other actions
+          //     },
+          //     color: Colors.white, // Search bar background color
+          //     textFieldColor: Colors.grey[200], onSubmitted: (String ) {  }, // Text field background color
+          //   ),
+          // ),
+          IconButton(
+              onPressed: () {
+                setState(() {
+                  isGridView = !isGridView; // Toggle the boolean value
+                });
+              },
+              icon: Icon(isGridView ? Icons.list : Icons.grid_view)),
+          // Popup Menu Buttons for additional options
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onSelected: (String result) {
@@ -293,24 +321,30 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                 pickFilesFromSystemGallery();
               }
             },
-            offset: const Offset(0, 40), // Offset the menu downwards
-            color:  Colors.white, // Set background color to match AppBar
+            offset: const Offset(0, 40),
+            // Offset the menu downwards
+            color: Colors.white,
+            // Set background color to match AppBar
 
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
               PopupMenuItem<String>(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // Added padding
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 8.0), // Added padding
                 value: 'pickFiles',
-                child: Padding( // Added Padding widget
+                child: Padding(
+                  // Added Padding widget
                   padding: const EdgeInsets.all(8.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Icon(Icons.folder_open, color: Colors.black), // Icon color white
+                      const Icon(Icons.folder_open, color: Colors.black),
+                      // Icon color white
                       const SizedBox(width: 8),
                       Text(
                         'Open system files',
-                        style: GoogleFonts.poppins(color: Colors.black), // Text color white
+                        style: GoogleFonts.poppins(
+                            color: Colors.black), // Text color white
                       ),
                     ],
                   ),
@@ -324,19 +358,28 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       crossAxisAlignment: CrossAxisAlignment.center,
-
                       children: [
                         Checkbox(
-                          fillColor: MaterialStateProperty.all(Colors.white),
+                          // set here When the USER Click on this so that the background color of the checkbox while be blue
+                          fillColor:
+                              MaterialStateProperty.resolveWith((states) {
+                            if (states.contains(MaterialState.selected)) {
+                              return Colors.blue.shade700;
+                            }
+                            return Colors.white;
+                          }),
                           value: _showHiddenFiles,
-                          onChanged: (bool? value) async { // ✅ Make this async instead
+
+                          onChanged: (bool? value) async {
+                            // ✅ Make this async instead
                             // First update the local popup UI state
                             setStatePopup(() {
                               _showHiddenFiles = value ?? false;
                             });
 
                             // Fetch files asynchronously
-                            List<File> updatedFiles = await settings.getFilesFromDirectory(
+                            List<File> updatedFiles =
+                                await settings.getFilesFromDirectory(
                               Directory('/storage/emulated/0/'),
                               showHiddenFiles: _showHiddenFiles,
                             );
@@ -346,8 +389,9 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                               files = updatedFiles;
                             });
                           },
-                          activeColor: Colors.white,
-                          checkColor: const Color(0xFF0A3D62),
+
+                          activeColor: Colors.blue,
+                          checkColor: Colors.white,
                         ),
                         Text(
                           "Show Hidden Files",
@@ -358,7 +402,6 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                   },
                 ),
               ),
-
             ],
           ),
         ],
@@ -371,16 +414,22 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
               children: [
                 // ✅ Main File List
                 _isLoading // Check if loading
-                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF0A3D62),)) :// Show progress indicator with appbar color
-                files.isEmpty
-                    ? Center(child: Text("No files found"))
-                    : buildFilesView(  //From listViewAndGridViewUi.dart
-                        files: files,
-                        importFiles: importFiles,
-                        isGridView: isGridView, // Change to true for GridView
-                        toggleFileSelection: toggleFileSelection,
-                        settings: settings,
-                      ),
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                        color: Color(0xFF0A3D62),
+                      ))
+                    : // Show progress indicator with appbar color
+                    files.isEmpty
+                        ? Center(child: Text("No files found"))
+                        : buildFilesView(
+                            //From listViewAndGridViewUi.dart
+                            files: files,
+                            importFiles: importFiles,
+                            isGridView: isGridView,
+                            // Change to true for GridView
+                            toggleFileSelection: toggleFileSelection,
+                            settings: settings,
+                          ),
 
                 // ✅ Import List Section at Bottom
                 Positioned(
@@ -388,14 +437,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                   left: 0,
                   right: 0,
                   child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border(
-                          top:
-                              BorderSide(color: Colors.blue.shade300, width: 1),
-                        ),
-                      ),
-                      padding: EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+                      padding: EdgeInsets.symmetric(vertical: 3, horizontal: 8),
                       //Import List Section Function
                       child: importListSection(
                         // ✅ Pass required arguments
@@ -428,17 +470,20 @@ Widget importListSection(BuildContext context,
       // ✅ Import Button on Right Side
       ElevatedButton(
     style: ElevatedButton.styleFrom(
-      padding: EdgeInsets.symmetric(vertical: 15, horizontal: 16),
-      backgroundColor: const Color(0xFF0A3D62), // Button color
+      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+      // Adjusted padding
+      backgroundColor: const Color(0xFF0A3D62),
+      // Button color
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
       ),
     ),
     onPressed: importSelectedFiles,
     child: Text(
+      // Changed text to fit medium size
       "Import ",
       style: GoogleFonts.poppins(
-        fontSize: 16,
+        fontSize: 14, // Adjusted font size
         fontWeight: FontWeight.bold,
         color: Colors.white,
       ),
@@ -516,7 +561,7 @@ Widget buildFolderSelectionSheet({
               width: double.infinity,
               padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               decoration: BoxDecoration(
-                color: Color(0xFF0A3D62), // Dark blue background
+                color: Colors.white, // Dark blue background
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(16),
                   topRight: Radius.circular(16),
@@ -527,25 +572,35 @@ Widget buildFolderSelectionSheet({
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white, // White text
+                  color: Colors.black, // White text
                 ),
-                textAlign: TextAlign.center,
               ),
             ),
 
             // ✅ All Files Option
             Card(
-              elevation: 1,
-              margin: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              shape: RoundedRectangleBorder(
+                // Added this to remove default radius
+                borderRadius: BorderRadius.zero,
+              ),
+              margin: EdgeInsets.zero,
+              color: Colors.white,
               child: ListTile(
-                leading: Icon(Icons.folder_special, color: Colors.blueAccent),
+                //
+                leading: Image.asset(
+                  'assets/icons/folder (2).webp',
+                  width: 34, // Set the width of the image
+                  height: 34,
+                ),
                 trailing: Radio<String>(
                   value: "All files",
                   groupValue: selectedFolder,
                   onChanged: (value) {
-                    setModalState(() => selectedFolder = value); // ✅ Update modal state
-                    onSelectedFolderChanged(value!);
-                    onFolderSelected("All files");
+                    setModalState(() {
+                      selectedFolder = value; // ✅ Update modal state
+                    });
+                    onSelectedFolderChanged(value!); // Update parent state
+                    onFolderSelected("All files");  // Call the callback
                   },
                 ),
                 title: Text("All files"),
@@ -557,10 +612,12 @@ Widget buildFolderSelectionSheet({
                 },
               ),
             ),
-
+            Divider(height: 0.5, color: Colors.grey.shade300),
             // ✅ Folder List with Radio Buttons
             Expanded(
-              child: ListView.builder(
+              child: ListView.separated(
+                separatorBuilder: (context, index) =>
+                    Divider(height: 0.5, color: Colors.grey.shade300),
                 padding: EdgeInsets.zero,
                 itemCount: folders.keys.length,
                 itemBuilder: (context, index) {
@@ -569,10 +626,18 @@ Widget buildFolderSelectionSheet({
                   int fileCount = filesInFolder.length;
 
                   return Card(
-                    elevation: 1,
-                    margin: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    color: Colors.white,
+                    margin: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      // Added this to remove default radius
+                      borderRadius: BorderRadius.zero,
+                    ),
                     child: ListTile(
-                      leading: Icon(Icons.folder, color: Colors.orange),
+                      leading: Image.asset(
+                        'assets/icons/folder (2).webp',
+                        width: 34, // Set the width of the image
+                        height: 34,
+                      ),
                       trailing: Radio<String>(
                         value: folderPath,
                         groupValue: selectedFolder,
@@ -601,7 +666,6 @@ Widget buildFolderSelectionSheet({
   );
 }
 
-
 void showSortOptionsBottomSheet(
     BuildContext context, List<File> files, Function(List<File>) onSorted) {
   showModalBottomSheet(
@@ -612,6 +676,12 @@ void showSortOptionsBottomSheet(
         "By Name",
         "By Size",
         "By Date",
+      ];
+      //Sort By Bottom Sheet Icons List
+      final List<String> iconsStrings = [
+        'assets/icons/sort-by-alphabet.webp',
+        'assets/icons/sort-by-attributes.webp',
+        'assets/icons/sort-by-attributes.webp'
       ];
 
       String? selectedCriteria; // Track selected criteria
@@ -654,11 +724,13 @@ void showSortOptionsBottomSheet(
               children: [
                 // ✅ Title Bar
                 Container(
+                  padding: EdgeInsets.all(16),
                   width: double.infinity,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0A3D62),
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey.shade300, width: 1),
+                    ),
+                    color: Colors.white,
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(16),
                       topRight: Radius.circular(16),
@@ -669,23 +741,29 @@ void showSortOptionsBottomSheet(
                     style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Colors.black,
                     ),
                   ),
                 ),
 
                 // ✅ Sort Criteria Options
                 Expanded(
-                  child: ListView.builder(
+                  child: ListView.separated(
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 0.5, color: Colors.grey),
+                    padding: EdgeInsets.zero,
                     itemCount: criteriaOptions.length,
                     itemBuilder: (context, index) {
                       String criteria = criteriaOptions[index];
                       return Card(
-                        elevation: 1,
+                        color: Colors.white,
+                        margin: EdgeInsets.zero,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: RadioListTile<String>(
+                          secondary: Image.asset(iconsStrings[index],
+                              width: 24, height: 24, color: Colors.blue),
                           title: Text(criteria,
                               style: GoogleFonts.poppins(
                                   fontSize: 16, fontWeight: FontWeight.w500)),
