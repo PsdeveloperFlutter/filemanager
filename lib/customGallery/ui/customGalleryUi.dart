@@ -14,6 +14,7 @@ void main() {
   ));
 }
 
+
 class CustomGalleryApp extends StatefulWidget {
   const CustomGalleryApp({super.key});
 
@@ -35,6 +36,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
   List<File> importFiles = [];
   bool _isSearching = false;
   TextEditingController searchController = TextEditingController();
+
   // Settings Instance
   final CustomGallerySetting settings = CustomGallerySetting();
 
@@ -89,99 +91,99 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
     }
   }
 
+  String? lastSelectedFolder = "All files"; // Track last selected folder globally
+
   void showFolderSelection() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) {
-        return buildFolderSelectionSheet(
-          folders: folders,
-          onFolderSelected: (folderPath) {
-            if (folderPath == "All files") {
-              setState(() {
-                selectedFolder = "All files";
-                files = List.from(allFiles); // Show all files
-              });
-            } else {
-              setState(() {
-                selectedFolder = folderPath
-                    .split('/')
-                    .last;
-                files = folders[folderPath]!.map((path) => File(path)).toList();
-              });
-            }
+        // ✅ Initially set to last selected folder
+        String? selectedFolder = lastSelectedFolder;
+
+        return StatefulBuilder(
+          builder: (context, setStateModal) {
+            return buildFolderSelectionSheet(
+              folders: folders,
+              selectedFolder: selectedFolder,
+              onFolderSelected: (folderPath) {
+                setStateModal(() {
+                  selectedFolder = folderPath;
+                });
+
+
+                setState(() {
+                  lastSelectedFolder = folderPath; // <-- Final value set
+                  files = folderPath == "All files"
+                      ? List.from(allFiles)
+                      : folders[folderPath]!.map((path) => File(path)).toList();
+                });
+              },
+              onSelectedFolderChanged: (folderPath) {
+                setStateModal(() {
+                  selectedFolder = folderPath;
+                });
+              },
+              context: context,
+            );
           },
-          selectedFolder: selectedFolder,
-          onSelectedFolderChanged: (folderPath) {
-            setState(() {
-              selectedFolder = folderPath;
-            });
-          },
-          context: context,
         );
       },
     );
   }
 
+
   //Widget for the Functionality of Import List Section
 // Dropdown-style option widget
   Widget buildImportFunctionalityOptions(String text) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-      decoration: BoxDecoration(
-        // Background color Selection for the Dropdown
-        color: (text == 'All Files' || text=="All files"||text == 'Sort By' || text == 'File Type')
-            ? Colors.white
-            : Colors.blue.shade400, // White background
+    bool isWhiteBg = (text == 'All Files' || text == "All files" ||
+        text == 'Sort By' || text == 'File Type');
 
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4), // ✅ Added margin
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2), // ✅ More horizontal padding
+      decoration: BoxDecoration(
+        color: isWhiteBg ? Colors.white : Colors.blue.shade400,
         borderRadius: BorderRadius.circular(100),
         border: Border.all(color: Colors.grey.shade400, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.white,
+            color: Colors.grey.withOpacity(0.1),
             blurRadius: 2,
-            offset: Offset(0, 1), // subtle shadow for depth
+            offset: Offset(0, 1),
           ),
         ],
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-              text,
-              style: GoogleFonts.poppins(
-                color: (text == 'All Files' || text=="All files"||
-                    text == 'Sort By' ||
-                    text == 'File Type')
-                    ? Colors.black
-                    : Colors.white,
-                fontSize: 12, // Adjusted for better fit
-                fontWeight: FontWeight.w500,
-              ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center, // ✅ Proper vertical alignment
+        children: [
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.poppins(
+              color: isWhiteBg ? Colors.black : Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
             ),
-            SizedBox(width: 4),
-            Icon(Icons.arrow_drop_down,
-                color: (text == 'All Files' ||
-                    text == 'Sort By' ||
-                    text == 'File Type')
-                    ? Colors.black
-                    : Colors.white,
-                size: 20),
-          ],
-        ),
+          ),
+          const SizedBox(width: 2), // ✅ Small gap between text and arrow
+          Center(
+            child: Icon(
+              Icons.arrow_drop_down,
+              color: isWhiteBg ? Colors.black : Colors.white,
+              size: 18, // ✅ Slightly smaller for better alignment
+            ),
+          ),
+        ],
       ),
     );
   }
+
 
 // Row for All Files, File Type, Sort By
   Widget buildTopOptionsRow() {
@@ -195,8 +197,12 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
             child: GestureDetector(
                 onTap: showFolderSelection,
                 // Show Folder Selection Modal
-                child: buildImportFunctionalityOptions(
-                    selectedFolder ?? "All Files")),
+                child: buildImportFunctionalityOptions(lastSelectedFolder ==
+                    "All files"
+                    ? "All Files"
+                    : lastSelectedFolder
+                    ?.split('/')
+                    .last ?? "All Files")),
           ),
         ),
         Expanded(
@@ -228,6 +234,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
             child: GestureDetector(
                 onTap: () =>
+                //Show Sort Options Modal Bottom Sheet
                     showSortOptionsBottomSheet(context, files, (sortedFiles) {
                       setState(() {
                         files = sortedFiles;
@@ -274,214 +281,433 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
     }
   }
 
+
+  String? lastSelectedCriteria; // <-- Store this globally in your widget
+
+  void showSortOptionsBottomSheet(
+      BuildContext context,
+      List<File> files,
+      Function(List<File>) onSorted,
+      ) {
+    showModalBottomSheet(
+      backgroundColor: Colors.white,
+      context: context,
+      builder: (BuildContext context) {
+        // ✅ Sort Criteria Options
+        final List<String> criteriaOptions = [
+          "By Date",
+          "By Name",
+          "By Size",
+        ];
+
+        // ✅ Sort Icons
+        final List<String> iconsStrings = [
+          'assets/icons/calendar.webp',
+          'assets/icons/sort-by-alphabet.webp',
+          'assets/icons/expand.webp',
+        ];
+
+        // ✅ Use last selected or default
+        String? selectedCriteria = lastSelectedCriteria ?? "By Date";
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return SizedBox(
+              height: MediaQuery.of(context).size.height * 0.4,
+              child: Column(
+                children: [
+                  // ✅ Title Section
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: Colors.grey.shade300, width: 1),
+                      ),
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300, width: 1),
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          padding: const EdgeInsets.all(7),
+                          child: Image.asset(
+                            'assets/icons/sort-by-attributes.webp',
+                            width: 22,
+                            height: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Sort Files",
+                              style: GoogleFonts.poppins(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black,
+                              ),
+                            ),
+                            Text(
+                              "Select sort by",
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  Divider(height: 0.1, color: Colors.grey.shade300),
+
+                  // ✅ Radio List for Sorting Options
+                  Expanded(
+                    child: ListView.separated(
+
+                      separatorBuilder: (context, index) =>
+                      const Divider(height: 0.1, color: Colors.grey),
+                      itemCount: criteriaOptions.length,
+                      itemBuilder: (context, index) {
+                        String criteria = criteriaOptions[index];
+                        return Card(
+                          color: Colors.white,
+                          margin: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(0),
+                          ),
+                          child: RadioListTile<String>(
+                            secondary: Image.asset(
+                              iconsStrings[index],
+                              width: 22,
+                              height: 22,
+                            ),
+                            title: Text(
+                              criteria,
+                              style: GoogleFonts.poppins(
+                                  fontSize: 16, fontWeight: FontWeight.w500),
+                            ),
+                            value: criteria,
+                            groupValue: selectedCriteria,
+                            onChanged: (value) {
+                              setState(() {
+                                selectedCriteria = value;
+                                lastSelectedCriteria = value; // ✅ Save last selection
+                              });
+                            },
+                            activeColor: const Color(0xFF0A3D62),
+                            controlAffinity: ListTileControlAffinity.trailing,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  // ✅ Ascending / Descending Buttons
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: selectedCriteria == null
+                              ? null
+                              : () => settings.sortFiles(
+                            selectedCriteria!,
+                            true,
+                            files,
+                            onSorted,
+                            context,
+                            lastSelectedCriteria,
+                          ),
+                          icon: const Icon(Icons.arrow_upward,
+                              color: Colors.white),
+                          label: Text(
+                              lastSelectedCriteria == "By Name" ? "A to Z" :
+                              lastSelectedCriteria == "By Date" ? "Oldest" :
+                              lastSelectedCriteria == "By Size" ? "Smallest" : "Smallest",
+                              style: GoogleFonts.poppins(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            backgroundColor: const Color(0xFF0A3D62),
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: selectedCriteria == null
+                              ? null
+                              : () => settings.sortFiles(
+                            selectedCriteria!,
+                            false,
+                            files,
+                            onSorted,
+                            context,
+                            lastSelectedCriteria,
+                          ),
+                          icon: const Icon(Icons.arrow_downward, color: Colors.white),
+                          label: Text(lastSelectedCriteria == "By Name" ? "Z to A" :
+                              lastSelectedCriteria == "By Date" ? "Newest" :
+                              lastSelectedCriteria == "By Size" ? "Largest" : "Largest",
+                              style: GoogleFonts.poppins(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            backgroundColor: const Color(0xFF0A3D62),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
 
 
-    appBar: AppBar(
-      backgroundColor: const Color(0xFF0A3D62),
-      iconTheme: const IconThemeData(color: Colors.white),
-      title: !_isSearching
-          ? Text(
-        "File",
-        style: GoogleFonts.poppins(color: Colors.white),
-      )
-          : TextField(
-        controller: searchController,
-        autofocus: true,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: "Search files...",
-          hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
-          border: InputBorder.none,
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0A3D62),
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: !_isSearching
+            ? Text(
+          "File",
+          style: GoogleFonts.poppins(color: Colors.white),
+        )
+            : TextField(
+          controller: searchController,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: "Search files...",
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+            border: InputBorder.none,
+          ),
+          onChanged: (query) {
+            setState(() {
+              if (query.isEmpty) {
+                files = List.from(allFiles);
+              }
+              else {
+                files = allFiles
+                    .where((file) =>
+                    file.path
+                        .split('/')
+                        .last
+                        .toLowerCase()
+                        .contains(query.trim().toLowerCase()))
+                    .toList();
+              }
+            });
+          },
         ),
-        onChanged: (query) {
-          setState((){
-            if(query.isEmpty){
-             files=List.from(allFiles);
-            }
-            else{
-              files = allFiles
-                  .where((file) => file.path
-                  .split('/')
-                  .last
-                  .toLowerCase()
-                  .contains(query.trim().toLowerCase()))
+        leading: _isSearching
+            ? IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            setState(() {
+              _isSearching = false;
+              searchController.clear();
+              // TODO: Reset file list if needed
+              files = List.from(allFiles);
+            });
+          },
+        )
+            : (selectedFolder == null
+            ? null
+            : IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            setState(() {
+              selectedFolder = null;
+              files = folders.values
+                  .expand((list) => list)
+                  .map((path) => File(path))
                   .toList();
-            }
-          });
-        },
-      ),
-      leading: _isSearching
-          ? IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
-        onPressed: () {
-          setState(() {
-            _isSearching = false;
-            searchController.clear();
-            // TODO: Reset file list if needed
-            files=List.from(allFiles);
-          });
-        },
-      )
-          : (selectedFolder == null
-          ? null
-          : IconButton(
-        icon: const Icon(Icons.arrow_back),
-        onPressed: () {
-          setState(() {
-            selectedFolder = null;
-            files = folders.values
-                .expand((list) => list)
-                .map((path) => File(path))
-                .toList();
-          });
-        },
-      )),
-      actions: _isSearching
-          ? [] // Hide all icons when searching
-          : [
-        IconButton(
-          icon: const Icon(Icons.search, color: Colors.white),
-          onPressed: () {
-            setState(() {
-              _isSearching = true;
             });
           },
-        ),
-        IconButton(
-          onPressed: () {
-            setState(() {
-              isGridView = !isGridView;
-            });
-          },
-          icon: Icon(isGridView ? Icons.list : Icons.grid_view,
-              color: Colors.white),
-        ),
-        PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert, color: Colors.white),
-          onSelected: (String result) {
-            if (result == 'pickFiles') {
-              pickFilesFromSystemGallery();
-            }
-          },
-          offset: const Offset(0, 40),
-          color: Colors.white,
-          itemBuilder: (BuildContext context) =>
-          <PopupMenuEntry<String>>[
-            PopupMenuItem<String>(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0, vertical: 8.0),
-              value: 'pickFiles',
-              child: Row(
-                children: [
-                  const Icon(Icons.folder_open, color: Colors.black),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Open system files',
-                    style: GoogleFonts.poppins(color: Colors.black),
-                  ),
-                ],
-              ),
-            ),
-            const PopupMenuDivider(height: 1),
-            PopupMenuItem<String>(
-              value: 'toggleHiddenFiles',
-              child: StatefulBuilder(
-                builder: (context, setStatePopup) {
-                  return Row(
-                    children: [
-                      Checkbox(
-                        fillColor:
-                        MaterialStateProperty.resolveWith((states) {
-                          if (states.contains(MaterialState.selected)) {
-                            return Colors.blue.shade700;
-                          }
-                          return Colors.white;
-                        }),
-                        value: _showHiddenFiles,
-                        onChanged: (bool? value) async {
-                          setStatePopup(() {
-                            _showHiddenFiles = value ?? false;
-                          });
-                          List<File> updatedFiles =
-                          await settings.getFilesFromDirectory(
-                            Directory('/storage/emulated/0/'),
-                            showHiddenFiles: _showHiddenFiles,
-                          );
-                          setState(() {
-                            files = updatedFiles;
-                          });
-                        },
-                        activeColor: Colors.blue,
-                        checkColor: Colors.white,
+        )),
+        actions: _isSearching
+            ? [] // Hide all icons when searching
+            : [
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.white),
+            onPressed: () {
+              setState(() {
+                _isSearching = true;
+              });
+            },
+          ),
+          IconButton(
+            onPressed: () {
+              setState(() {
+                isGridView = !isGridView;
+              });
+            },
+            icon: Icon(isGridView ? Icons.list : Icons.grid_view,
+                color: Colors.white),
+          ),
+          PopupMenuButton<String>(
+            menuPadding: EdgeInsets.zero,
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onSelected: (String result) {
+              if (result == 'pickFiles') {
+                pickFilesFromSystemGallery();
+              }
+            },
+            offset: const Offset(0, 40),
+            color: Colors.white,
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              // ✅ Open system files item
+              PopupMenuItem<String>(
+                value: 'pickFiles',
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), // Same padding for both
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.folder, color: Colors.black),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Open system files',
+                          style: GoogleFonts.poppins(color: Colors.black),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      Text(
-                        "Show Hidden Files",
-                        style: GoogleFonts.poppins(color: Colors.black),
-                      ),
-                    ],
-                  );
-                },
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-      ],
-    )
-    ,
-    body: Column(
-    children: [
-    buildTopOptionsRow(), // Add the top options row here
-    Expanded(
-    child: Stack(
-    children: [
-    // ✅ Main File List
-    _isLoading // Check if loading
-    ? const Center(
-    child: CircularProgressIndicator(
-    color: Color(0xFF0A3D62),
-    ))
-        : // Show progress indicator with appbar color
-    files.isEmpty
-    ? Center(child: Text("No files found"))
-        : buildFilesView(
-    //From listViewAndGridViewUi.dart
-    files: files,
-    importFiles: importFiles,
-    isGridView: isGridView,
-    // Change to true for GridView
-    toggleFileSelection: toggleFileSelection,
-    settings: settings,
-    ),
 
-    // ✅ Import List Section at Bottom
-    Positioned(
-    bottom: 0,
-    left: 0,
-    right: 0,
-    child: Container(
-    padding: EdgeInsets.symmetric(vertical: 3, horizontal: 8),
-    //Import List Section Function
-    child: importListSection(
-    // ✅ Pass required arguments
-    context,
-    importFiles: importFiles,
-    toggleFileSelection: toggleFileSelection,
-    importSelectedFiles: () => settings.importSelectedFiles(
-    context, importFiles, setState),
-    scrollController: _scrollController,
-    settings: settings,
-    )),
-    )
-    ],
-    ),
-    ),
-    ]
-    ,
-    )
-    ,
+              // ✅ Show hidden files item with checkbox
+              PopupMenuItem<String>(
+                value: 'toggleHiddenFiles',
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6), // Same padding
+                child: StatefulBuilder(
+                  builder: (context, setStatePopup) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Checkbox(
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap, // ✅ Prevent extra height
+                          visualDensity: VisualDensity.compact, // ✅ Reduce default padding
+                          fillColor: MaterialStateProperty.resolveWith((states) {
+                            if (states.contains(WidgetState.selected)) {
+                              return Colors.blue.shade700;
+                            }
+                            return Colors.white;
+                          }),
+                          value: _showHiddenFiles,
+                          onChanged: (bool? value) async {
+                            setStatePopup(() {
+                              _showHiddenFiles = value ?? false;
+                            });
+                            List<File> updatedFiles = await settings.getFilesFromDirectory(
+                              Directory('/storage/emulated/0/'),
+                              showHiddenFiles: _showHiddenFiles,
+                            );
+                            setState(() {
+                              files = updatedFiles;
+                            });
+                          },
+                          activeColor: Colors.blue,
+                          checkColor: Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              "Show Hidden Files",
+                              style: GoogleFonts.poppins(color: Colors.black),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          )
+
+
+        ],
+      )
+      ,
+      body: Column(
+        children: [
+          buildTopOptionsRow(), // Add the top options row here
+          Expanded(
+            child: Stack(
+              children: [
+                // ✅ Main File List
+                _isLoading // Check if loading
+                    ? const Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF0A3D62),
+                    ))
+                    : // Show progress indicator with appbar color
+                files.isEmpty
+                    ? Center(child: Text("No files found"))
+                    : buildFilesView(
+                  //From listViewAndGridViewUi.dart
+                  files: files,
+                  importFiles: importFiles,
+                  isGridView: isGridView,
+                  // Change to true for GridView
+                  toggleFileSelection: toggleFileSelection,
+                  settings: settings,
+                ),
+
+                // ✅ Import List Section at Bottom
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 3, horizontal: 8),
+                      //Import List Section Function
+                      child: importListSection(
+                        // ✅ Pass required arguments
+                        context,
+                        importFiles: importFiles,
+                        toggleFileSelection: toggleFileSelection,
+                        importSelectedFiles: () =>
+                            settings.importSelectedFiles(
+                                context, importFiles, setState),
+                        scrollController: _scrollController,
+                        settings: settings,
+                      )),
+                )
+              ],
+            ),
+          ),
+        ]
+        ,
+      )
+      ,
     );
   }
 }
@@ -497,9 +723,10 @@ Widget importListSection(BuildContext context,
     // ✅ Import Button on Right Side
     ElevatedButton(
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
         // Adjusted padding
-        backgroundColor: const Color(0xFF0A3D62),
+        backgroundColor: importFiles.isEmpty ? const Color(0xFF0B2D42).withOpacity(0.5) : const Color(0xFF0A3D62),
+
         // Button color
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -512,60 +739,10 @@ Widget importListSection(BuildContext context,
         style: GoogleFonts.poppins(
           fontSize: 14, // Adjusted font size
           fontWeight: FontWeight.bold,
-          color: Colors.white,
+          color: importFiles.isEmpty ? Colors.black54 : Colors.white,
         ),
       ),
     );
-
-  // return Row(
-  //   children: [
-  //     // // ✅ Horizontal File List
-  //     // Expanded(
-  //     //   child: SizedBox(
-  //     //     height: 100,
-  //     //     child: ListView.builder(
-  //     //       controller: scrollController, // ✅ Attach controller here
-  //     //       scrollDirection: Axis.horizontal,
-  //     //       itemCount: importFiles.length,
-  //     //       itemBuilder: (context, index) {
-  //     //         File file = importFiles[index];
-  //     //         String fileName = p.basename(file.path);
-  //     //
-  //     //         return Container(
-  //     //           width: 100,
-  //     //           margin: EdgeInsets.only(right: 8),
-  //     //           padding: EdgeInsets.all(6),
-  //     //           decoration: BoxDecoration(
-  //     //             color: Colors.white,
-  //     //             borderRadius: BorderRadius.circular(10),
-  //     //             border: Border.all(color: Colors.green, width: 1),
-  //     //           ),
-  //     //           child: SingleChildScrollView(
-  //     //             child: Column(
-  //     //               mainAxisAlignment: MainAxisAlignment.center,
-  //     //               children: [
-  //     //                 settings.getFileIcon(fileName),
-  //     //                 SizedBox(height: 4),
-  //     //                 Text(
-  //     //                   fileName,
-  //     //                   style: TextStyle(fontSize: 12),
-  //     //                   overflow: TextOverflow.ellipsis,
-  //     //                 ),
-  //     //                 IconButton(
-  //     //                   icon: Icon(Icons.minimize, size: 28, color: Colors.red),
-  //     //                   onPressed: () => toggleFileSelection(file),
-  //     //                 ),
-  //     //               ],
-  //     //             ),
-  //     //           ),
-  //     //         );
-  //     //       },
-  //     //     ),
-  //     //   ),
-  //     // ),
-  //
-  //   ],
-  // );
 }
 
 // Show Folder Selection Modal
@@ -583,109 +760,152 @@ Widget buildFolderSelectionSheet({
         height: 400,
         child: Column(
           children: [
-            // ✅ App Bar for Modal Bottom Sheet
+            // ✅ Fixed Header - Not Scrollable
             Container(
               width: double.infinity,
-              padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 5),
               decoration: BoxDecoration(
-                color: Colors.white, // Dark blue background
-                borderRadius: BorderRadius.only(
+                color: Colors.white,
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(16),
                   topRight: Radius.circular(16),
                 ),
+                border: Border.all(color: Colors.grey.shade300, width: 1),
               ),
-              child: Text(
-                "Select Folder",
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black, // White text
-                ),
-              ),
-            ),
-
-            // ✅ All Files Option
-            Card(
-              shape: RoundedRectangleBorder(
-                // Added this to remove default radius
-                borderRadius: BorderRadius.zero,
-              ),
-              margin: EdgeInsets.zero,
-              color: Colors.white,
-              child: ListTile(
-                //
-                leading: Image.asset(
-                  'assets/icons/folder (2).webp',
-                  width: 34, // Set the width of the image
-                  height: 34,
-                ),
-                trailing: Radio<String>(
-                  value: "All files",
-                  groupValue: selectedFolder ?? "All files", // Ensure "All files" is selected if null
-                  onChanged: (value) {
-                    setModalState(() {
-                      selectedFolder = value; // ✅ Update modal state
-                    });
-                    onSelectedFolderChanged(value!); // Update parent state
-                    onFolderSelected("All files"); // Call the callback
-                  },
-                ),
-                title: Text("All files"),
-                subtitle: Text("Display all retrieved files"),
-                onTap: () {
-                  setModalState(() => selectedFolder = "All files");
-                  onSelectedFolderChanged("All files");
-                  onFolderSelected("All files");
-                },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300, width: 1),
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    padding: EdgeInsets.all(8),
+                    child: Icon(Icons.folder, size: 24, color: Colors.black),
+                  ),
+                  SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "All System Folder",
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black,
+                        ),
+                      ),
+                      Text(
+                        "Select a folder",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            Divider(height: 0.5, color: Colors.grey.shade300),
-            // ✅ Folder List with Radio Buttons
+            Divider(height: 0.1, color: Colors.grey.shade300),
+            // ✅ Scrollable Content
             Expanded(
-              child: ListView.separated(
-                separatorBuilder: (context, index) =>
-                    Divider(height: 0.5, color: Colors.grey.shade300),
+              child: ListView(
                 padding: EdgeInsets.zero,
-                itemCount: folders.keys.length,
-                itemBuilder: (context, index) {
-                  String folderPath = folders.keys.elementAt(index);
-                  List<String> filesInFolder = folders[folderPath] ?? [];
-                  int fileCount = filesInFolder.length;
-
-                  return Card(
-                    color: Colors.white,
+                children: [
+                  // All Files Option
+                  Card(
                     margin: EdgeInsets.zero,
+                    color: Colors.white,
                     shape: RoundedRectangleBorder(
-                      // Added this to remove default radius
                       borderRadius: BorderRadius.zero,
                     ),
-                    child: ListTile(
-                      leading: Image.asset(
-                        'assets/icons/folder (2).webp',
-                        width: 34, // Set the width of the image
-                        height: 34,
+                    child: RadioListTile<String>(
+                      visualDensity: const VisualDensity(
+                        vertical: -3, // ↓ decreases height, ↑ increases height
                       ),
-                      trailing: Radio<String>(
-                        value: folderPath,
-                        groupValue: selectedFolder,
-                        onChanged: (value) {
-                          setModalState(() => selectedFolder = value);
-                          onSelectedFolderChanged(value!);
-                          onFolderSelected(folderPath);
-                        },
-                      ),
-                      title: Text(folderPath
-                          .split('/')
-                          .last),
-                      subtitle: Text("$fileCount files"),
-                      onTap: () {
-                        setModalState(() => selectedFolder = folderPath);
-                        onSelectedFolderChanged(folderPath);
-                        onFolderSelected(folderPath);
+                      value: "All files",
+                      groupValue: selectedFolder ?? "All files",
+                      onChanged: (value) {
+                        setModalState(() => selectedFolder = value);
+                        onSelectedFolderChanged(value!);
+                        onFolderSelected("All files");
                       },
-                    ),
-                  );
-                },
+                      activeColor: Colors.blue, // Radio active color
+                      title: Text(
+                        "All files",
+                        style:  TextStyle(fontSize: 16, fontWeight: FontWeight.w500,color: selectedFolder == "All files" ? Colors.blue : Colors.black),
+                      ),
+                      subtitle: Text(
+                        "${folders.values.expand((list) => list).length} files",
+                        style: TextStyle(fontSize: 13, color: selectedFolder == "All files" ? Colors.blue : Colors.black),
+                      ),
+                      secondary: Icon(Icons.folder, size: 24, color: selectedFolder == "All files" ? Colors.blue : Colors.black),
+                      controlAffinity: ListTileControlAffinity.trailing, // Radio on right side
+                    )
+                  ),
+                  Divider(height: 0.2, color: Colors.grey.shade300),
+
+                  // Folder List
+                  // This section iterates through the `folders.keys` which contains paths to different folders.
+                  // For each `folderPath`:
+                  // 1. It retrieves the list of files within that folder using `folders[folderPath]`.
+                  //    If the folder path doesn't exist in the map (which shouldn't happen if `folders` is populated correctly),
+                  //    it defaults to an empty list `[]`.
+                  // 2. It calculates the `fileCount` which is the number of files in that specific folder.
+                  // 3. It then creates a `Column` containing a `Card` for each folder.
+                  //    This `Card` displays the folder icon, name, file count, and a radio button for selection.
+                  ...folders.keys.map((folderPath) {
+                    List<String> filesInFolder = folders[folderPath] ?? [];
+                    int fileCount = filesInFolder.length;
+
+                    return Column(
+                      children: [
+                        Card(
+
+                          color: Colors.white,
+                          margin: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.zero,
+                          ),
+                          child: RadioListTile<String>(
+                            visualDensity: const VisualDensity(
+                              vertical: -3, // ↓ decreases height, ↑ increases height
+                            ),
+                            value: folderPath,
+                            groupValue: selectedFolder,
+                            onChanged: (value) {
+                              setModalState(() => selectedFolder = value);
+                              onSelectedFolderChanged(value!);
+                              onFolderSelected(folderPath);
+                            },
+                            activeColor: Colors.blue, // Selected color for radio
+                            title: Text(
+                              folderPath.split('/').last,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: selectedFolder == folderPath ? Colors.blue : Colors.black,
+                              ),
+                            ),
+                            subtitle: Text(
+                              "$fileCount files",
+                              style: TextStyle(fontSize: 13, color:selectedFolder == folderPath ? Colors.blue : Colors.black),
+                            ),
+                            secondary: Icon(
+                              Icons.folder,
+                              size: 24,
+                              color: selectedFolder == folderPath ? Colors.blue : Colors.black,
+                            ),
+                            controlAffinity: ListTileControlAffinity.trailing, // Radio right side
+                          )
+                          ,
+                        ),
+                        Divider(height: 0.1, color: Colors.grey.shade300),
+                      ],
+                    );
+                  }).toList(),
+                ],
               ),
             ),
           ],
@@ -695,184 +915,6 @@ Widget buildFolderSelectionSheet({
   );
 }
 
-void showSortOptionsBottomSheet(BuildContext context, List<File> files,
-    Function(List<File>) onSorted) {
-  showModalBottomSheet(
-    context: context,
-    builder: (BuildContext context) {
-      // ✅ Sort Criteria Options
-      final List<String> criteriaOptions = [
-        "By Name",
-        "By Size",
-        "By Date",
-      ];
-      //Sort By Bottom Sheet Icons List
-      final List<String> iconsStrings = [
-        'assets/icons/sort-by-alphabet.webp',
-        'assets/icons/sort-by-attributes.webp',
-        'assets/icons/sort-by-attributes.webp'
-      ];
 
-      String? selectedCriteria; // Track selected criteria
 
-      // ✅ Sorting Function
-      void sortFiles(String criteria, bool ascending) {
-        List<File> sortedFiles = List.from(files); // Copy original list
-        switch (criteria) {
-          case "By Name":
-            sortedFiles.sort((a, b) =>
-                a.path
-                    .split('/')
-                    .last
-                    .toLowerCase()
-                    .compareTo(b.path
-                    .split('/')
-                    .last
-                    .toLowerCase()));
-            break;
-          case "By Size":
-            sortedFiles
-                .sort((a, b) => a.lengthSync().compareTo(b.lengthSync()));
-            break;
-          case "By Date":
-            sortedFiles.sort(
-                    (a, b) =>
-                    a
-                        .statSync()
-                        .changed
-                        .compareTo(b
-                        .statSync()
-                        .changed));
-            break;
-        }
 
-        // ✅ Reverse if descending
-        if (!ascending) {
-          sortedFiles = sortedFiles.reversed.toList();
-        }
-
-        // ✅ Update parent UI
-        onSorted(sortedFiles);
-      }
-
-      return StatefulBuilder(
-        builder: (context, setState) {
-          return SizedBox(
-            height: MediaQuery
-                .of(context)
-                .size
-                .height * 0.4, // Reduced height
-            child: Column(
-              children: [
-                // ✅ Title Bar
-                Container(
-                  padding: EdgeInsets.all(16),
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: Colors.grey.shade300, width: 1),
-                    ),
-                    color: Colors.white,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
-                    ),
-                  ),
-                  child: Text(
-                    "Sort Files",
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                ),
-
-                // ✅ Sort Criteria Options
-                Expanded(
-                  child: ListView.separated(
-                    separatorBuilder: (context, index) =>
-                    const Divider(height: 0.5, color: Colors.grey),
-                    padding: EdgeInsets.zero,
-                    itemCount: criteriaOptions.length,
-                    itemBuilder: (context, index) {
-                      String criteria = criteriaOptions[index];
-                      return Card(
-                        color: Colors.white,
-                        margin: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: RadioListTile<String>(
-                          secondary: Image.asset(iconsStrings[index],
-                              width: 24, height: 24, color: Colors.blue),
-                          title: Text(criteria,
-                              style: GoogleFonts.poppins(
-                                  fontSize: 16, fontWeight: FontWeight.w500)),
-                          value: criteria,
-                          groupValue: selectedCriteria,
-                          onChanged: (value) {
-                            setState(() {
-                              selectedCriteria = value;
-                            });
-                          },
-                          activeColor: const Color(0xFF0A3D62),
-                          controlAffinity: ListTileControlAffinity.trailing,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                // ✅ Ascending / Descending Buttons
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          sortFiles(selectedCriteria!, true);
-                        },
-                        icon:
-                        const Icon(Icons.arrow_upward, color: Colors.white),
-                        label: Text("Ascending",
-                            style: GoogleFonts.poppins(color: Colors.white)),
-                        style: ElevatedButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                            BorderRadius.circular(5), // Rectangle shape
-                          ),
-                          backgroundColor: const Color(0xFF0A3D62),
-                        ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          sortFiles(selectedCriteria!, false);
-                        },
-                        icon: const Icon(Icons.arrow_downward,
-                            color: Colors.white),
-                        label: Text(
-                          "Descending",
-                          style: GoogleFonts.poppins(color: Colors.white),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                            BorderRadius.circular(5), // Rectangle shape
-                          ),
-                          backgroundColor: const Color(0xFF0A3D62),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              ],
-            ),
-          );
-        },
-      );
-    },
-  );
-}

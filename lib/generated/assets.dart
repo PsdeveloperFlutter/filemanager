@@ -5,9 +5,12 @@ class Assets {
   static const String assetsImagesLogo = 'assets/images/logo.png';
   static const String assetsImagesUiImage = 'assets/images/UiImage.png';
   static const String iconsCalendar = 'assets/icons/calendar.webp';
+  static const String iconsDoc = 'assets/icons/doc.webp';
+  static const String iconsDoc1 = 'assets/icons/doc1.webp';
   static const String iconsExpand = 'assets/icons/expand.webp';
   static const String iconsOdt = 'assets/icons/odt.webp';
-  static const String iconsPptxFile = 'assets/icons/pptx.webp';
+  static const String iconsPdf = 'assets/icons/pdf.webp';
+  static const String iconsPptx = 'assets/icons/pptx.webp';
   static const String iconsSortByAlphabet = 'assets/icons/sort-by-alphabet.webp';
   static const String iconsSortByAttributes = 'assets/icons/sort-by-attributes.webp';
   static const String iconsTxt = 'assets/icons/txt.webp';

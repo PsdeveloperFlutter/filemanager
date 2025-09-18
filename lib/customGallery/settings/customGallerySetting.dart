@@ -253,14 +253,11 @@ class CustomGallerySetting {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                createdDate,
+                "$createdDate , ",
                 style: GoogleFonts.poppins(fontSize: 11, color: Colors.black87),
                 overflow: TextOverflow.ellipsis,
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                child: Text(","),
-              ),
+
               Text(
                 sizeText,
                 overflow: TextOverflow.ellipsis,
@@ -392,15 +389,17 @@ class CustomGallerySetting {
     }
   }
 
-  //File Types UI
-// ✅ Show File Type Modal Bottom Sheet For User Selection of File Types
-// ✅ File Types UI — working version
-  void showFileTypeBottomSheet(BuildContext context, List<File> allFiles,
+// Yeh variable aapke State class ke andar hoga:
+  String? selectedFileType = "All Files"; // Default
+
+// Function to show File Type Bottom Sheet
+  void showFileTypeBottomSheet(
+      BuildContext context, List<File> allFiles,
       Function(List<File>, String) onFilterApplied) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) {
@@ -413,8 +412,9 @@ class CustomGallerySetting {
           "PPT/PPTX",
           "ODT"
         ];
-        // Corresponding icons for each file type (ensure order matches fileTypes)
-        List<String>fileTypesIcons=[
+
+        List<String> fileTypesIcons = [
+          'assets/icons/folder (2).webp',
           'assets/icons/pdf.webp',
           'assets/icons/doc.webp',
           'assets/icons/xls.webp',
@@ -422,17 +422,15 @@ class CustomGallerySetting {
           'assets/icons/pptx.webp',
           'assets/icons/odt.webp',
         ];
-        String? selectedFileType = "All Files";
 
         return StatefulBuilder(
           builder: (context, setState) {
             void filterFilesByType(String? type) {
               setState(() {
                 selectedFileType = type;
-
               });
 
-
+              // ✅ Filter files
               List<File> filteredFiles;
               if (type == "All Files" || type == null) {
                 filteredFiles = List.from(allFiles);
@@ -457,11 +455,14 @@ class CustomGallerySetting {
                   }
                 }).toList();
               }
-              // ✅ Agar "All Files" select hai to main UI mein "File Type" show hoga
+
+              // ✅ Display text for UI
               String displayText =
-                  (type == "All Files" || type == null) ? "File Type" : type;
-              // ✅ Pass both filtered files AND selected type to main UI
+              (type == "All Files" || type == null) ? "File Type" : type;
+
+              // ✅ Send filtered files back to UI
               onFilterApplied(filteredFiles, displayText);
+
             }
 
             return SizedBox(
@@ -470,36 +471,67 @@ class CustomGallerySetting {
                 children: [
                   Container(
                     width: double.infinity,
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color:  Colors.white,
+                    padding: const EdgeInsets.all(10),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
                       borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(16)),
+                      BorderRadius.vertical(top: Radius.circular(16)),
                     ),
-                    child: Text("Select File Types",
-                        style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold)),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            // Add a border for better visual separation if needed
+                            border: Border.all(color: Colors.grey.shade300, width: 1),
+                            borderRadius: BorderRadius.circular(100), // Optional: rounds the corners
+                          ),
+                          padding: EdgeInsets.all(7), // Add padding around the icon
+                          child: Image.asset('assets/icons/doc1.webp',
+                            width: 23, height: 23,),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text("Select File Types",
+                                style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600)),
+                            const Text("Select a file",style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 15,
+                            ))
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
+                  Divider(color: Colors.grey.shade400, height: 0.1),
                   Expanded(
                     child: ListView.separated(
-                      separatorBuilder: (context, index) => Divider(
-                        color: Colors.grey,
-                        height: 0.5,
+                      separatorBuilder: (context, index) => const Divider(
+                        color: Colors.black26,
+                        height: 0.1,
                       ),
                       itemCount: fileTypes.length,
                       itemBuilder: (context, index) {
                         String fileType = fileTypes[index];
                         return Card(
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                           margin: EdgeInsets.zero,
                           child: RadioListTile<String>(
-                            secondary: fileType == "All Files"
-                                ? Icon(Icons.folder,
-                                    color: Colors.orange, size: 30)
-                                : Image.asset(fileTypesIcons[index-1], // Adjust index for fileTypesIcons
-                                    width: 30, height: 30),
-                            title: Text(fileType),
+                            secondary:  Image.asset(fileTypesIcons[index],
+                                width: 23, height: 23),
+                            title: Text(
+                              fileType,
+                              style: TextStyle(
+                                  color: selectedFileType == fileType ? Colors.blue : Colors.black87),
+                            ),
                             value: fileType,
                             groupValue: selectedFileType,
                             onChanged: (value) {
@@ -520,6 +552,7 @@ class CustomGallerySetting {
       },
     );
   }
+
 
 // ✅ Fetch Files from System File Manager
   void pickFilesFromSystemWithAutoFolder(setState, files, context) async {
@@ -600,5 +633,51 @@ class CustomGallerySetting {
       debugPrint('PDF thumbnail error: $e');
       return null;
     }
+  }
+
+
+
+  //Sorting Logic
+  // ✅ Sorting Function
+  void sortFiles(String criteria, bool ascending,
+      List<File> files, Function(List<File>) onSorted, BuildContext context,lastSelectedCriteria) {
+    List<File> sortedFiles = List.from(files); // Copy original list
+    switch (criteria) {
+      case "By Name":
+        sortedFiles.sort((a, b) =>
+            a.path
+                .split('/')
+                .last
+                .toLowerCase()
+                .compareTo(b.path
+                .split('/')
+                .last
+                .toLowerCase()));
+        break;
+      case "By Size":
+        sortedFiles.sort((a, b) =>
+            a.lengthSync().compareTo(b.lengthSync()));
+        break;
+      case "By Date":
+        sortedFiles.sort((a, b) =>
+            a
+                .statSync()
+                .changed
+                .compareTo(b
+                .statSync()
+                .changed));
+        break;
+    }
+
+    if (!ascending) {
+      sortedFiles = sortedFiles.reversed.toList();
+    }
+
+    // ✅ Save last selected criteria
+    lastSelectedCriteria = criteria;
+
+    // ✅ Update parent UI and close modal
+    onSorted(sortedFiles);
+    Navigator.pop(context);
   }
 }

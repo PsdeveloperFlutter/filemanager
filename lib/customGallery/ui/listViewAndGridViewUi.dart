@@ -23,7 +23,7 @@ Widget buildFilesView({
   // ✅ LIST VIEW MODE
   if (!isGridView) {
     return ListView.separated(
-      separatorBuilder: (context, index) => const Divider(height: 0.5, color:Colors.grey), // Divider between items
+      separatorBuilder: (context, index) => const Divider(height: 0.2, color:Colors.black12), // Divider between items
       padding: const EdgeInsets.symmetric(vertical: 0), // Remove vertical padding to eliminate margin between children
 
       itemCount: files.length,
