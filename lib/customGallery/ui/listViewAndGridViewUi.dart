@@ -24,8 +24,10 @@ Widget buildFilesView({
   if (!isGridView) {
     return ListView.separated(
       separatorBuilder: (context, index) => const Divider(height: 0.2, color:Colors.black12), // Divider between items
-      padding: const EdgeInsets.symmetric(vertical: 0), // Remove vertical padding to eliminate margin between children
-
+      padding: EdgeInsets.only(
+        top: 0,
+        bottom: importFiles.isEmpty ? 54.8 : 54.8, // Adjust padding for bottom import section
+      ),
       itemCount: files.length,
       itemBuilder: (context, index) {
         File file = files[index];

@@ -49,10 +49,10 @@ class CustomGallerySetting {
 
 // ✅ Recursive file fetching for all Android versions
   Future<List<File>> getFilesFromDirectory(
-    Directory dir, {
-    Set<String>? visited,
-    bool showHiddenFiles = false,
-  }) async {
+      Directory dir, {
+        Set<String>? visited,
+        bool showHiddenFiles = false,
+      }) async {
     visited ??= {};
     List<File> files = [];
     List<String> restrictedFolders = ["Android", "data", "obb"];
@@ -69,7 +69,7 @@ class CustomGallerySetting {
         }
         if (entity is File) {
           String ext =
-              p.extension(entity.path).replaceAll('.', '').toLowerCase();
+          p.extension(entity.path).replaceAll('.', '').toLowerCase();
           if (allowedExtensions.contains(ext)) {
             files.add(entity);
           }
@@ -394,8 +394,11 @@ class CustomGallerySetting {
 
 // Function to show File Type Bottom Sheet
   void showFileTypeBottomSheet(
-      BuildContext context, List<File> allFiles,
-      Function(List<File>, String) onFilterApplied) {
+      BuildContext context,
+      List<File> allFiles,
+      String? selectedFolderPath, // ✅ selected folder path
+      Function(List<File>, String) onFilterApplied
+      ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -430,12 +433,20 @@ class CustomGallerySetting {
                 selectedFileType = type;
               });
 
-              // ✅ Filter files
+              // ✅ Filter files based on selected folder first
+              List<File> folderFiles;
+              if (selectedFolderPath == null || selectedFolderPath == "All files") {
+                folderFiles = List.from(allFiles);
+              } else {
+                folderFiles = allFiles.where((file) => file.path.contains(selectedFolderPath)).toList();
+              }
+
+              // ✅ Filter by file type
               List<File> filteredFiles;
               if (type == "All Files" || type == null) {
-                filteredFiles = List.from(allFiles);
+                filteredFiles = folderFiles;
               } else {
-                filteredFiles = allFiles.where((file) {
+                filteredFiles = folderFiles.where((file) {
                   String name = file.path.toLowerCase();
                   switch (type) {
                     case "PDF":
@@ -457,12 +468,10 @@ class CustomGallerySetting {
               }
 
               // ✅ Display text for UI
-              String displayText =
-              (type == "All Files" || type == null) ? "File Type" : type;
+              String displayText = (type == "All Files" || type == null) ? "File Type" : type;
 
               // ✅ Send filtered files back to UI
               onFilterApplied(filteredFiles, displayText);
-
             }
 
             return SizedBox(
@@ -474,8 +483,7 @@ class CustomGallerySetting {
                     padding: const EdgeInsets.all(10),
                     decoration: const BoxDecoration(
                       color: Colors.white,
-                      borderRadius:
-                      BorderRadius.vertical(top: Radius.circular(16)),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -483,28 +491,36 @@ class CustomGallerySetting {
                       children: [
                         Container(
                           decoration: BoxDecoration(
-                            // Add a border for better visual separation if needed
                             border: Border.all(color: Colors.grey.shade300, width: 1),
-                            borderRadius: BorderRadius.circular(100), // Optional: rounds the corners
+                            borderRadius: BorderRadius.circular(100),
                           ),
-                          padding: EdgeInsets.all(7), // Add padding around the icon
-                          child: Image.asset('assets/icons/doc1.webp',
-                            width: 23, height: 23,),
+                          padding: EdgeInsets.all(7),
+                          child: Image.asset(
+                            'assets/icons/doc1.webp',
+                            width: 23,
+                            height: 23,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text("Select File Types",
+                            const Text(
+                                "Select File Types",
                                 style: TextStyle(
                                     color: Colors.black,
                                     fontSize: 15,
-                                    fontWeight: FontWeight.w600)),
-                            const Text("Select a file",style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 15,
-                            ))
+                                    fontWeight: FontWeight.w600
+                                )
+                            ),
+                            const Text(
+                                "Select a file",
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 15,
+                                )
+                            )
                           ],
                         ),
                       ],
@@ -525,12 +541,16 @@ class CustomGallerySetting {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                           margin: EdgeInsets.zero,
                           child: RadioListTile<String>(
-                            secondary:  Image.asset(fileTypesIcons[index],
-                                width: 23, height: 23),
+                            secondary: Image.asset(
+                                fileTypesIcons[index],
+                                width: 23,
+                                height: 23
+                            ),
                             title: Text(
                               fileType,
                               style: TextStyle(
-                                  color: selectedFileType == fileType ? Colors.blue : Colors.black87),
+                                  color: selectedFileType == fileType ? Colors.blue : Colors.black87
+                              ),
                             ),
                             value: fileType,
                             groupValue: selectedFileType,
