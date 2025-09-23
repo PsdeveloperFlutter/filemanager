@@ -104,7 +104,6 @@ class CustomGallerySetting {
       String folderPath = p.dirname(file.path);
       folders.putIfAbsent(folderPath, () => []).add(file.path);
     }
-
     return folders;
   }
 
@@ -129,9 +128,9 @@ class CustomGallerySetting {
 
       // Step 2: Create folder with today's date + current time
       String folderName =
-          getDateTimeFolderName(); // e.g., "06-09-2025_10-30-15"
+      getDateTimeFolderName(); // e.g., "06-09-2025_10-30-15"
       Directory dateTimeFolder =
-          Directory(p.join(baseImportDir.path, folderName));
+      Directory(p.join(baseImportDir.path, folderName));
 
       if (!await dateTimeFolder.exists()) {
         await dateTimeFolder.create();
@@ -230,7 +229,7 @@ class CustomGallerySetting {
 
       // ✅ Created Date
       String createdDate =
-          DateFormat('dd MMM yyyy, hh:mm a').format(fileStat.changed);
+      DateFormat('dd MMM yyyy, hh:mm a').format(fileStat.changed);
 
       // ✅ Internal vs SD Card Path
       String filePath = file.path;
@@ -239,7 +238,15 @@ class CustomGallerySetting {
         String relativePath = filePath.replaceFirst('/storage/emulated/0/', '');
         displayPath = "Internal → $relativePath";
       } else {
-        displayPath = "SD Card → ${p.basename(filePath)}";
+        // Try to get a more descriptive path for SD card
+        List<String> pathSegments = filePath.split('/');
+        // Ensure there are enough segments to avoid errors
+        String sdCardPath = pathSegments.length > 3 ? pathSegments.skip(3).join('/') : filePath;
+        sdCardPath = sdCardPath.replaceAll('/', ' → ');
+
+        // You might need to adjust this logic based on how SD card paths are structured on various devices
+        // This is a common pattern, but not universal.
+        displayPath = "SD Card → $sdCardPath"; // Already includes "SD Card →"
       }
 
 
@@ -276,7 +283,7 @@ class CustomGallerySetting {
                 child: Text(
                   displayPath,
                   style:
-                      GoogleFonts.poppins(fontSize: 10, color: Colors.black87),
+                  GoogleFonts.poppins(fontSize: 10, color: Colors.black87),
                   overflow: TextOverflow.ellipsis, // ✅ Ellipses for long paths
                   maxLines: 1,
                 ),
@@ -319,7 +326,13 @@ class CustomGallerySetting {
         String relativePath = filePath.replaceFirst('/storage/emulated/0/', '');
         displayPath = "Internal → $relativePath";
       } else {
-        displayPath = "SD Card → ${p.basename(filePath)}";
+        // Try to get a more descriptive path for SD card
+        List<String> pathSegments = filePath.split('/');
+        // Ensure there are enough segments to avoid errors
+        String sdCardPath = pathSegments.length > 3 ? pathSegments.skip(3).join('/') : filePath;
+        // You might need to adjust this logic based on how SD card paths are structured on various devices
+        // This is a common pattern, but not universal.
+        displayPath = "SD Card → ${sdCardPath.replaceAll('/', ' → ')}";
       }
 
       // ✅ Colors for Icons
@@ -341,7 +354,7 @@ class CustomGallerySetting {
                 child: Text(
                   createdDate,
                   style:
-                      GoogleFonts.poppins(fontSize: 9, color: Colors.black54),
+                  GoogleFonts.poppins(fontSize: 9, color: Colors.black54),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -355,7 +368,7 @@ class CustomGallerySetting {
                 child: Text(
                   sizeText,
                   style:
-                      GoogleFonts.poppins(fontSize: 9, color: Colors.black54),
+                  GoogleFonts.poppins(fontSize: 9, color: Colors.black54),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -372,7 +385,7 @@ class CustomGallerySetting {
                 child: Text(
                   displayPath,
                   style:
-                      GoogleFonts.poppins(fontSize: 9, color: Colors.black87),
+                  GoogleFonts.poppins(fontSize: 9, color: Colors.black87),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                 ),
@@ -389,6 +402,45 @@ class CustomGallerySetting {
     }
   }
 
+  List<File> getFilteredFiles({
+    required List<File> allFiles,
+    required String? folderPath,
+    required String? fileType,
+  }) {
+    // Folder filter
+    List<File> folderFiles;
+    if (folderPath == null || folderPath == "All files") {
+      folderFiles = List.from(allFiles);
+    } else {
+      folderFiles = allFiles.where((file) => file.path.contains(folderPath)).toList();
+    }
+
+    // File type filter
+    if (fileType == null || fileType == "File Type" || fileType == "All Files") {
+      return folderFiles;
+    } else {
+      return folderFiles.where((file) {
+        String name = file.path.toLowerCase();
+        switch (fileType) {
+          case "PDF":
+            return name.endsWith(".pdf");
+          case "DOC/DOCX":
+            return name.endsWith(".doc") || name.endsWith(".docx");
+          case "XLS/XLSX":
+            return name.endsWith(".xls") || name.endsWith(".xlsx");
+          case "TXT":
+            return name.endsWith(".txt");
+          case "PPT/PPTX":
+            return name.endsWith(".ppt") || name.endsWith(".pptx");
+          case "ODT":
+            return name.endsWith(".odt");
+          default:
+            return false;
+        }
+      }).toList();
+    }
+  }
+
 // Yeh variable aapke State class ke andar hoga:
   String? selectedFileType = "All Files"; // Default
 
@@ -397,8 +449,30 @@ class CustomGallerySetting {
       BuildContext context,
       List<File> allFiles,
       String? selectedFolderPath, // ✅ selected folder path
-      Function(List<File>, String) onFilterApplied
+      Function(List<File>, String) onFilterApplied,
+      String? selectedFileType, // <-- Pass this from parent for state sync
+      void Function(String?) onFileTypeChanged, // <-- Callback to update file type globally
       ) {
+    List<String> fileTypes = [
+      "All Files",
+      "PDF",
+      "DOC/DOCX",
+      "XLS/XLSX",
+      "TXT",
+      "PPT/PPTX",
+      "ODT"
+    ];
+
+    List<String> fileTypesIcons = [
+      'assets/icons/folder (2).webp',
+      'assets/icons/pdf.webp',
+      'assets/icons/doc.webp',
+      'assets/icons/xls.webp',
+      'assets/icons/txt.webp',
+      'assets/icons/pptx.webp',
+      'assets/icons/odt.webp',
+    ];
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -406,39 +480,24 @@ class CustomGallerySetting {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) {
-        List<String> fileTypes = [
-          "All Files",
-          "PDF",
-          "DOC/DOCX",
-          "XLS/XLSX",
-          "TXT",
-          "PPT/PPTX",
-          "ODT"
-        ];
-
-        List<String> fileTypesIcons = [
-          'assets/icons/folder (2).webp',
-          'assets/icons/pdf.webp',
-          'assets/icons/doc.webp',
-          'assets/icons/xls.webp',
-          'assets/icons/txt.webp',
-          'assets/icons/pptx.webp',
-          'assets/icons/odt.webp',
-        ];
+        String? tempSelectedFileType = selectedFileType;
 
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (context, setStateModal) {
             void filterFilesByType(String? type) {
-              setState(() {
-                selectedFileType = type;
+              setStateModal(() {
+                tempSelectedFileType = type;
               });
+              onFileTypeChanged(type); // Update global selection
 
               // ✅ Filter files based on selected folder first
               List<File> folderFiles;
               if (selectedFolderPath == null || selectedFolderPath == "All files") {
                 folderFiles = List.from(allFiles);
               } else {
-                folderFiles = allFiles.where((file) => file.path.contains(selectedFolderPath)).toList();
+                folderFiles = allFiles
+                    .where((file) => file.path.contains(selectedFolderPath))
+                    .toList();
               }
 
               // ✅ Filter by file type
@@ -549,11 +608,11 @@ class CustomGallerySetting {
                             title: Text(
                               fileType,
                               style: TextStyle(
-                                  color: selectedFileType == fileType ? Colors.blue : Colors.black87
+                                  color: tempSelectedFileType == fileType ? Colors.blue : Colors.black87
                               ),
                             ),
                             value: fileType,
-                            groupValue: selectedFileType,
+                            groupValue: tempSelectedFileType,
                             onChanged: (value) {
                               filterFilesByType(value);
                             },
@@ -626,8 +685,8 @@ class CustomGallerySetting {
 
   Future<ImageProvider?> getPdfFirstPageImage(String path,
       {int width = 150,
-      int height = 200,
-      required Map<String, ImageProvider> cache}) async {
+        int height = 200,
+        required Map<String, ImageProvider> cache}) async {
     try {
       if (cache.containsKey(path)) return cache[path];
 

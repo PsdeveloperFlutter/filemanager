@@ -26,7 +26,7 @@ Widget buildFilesView({
       separatorBuilder: (context, index) => const Divider(height: 0.2, color:Colors.black12), // Divider between items
       padding: EdgeInsets.only(
         top: 0,
-        bottom: importFiles.isEmpty ? 54.8 : 54.8, // Adjust padding for bottom import section
+        bottom: 54.8  // Adjust padding for bottom import section
       ),
       itemCount: files.length,
       itemBuilder: (context, index) {

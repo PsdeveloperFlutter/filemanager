@@ -71,6 +71,7 @@ dependencies:
   pdf_render: ^1.4.12
   flutter_pdfview: ^1.4.1
   anim_search_bar: ^2.0.3
+  external_path: ^2.2.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
