@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:ui' as ui;
-
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -209,6 +208,35 @@ class CustomGallerySetting {
       default:
         return Icon(Icons.insert_drive_file, color: Colors.purple, size: 22);
     }
+  }
+  // ✅ Add / Remove file from Import List
+  void toggleFileSelection(File file,List importFiles, setState, ScrollController _scrollController) {
+    setState(() {
+      if (importFiles.contains(file)) {
+        importFiles.remove(file);
+      } else {
+        importFiles.add(file);
+      }
+    });
+
+    // ✅ Scroll to the end after UI updates
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  // Helper function to determine and Identify  storage type
+  String getStorageType(String folderPath) {
+    if (folderPath.startsWith('/storage/emulated/0')) {
+      return 'Internal Storage';
+    }
+    return 'SD Card';
   }
 
   // File Subtitle Widget and Info of File'S
@@ -442,13 +470,13 @@ class CustomGallerySetting {
   }
 
 // Yeh variable aapke State class ke andar hoga:
-  String? selectedFileType = "All Files"; // Default
+  // String? selectedFileType = "All Files"; // Default // Commented out as it's managed by the parent widget
 
 // Function to show File Type Bottom Sheet
   void showFileTypeBottomSheet(
       BuildContext context,
       List<File> allFiles,
-      String? selectedFolderPath, // ✅ selected folder path
+      String? selectedFolderPath, // ✅ selected folder path from parent
       Function(List<File>, String) onFilterApplied,
       String? selectedFileType, // <-- Pass this from parent for state sync
       void Function(String?) onFileTypeChanged, // <-- Callback to update file type globally
@@ -483,7 +511,7 @@ class CustomGallerySetting {
         String? tempSelectedFileType = selectedFileType;
 
         return StatefulBuilder(
-          builder: (context, setStateModal) {
+          builder: (BuildContext context, StateSetter setStateModal) { // Explicitly define context type
             void filterFilesByType(String? type) {
               setStateModal(() {
                 tempSelectedFileType = type;
@@ -634,7 +662,7 @@ class CustomGallerySetting {
 
 
 // ✅ Fetch Files from System File Manager
-  void pickFilesFromSystemWithAutoFolder(setState, files, context) async {
+  Future<void> pickFilesFromSystemWithAutoFolder(setState, files, context) async {
     List<String> allowedExtensions = [
       "pdf",
       "doc",
