@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../settings/customGallerySetting.dart';
 
-final settings= CustomGallerySetting();
+final settings = CustomGallerySetting();
 //Import Button UI
 Widget importListSection(BuildContext context,
     {required List<File> importFiles,
@@ -40,107 +40,6 @@ Widget importListSection(BuildContext context,
     ),
   );
 }
-
-// Function to build a popup menu with Open Files and Show Hidden Files options
-Widget buildPopupMenuButton({
-  required BuildContext context,
-  required bool showHiddenFiles,
-  required Function(bool) onHiddenFilesChanged,
-  required Future<void> Function() onPickFiles,
-  required Future<List<File>> Function(bool) getFilesFromDirectory,
-  required Function(List<File>) onFilesUpdated,
-}) {
-  return PopupMenuButton<String>(
-    menuPadding: EdgeInsets.zero,
-    icon: const Icon(Icons.more_vert, color: Colors.white),
-    offset: const Offset(0, 40),
-    color: Colors.white,
-    onSelected: (String result) async {
-      if (result == 'pickFiles') {
-        await onPickFiles(); // ✅ Open system file picker
-      }
-    },
-    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-      // ✅ Open system files option
-      PopupMenuItem<String>(
-        value: 'pickFiles',
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Icon(Icons.folder, color: Colors.black),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Open system files',
-                  style: GoogleFonts.poppins(color: Colors.black),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-
-      // ✅ Show hidden files option with checkbox
-      PopupMenuItem<String>(
-        value: 'toggleHiddenFiles',
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        child: StatefulBuilder(
-          builder: (context, setStatePopup) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Checkbox(
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                  fillColor: MaterialStateProperty.resolveWith((states) {
-                    if (states.contains(WidgetState.selected)) {
-                      return Colors.blue.shade700;
-                    }
-                    return Colors.white;
-                  }),
-                  value: showHiddenFiles,
-                  onChanged: (bool? value) async {
-                    setStatePopup(() {
-                      showHiddenFiles = value ?? false;
-                    });
-
-                    onHiddenFilesChanged(
-                        showHiddenFiles); // Update parent state
-
-                    // ✅ Fetch files after hidden toggle
-                    List<File> updatedFiles =
-                        await getFilesFromDirectory(showHiddenFiles);
-
-                    onFilesUpdated(updatedFiles); // Update UI file list
-                  },
-                  activeColor: Colors.blue,
-                  checkColor: Colors.white,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "Show Hidden Files",
-                      style: GoogleFonts.poppins(color: Colors.black),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    ],
-  );
-}
-
-
 
 //Widget for the Functionality of Import List Section
 // Dropdown-style option widget
@@ -197,10 +96,10 @@ String? lastSelectedCriteria; // <-- Store this globally in your widget
 // Variable to store last selected criteria
 // Sort File Logic
 void showSortOptionsBottomSheet(
-    BuildContext context,
-    List<File> files,
-    Function(List<File>) onSorted,
-    ) {
+  BuildContext context,
+  List<File> files,
+  Function(List<File>) onSorted,
+) {
   showModalBottomSheet(
     backgroundColor: Colors.white,
     context: context,
@@ -231,12 +130,11 @@ void showSortOptionsBottomSheet(
                 // ✅ Title Section
                 Container(
                   padding:
-                  const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                      const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                   width: double.infinity,
                   decoration: BoxDecoration(
                     border: Border(
-                      bottom:
-                      BorderSide(color: Colors.grey.shade300, width: 1),
+                      bottom: BorderSide(color: Colors.grey.shade300, width: 1),
                     ),
                     color: Colors.white,
                     borderRadius: const BorderRadius.only(
@@ -248,8 +146,8 @@ void showSortOptionsBottomSheet(
                     children: [
                       Container(
                         decoration: BoxDecoration(
-                          border: Border.all(
-                              color: Colors.grey.shade300, width: 1),
+                          border:
+                              Border.all(color: Colors.grey.shade300, width: 1),
                           borderRadius: BorderRadius.circular(100),
                         ),
                         padding: const EdgeInsets.all(7),
@@ -289,7 +187,7 @@ void showSortOptionsBottomSheet(
                 Expanded(
                   child: ListView.separated(
                     separatorBuilder: (context, index) =>
-                    const Divider(height: 0.1, color: Colors.grey),
+                        const Divider(height: 0.1, color: Colors.grey),
                     itemCount: criteriaOptions.length,
                     itemBuilder: (context, index) {
                       String criteria = criteriaOptions[index];
@@ -315,7 +213,7 @@ void showSortOptionsBottomSheet(
                               color: selectedCriteria == criteria
                                   ? Colors.blue
                                   : Colors
-                                  .black, // Change text color when selected
+                                      .black, // Change text color when selected
                             ),
                           ),
                           value: criteria,
@@ -350,16 +248,16 @@ void showSortOptionsBottomSheet(
                           context,
                           lastSelectedCriteria,
                         ),
-                        icon: const Icon(Icons.arrow_upward,
-                            color: Colors.white),
+                        icon:
+                            const Icon(Icons.arrow_upward, color: Colors.white),
                         label: Text(
                             lastSelectedCriteria == "By Name"
                                 ? "A to Z"
                                 : lastSelectedCriteria == "By Date"
-                                ? "Oldest"
-                                : lastSelectedCriteria == "By Size"
-                                ? "Smallest"
-                                : "Oldest",
+                                    ? "Oldest"
+                                    : lastSelectedCriteria == "By Size"
+                                        ? "Smallest"
+                                        : "Oldest",
                             style: GoogleFonts.poppins(color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           shape: RoundedRectangleBorder(
@@ -383,10 +281,10 @@ void showSortOptionsBottomSheet(
                             lastSelectedCriteria == "By Name"
                                 ? "Z to A"
                                 : lastSelectedCriteria == "By Date"
-                                ? "Newest"
-                                : lastSelectedCriteria == "By Size"
-                                ? "Largest"
-                                : "Newest",
+                                    ? "Newest"
+                                    : lastSelectedCriteria == "By Size"
+                                        ? "Largest"
+                                        : "Newest",
                             style: GoogleFonts.poppins(color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           shape: RoundedRectangleBorder(

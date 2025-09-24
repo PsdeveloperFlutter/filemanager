@@ -9,7 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf_render/pdf_render.dart';
 import 'package:permission_handler/permission_handler.dart';
-
+import 'package:external_path/external_path.dart';
 class CustomGallerySetting {
 // Allowed File Extensions
   List<String> allowedExtensions = [
@@ -786,5 +786,24 @@ class CustomGallerySetting {
     // ✅ Update parent UI and close modal
     onSorted(sortedFiles);
     Navigator.pop(context);
+  }
+
+  // SD Card Check Logic
+  Future<void>checkSdCard(sdCardPath,hasSdCard,setState)async{
+    List<String>?storagePath=await ExternalPath.getExternalStorageDirectories();
+    if(storagePath!=null && storagePath.length>1){
+      // मान लो Internal हमेशा 0th Index पर है और SD Card 1st Index पर
+      sdCardPath=storagePath[1];
+      Directory sdRoot=Directory(sdCardPath!);
+      // चेक करें कि SD Card में फाइल्स हैं या नहीं
+      List<FileSystemEntity>sdFiles=sdRoot.listSync(recursive: true, followLinks: false);
+      if(sdFiles.isNotEmpty){
+        debugPrint("\nSD Card is accessible and has files.");
+        setState((){
+          // यहाँ पर अपनी लॉजिक डालें जैसे कि UI अपडेट करना या फाइल्स लोड करना
+          hasSdCard=true;
+        });
+      }
+    }
   }
 }

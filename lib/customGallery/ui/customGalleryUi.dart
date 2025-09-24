@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:external_path/external_path.dart';
 import 'package:filemanager/customGallery/settings/customGallerySetting.dart';
 import 'package:filemanager/customGallery/ui/customGalleryUiHelper.dart';
-import 'package:filemanager/customGallery/ui/userPremissionUi.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -30,6 +29,9 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
   // ✅ Files user clicked on → shown at the bottom horizontal list
   List<File> importFiles = [];
   bool _isSearching = false;
+  bool showSdCardFiles = false;
+  bool hasSdCard = false; // SD Card present है या नहीं
+  String? sdCardPath;
   TextEditingController searchController = TextEditingController();
 
   // Settings Instance
@@ -42,6 +44,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
   void initState() {
     super.initState();
     loadFiles();
+    settings.checkSdCard(sdCardPath, hasSdCard, setState);
   }
 
   /// Fetches files from external storage directories.
@@ -52,36 +55,42 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
   Future<void> loadFiles() async {
     bool granted = await settings.requestStoragePermission();
     if (granted) {
-      List<String>? storagePaths =
-      await ExternalPath.getExternalStorageDirectories();
+      List<String>? storagePaths = await ExternalPath.getExternalStorageDirectories();
       allFiles = [];
       folders = {};
-      for (String path in storagePaths!) {
+
+      for (int i = 0; i < storagePaths!.length; i++) {
+        String path = storagePaths[i];
+
+        // Internal हमेशा 0th index, SD Card 1st index
+        if (i == 1 && !showSdCardFiles) {
+          continue; // SD Card अनचेक है तो Skip करो
+        }
+
         Directory root = Directory(path);
-        List<File> storageFiles = await settings.getFilesFromDirectory(root,
-            showHiddenFiles: _showHiddenFiles);
-        allFiles.addAll(storageFiles); // Aggregate all files
+        List<File> storageFiles = await settings.getFilesFromDirectory(
+          root,
+          showHiddenFiles: _showHiddenFiles,
+        );
+        allFiles.addAll(storageFiles);
 
         Map<String, List<String>> foldersString =
         await settings.getFoldersWithFiles(root.path);
-        // Convert Map<String, List<String>> to Map<String, List<File>>
         folders.addAll(foldersString.map((folderPath, filePaths) {
           List<File> fileObject = filePaths.map((e) => File(e)).toList();
           return MapEntry(folderPath, fileObject);
         }));
       }
 
-      files = List.from(allFiles); //create Copy here
-      selectedFolder = "All files"; // Ensure "All files" is selected by default
-      // Simulate a delay for loading files
-      await Future.delayed(Duration(seconds: 2));
+      files = List.from(allFiles);
+      selectedFolder = "All files";
+      await Future.delayed(const Duration(seconds: 1));
       setState(() {
-        _isLoading = false; // Set loading to false after files are loaded
+        _isLoading = false;
       });
-      //Get File and folders
-      setState(() {});
     }
   }
+
 
   String? lastSelectedFolder =
       "All files"; // Track last selected folder globally
@@ -240,7 +249,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar:  AppBar(
         backgroundColor: const Color(0xFF0A3D62),
         iconTheme: const IconThemeData(color: Colors.white),
         title: !_isSearching
@@ -263,12 +272,11 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                 files = List.from(allFiles);
               } else {
                 files = allFiles
-                    .where((file) =>
-                    file.path
-                        .split('/')
-                        .last
-                        .toLowerCase()
-                        .contains(query.trim().toLowerCase()))
+                    .where((file) => file.path
+                    .split('/')
+                    .last
+                    .toLowerCase()
+                    .contains(query.trim().toLowerCase()))
                     .toList();
               }
             });
@@ -314,32 +322,156 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
             icon: Icon(isGridView ? Icons.list : Icons.grid_view,
                 color: Colors.white),
           ),
-          buildPopupMenuButton(
-            context: context,
-            showHiddenFiles: _showHiddenFiles,
-            onHiddenFilesChanged: (value) {
-              setState(() {
-                _showHiddenFiles = value;
-              });
+          PopupMenuButton<String>(
+            menuPadding: EdgeInsets.zero,
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onSelected: (String result) {
+              if (result == 'pickFiles') {
+                settings.pickFilesFromSystemWithAutoFolder(setState,files,context);
+              }
             },
-            // Show Files from System File Manager
-            onPickFiles: () async {
-              await settings.pickFilesFromSystemWithAutoFolder(
-                  setState, File, context);
-            },
-            getFilesFromDirectory: (bool showHidden) async {
-              return await settings.getFilesFromDirectory(
-                Directory(
-                    await ExternalPath.getExternalStoragePublicDirectory(
-                        ExternalPath.DIRECTORY_DOCUMENTS)),
-                showHiddenFiles: showHidden,
-              );
-            },
-            onFilesUpdated: (updatedFiles) {
-              setState(() {
-                files = updatedFiles;
-              });
-            },
+            offset: const Offset(0, 40),
+            color: Colors.white,
+            itemBuilder: (BuildContext context) =>
+            <PopupMenuEntry<String>>[
+              // ✅ Open system files item
+              PopupMenuItem<String>(
+                value: 'pickFiles',
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 6), // Same padding for both
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.folder, color: Colors.black),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Open system files',
+                          style: GoogleFonts.poppins(color: Colors.black),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ✅ Show Sdcard files Options item with checkbox
+              PopupMenuItem<String>(
+                value: 'toggleSdCardFiles',
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 6),
+                // Same padding
+                child: StatefulBuilder(
+                  builder: (context, setStatePopup) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Checkbox(
+                          materialTapTargetSize:
+                          MaterialTapTargetSize.shrinkWrap,
+                          // ✅ Prevent extra height
+                          visualDensity: VisualDensity.compact,
+                          // ✅ Reduce default padding
+                          fillColor:
+                          MaterialStateProperty.resolveWith((states) {
+                            if (states.contains(WidgetState.selected)) {
+                              return Colors.blue.shade700;
+                            }
+                            return Colors.white;
+                          }),
+                          value: showSdCardFiles,
+                          onChanged: (bool? value) async {
+                           debugPrint("\n SD Card files option clicked");
+                            setStatePopup(() {
+                              showSdCardFiles = value ?? false;
+                            });
+                            setState(() {
+                              _isLoading=true;
+                            });
+                            await loadFiles();
+                          },
+                          activeColor: Colors.blue,
+                          checkColor: Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              "Show SD Card Files",
+                              style: GoogleFonts.poppins(
+                                  color: Colors.black),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              // ✅ Show hidden files item with checkbox
+              PopupMenuItem<String>(
+                value: 'toggleHiddenFiles',
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 6),
+                // Same padding
+                child: StatefulBuilder(
+                  builder: (context, setStatePopup) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Checkbox(
+                          materialTapTargetSize:
+                          MaterialTapTargetSize.shrinkWrap,
+                          // ✅ Prevent extra height
+                          visualDensity: VisualDensity.compact,
+                          // ✅ Reduce default padding
+                          fillColor:
+                          MaterialStateProperty.resolveWith((states) {
+                            if (states.contains(WidgetState.selected)) {
+                              return Colors.blue.shade700;
+                            }
+                            return Colors.white;
+                          }),
+                          value: _showHiddenFiles,
+                          onChanged: (bool? value) async {
+                            setStatePopup(() {
+                              _showHiddenFiles = value ?? false;
+                            });
+                            List<File> updatedFiles =
+                            await settings.getFilesFromDirectory(
+                              Directory('/storage/emulated/0/'),
+                              showHiddenFiles: _showHiddenFiles,
+                            );
+                            setState(() {
+                              files = updatedFiles;
+                            });
+                          },
+                          activeColor: Colors.blue,
+                          checkColor: Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              "Show Hidden Files",
+                              style: GoogleFonts.poppins(
+                                  color: Colors.black),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
           )
         ],
       ),
