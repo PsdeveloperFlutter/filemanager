@@ -323,156 +323,145 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                 color: Colors.white),
           ),
           PopupMenuButton<String>(
-            menuPadding: EdgeInsets.zero,
+            menuPadding: const EdgeInsets.all(0),
+            borderRadius: BorderRadius.circular(0),
+
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onSelected: (String result) {
               if (result == 'pickFiles') {
-                settings.pickFilesFromSystemWithAutoFolder(setState,files,context);
+                settings.pickFilesFromSystemWithAutoFolder(setState, files, context);
               }
             },
             offset: const Offset(0, 40),
             color: Colors.white,
-            itemBuilder: (BuildContext context) =>
-            <PopupMenuEntry<String>>[
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
               // ✅ Open system files item
               PopupMenuItem<String>(
+                height: 39,
                 value: 'pickFiles',
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6), // Same padding for both
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.folder, color: Colors.black),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Open system files',
-                          style: GoogleFonts.poppins(color: Colors.black),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                padding: EdgeInsets.zero,
+                child: Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.folder, color: Colors.black),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Open system files',
+                        style: GoogleFonts.poppins(color: Colors.black),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
 
               // ✅ Show Sdcard files Options item with checkbox
               PopupMenuItem<String>(
+                height: 39,
                 value: 'toggleSdCardFiles',
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 6),
-                // Same padding
+                padding: EdgeInsets.zero,
                 child: StatefulBuilder(
                   builder: (context, setStatePopup) {
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Checkbox(
-                          materialTapTargetSize:
-                          MaterialTapTargetSize.shrinkWrap,
-                          // ✅ Prevent extra height
-                          visualDensity: VisualDensity.compact,
-                          // ✅ Reduce default padding
-                          fillColor:
-                          MaterialStateProperty.resolveWith((states) {
-                            if (states.contains(WidgetState.selected)) {
-                              return Colors.blue.shade700;
-                            }
-                            return Colors.white;
-                          }),
-                          value: showSdCardFiles,
-                          onChanged: (bool? value) async {
-                           debugPrint("\n SD Card files option clicked");
-                            setStatePopup(() {
-                              showSdCardFiles = value ?? false;
-                            });
-                            setState(() {
-                              _isLoading=true;
-                            });
-                            await loadFiles();
-                          },
-                          activeColor: Colors.blue,
-                          checkColor: Colors.white,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              "Show SD Card Files",
-                              style: GoogleFonts.poppins(
-                                  color: Colors.black),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                    return Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Checkbox(
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                            fillColor: MaterialStateProperty.resolveWith((states) {
+                              if (states.contains(WidgetState.selected)) {
+                                return Colors.blue.shade700;
+                              }
+                              return Colors.white;
+                            }),
+                            value: showSdCardFiles,
+                            onChanged: (bool? value) async {
+                              debugPrint("\n SD Card files option clicked");
+                              setStatePopup(() {
+                                showSdCardFiles = value ?? false;
+                              });
+                              setState(() {
+                                _isLoading = true;
+                                lastSelectedFolder = "All files"; // Reset selected folder
+                              });
+                              await loadFiles();
+                            },
+                            activeColor: Colors.blue,
+                            checkColor: Colors.white,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 5),
+                          Text(
+                            "Show SD Card Files",
+                            style: GoogleFonts.poppins(color: Colors.black),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     );
                   },
                 ),
               ),
+
               // ✅ Show hidden files item with checkbox
               PopupMenuItem<String>(
+                height: 39,
                 value: 'toggleHiddenFiles',
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 6),
-                // Same padding
+                padding: EdgeInsets.zero,
                 child: StatefulBuilder(
                   builder: (context, setStatePopup) {
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Checkbox(
-                          materialTapTargetSize:
-                          MaterialTapTargetSize.shrinkWrap,
-                          // ✅ Prevent extra height
-                          visualDensity: VisualDensity.compact,
-                          // ✅ Reduce default padding
-                          fillColor:
-                          MaterialStateProperty.resolveWith((states) {
-                            if (states.contains(WidgetState.selected)) {
-                              return Colors.blue.shade700;
-                            }
-                            return Colors.white;
-                          }),
-                          value: _showHiddenFiles,
-                          onChanged: (bool? value) async {
-                            setStatePopup(() {
-                              _showHiddenFiles = value ?? false;
-                            });
-                            List<File> updatedFiles =
-                            await settings.getFilesFromDirectory(
-                              Directory('/storage/emulated/0/'),
-                              showHiddenFiles: _showHiddenFiles,
-                            );
-                            setState(() {
-                              files = updatedFiles;
-                            });
-                          },
-                          activeColor: Colors.blue,
-                          checkColor: Colors.white,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              "Show Hidden Files",
-                              style: GoogleFonts.poppins(
-                                  color: Colors.black),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                    return Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Checkbox(
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                            fillColor: MaterialStateProperty.resolveWith((states) {
+                              if (states.contains(WidgetState.selected)) {
+                                return Colors.blue.shade700;
+                              }
+                              return Colors.white;
+                            }),
+                            value: _showHiddenFiles,
+                            onChanged: (bool? value) async {
+                              setStatePopup(() {
+                                _showHiddenFiles = value ?? false;
+                              });
+                              List<File> updatedFiles =
+                              await settings.getFilesFromDirectory(
+                                Directory('/storage/emulated/0/'),
+                                showHiddenFiles: _showHiddenFiles,
+                              );
+                              setState(() {
+                                files = updatedFiles;
+                              });
+                            },
+                            activeColor: Colors.blue,
+                            checkColor: Colors.white,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 10),
+                          Text(
+                            "Show Hidden Files",
+                            style: GoogleFonts.poppins(color: Colors.black),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     );
                   },
                 ),
               ),
             ],
           )
+
         ],
       ),
       body: Column(

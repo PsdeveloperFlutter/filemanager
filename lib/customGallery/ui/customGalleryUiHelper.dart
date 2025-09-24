@@ -209,7 +209,7 @@ void showSortOptionsBottomSheet(
                           title: Text(
                             criteria,
                             style: GoogleFonts.poppins(
-                              fontSize: 16, fontWeight: FontWeight.w500,
+                              fontSize: 16,
                               color: selectedCriteria == criteria
                                   ? Colors.blue
                                   : Colors
