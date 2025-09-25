@@ -323,9 +323,8 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                 color: Colors.white),
           ),
           PopupMenuButton<String>(
-            menuPadding: const EdgeInsets.all(0),
+            padding: EdgeInsets.zero, // ✅ Remove extra space on PopupMenuButton
             borderRadius: BorderRadius.circular(0),
-
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onSelected: (String result) {
               if (result == 'pickFiles') {
@@ -337,19 +336,19 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
               // ✅ Open system files item
               PopupMenuItem<String>(
-                height: 39,
+                height: 30,
                 value: 'pickFiles',
-                padding: EdgeInsets.zero,
-                child: Center(
+                padding: EdgeInsets.zero, // Remove Flutter's default padding
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(5, 5, 5, 5), // ✅ Exactly 5px on both sides
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       const Icon(Icons.folder, color: Colors.black),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 7),
                       Text(
-                        'Open system files',
+                        'Open System Files',
                         style: GoogleFonts.poppins(color: Colors.black),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -358,16 +357,16 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                 ),
               ),
 
-              // ✅ Show Sdcard files Options item with checkbox
+              // ✅ Show SD card files option
               PopupMenuItem<String>(
-                height: 39,
+                height: 30,
                 value: 'toggleSdCardFiles',
                 padding: EdgeInsets.zero,
-                child: StatefulBuilder(
-                  builder: (context, setStatePopup) {
-                    return Center(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                  child: StatefulBuilder(
+                    builder: (context, setStatePopup) {
+                      return Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -382,13 +381,12 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                             }),
                             value: showSdCardFiles,
                             onChanged: (bool? value) async {
-                              debugPrint("\n SD Card files option clicked");
                               setStatePopup(() {
                                 showSdCardFiles = value ?? false;
                               });
                               setState(() {
                                 _isLoading = true;
-                                lastSelectedFolder = "All files"; // Reset selected folder
+                                lastSelectedFolder = "All files";
                               });
                               await loadFiles();
                             },
@@ -402,22 +400,22 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
               ),
 
-              // ✅ Show hidden files item with checkbox
+              // ✅ Show hidden files option
               PopupMenuItem<String>(
-                height: 39,
+                height: 30,
                 value: 'toggleHiddenFiles',
                 padding: EdgeInsets.zero,
-                child: StatefulBuilder(
-                  builder: (context, setStatePopup) {
-                    return Center(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                  child: StatefulBuilder(
+                    builder: (context, setStatePopup) {
+                      return Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -447,20 +445,21 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                             activeColor: Colors.blue,
                             checkColor: Colors.white,
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 5),
                           Text(
                             "Show Hidden Files",
                             style: GoogleFonts.poppins(color: Colors.black),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
               ),
             ],
           )
+
 
         ],
       ),

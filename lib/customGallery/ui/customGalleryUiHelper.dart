@@ -165,7 +165,7 @@ void showSortOptionsBottomSheet(
                             "Sort Files",
                             style: GoogleFonts.poppins(
                               fontSize: 15,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
                               color: Colors.black,
                             ),
                           ),
@@ -174,6 +174,7 @@ void showSortOptionsBottomSheet(
                             style: GoogleFonts.poppins(
                               fontSize: 13,
                               color: Colors.black,
+                              fontWeight: FontWeight.w400,
                             ),
                           ),
                         ],
