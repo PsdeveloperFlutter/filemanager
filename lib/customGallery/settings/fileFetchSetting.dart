@@ -4,9 +4,6 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:external_path/external_path.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
-import 'dart:ui' as ui;
-import 'package:pdf_render/pdf_render.dart';
-import 'package:external_path/external_path.dart';
 import 'package:permission_handler/permission_handler.dart';
 //This is a custom file fetch settings class for fetching files from device storage.
 class FileFetchSettings {
@@ -23,44 +20,59 @@ class FileFetchSettings {
 
 // ✅ Recursive file fetching for all Android versions
   Future<List<File>> getFilesFromDirectory(
-    Directory dir, {
-    Set<String>? visited,
-    bool showHiddenFiles = false,
-  }) async {
-    visited ??= {};
-    List<File> files = [];
-    List<String> restrictedFolders = ["Android", "data", "obb"];
+      Directory dir, {
+        Set<String>? visited,
+        bool showHiddenFiles = false,
+      }) async {
+    visited ??= <String>{};
+    final List<File> files = [];
+    final List<String> restrictedFolders = ['Android', 'data', 'obb'];
 
+    // avoid infinite loops / repeated directories
     if (visited.contains(dir.path)) return files;
     visited.add(dir.path);
 
     try {
-      await for (var entity in dir.list(followLinks: false)) {
-        String entityName = p.basename(entity.path);
-        // ✅ Skip hidden files/folders if showHiddenFiles = false
-        if (!showHiddenFiles && entityName.startsWith(".")) {
+      await for (final entity in dir.list(followLinks: false)) {
+        final String entityName = p.basename(entity.path);
+
+        // Skip dot (hidden) files/folders unless user asked to show hidden
+        if (!showHiddenFiles && entityName.startsWith('.')) {
           continue;
         }
+
         if (entity is File) {
-          String ext =
-              p.extension(entity.path).replaceAll('.', '').toLowerCase();
+          final String ext =
+          p.extension(entity.path).replaceAll('.', '').toLowerCase();
           if (allowedExtensions.contains(ext)) {
             files.add(entity);
           }
         } else if (entity is Directory) {
-          String folderName = p.basename(entity.path);
-          if (!restrictedFolders.contains(folderName) &&
-              !folderName.startsWith(".")) {
-            try {
-              files.addAll(
-                  await getFilesFromDirectory(entity, visited: visited));
-            } catch (_) {}
+          final String folderName = p.basename(entity.path);
+
+          // skip restricted folders (case-insensitive)
+          if (restrictedFolders.any((r) => r.toLowerCase() == folderName.toLowerCase())) {
+            continue;
+          }
+
+          // recurse — IMPORTANT: pass showHiddenFiles and visited along
+          try {
+            final childFiles = await getFilesFromDirectory(
+              entity,
+              visited: visited,
+              showHiddenFiles: showHiddenFiles,
+            );
+            files.addAll(childFiles);
+          } catch (_) {
+            // ignore errors from subfolders (e.g., permission denied)
           }
         }
       }
     } catch (e) {
-      // Ignore permission denied errors
+      // ignore permission denied / other IO errors for this dir
+      debugPrint("Error accessing ${dir.path}: $e");
     }
+
     return files;
   }
 
@@ -172,37 +184,6 @@ class FileFetchSettings {
     }
   }
 
-  // ✅ Get PDF first page AS  Icon based on PDF
-  Future<ImageProvider?> getPdfFirstPageImage(String path,
-      {int width = 150,
-        int height = 200,
-        required Map<String, ImageProvider> cache}) async {
-    try {
-      if (cache.containsKey(path)) return cache[path];
-
-      final doc = await PdfDocument.openFile(path);
-      final page = await doc.getPage(1);
-
-      final pageImage = await page.render(width: width, height: height);
-
-      final uiImage = await pageImage.createImageIfNotAvailable();
-      final byteData = await uiImage.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) {
-        uiImage.dispose();
-        return null;
-      }
-
-      final pngBytes = byteData.buffer.asUint8List();
-      uiImage.dispose();
-
-      final provider = MemoryImage(pngBytes);
-      cache[path] = provider;
-      return provider;
-    } catch (e) {
-      debugPrint('PDF thumbnail error: $e');
-      return null;
-    }
-  }
 
 
 }

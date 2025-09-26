@@ -43,14 +43,14 @@ Widget importListSection(BuildContext context,
 
 //Widget for the Functionality of Import List Section
 // Dropdown-style option widget
-Widget buildImportFunctionalityOptions(String text) {
+Widget buildImportFunctionalityOptions(String text, {double maxWidth = 140}) {
   bool isWhiteBg = (text == 'All Files' ||
       text == "All files" ||
       text == 'Sort By' ||
       text == 'File Type');
 
   return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // Equal padding
     decoration: BoxDecoration(
       color: isWhiteBg ? Colors.white : Colors.blue.shade400,
       borderRadius: BorderRadius.circular(100),
@@ -59,36 +59,35 @@ Widget buildImportFunctionalityOptions(String text) {
         BoxShadow(
           color: Colors.grey.withOpacity(0.1),
           blurRadius: 2,
-          offset: Offset(0, 1),
+          offset: const Offset(0, 1),
         ),
       ],
     ),
-    child: SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ✅ Fixed width for text so ellipsis works & stable layout
+        SizedBox(
+          width: 60, // Fixed width area for text
+          child: Text(
             text,
             textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
+            overflow: TextOverflow.ellipsis, // Ellipsis if too long
+            softWrap: false, // Prevent text wrapping to next line
             style: GoogleFonts.poppins(
               color: isWhiteBg ? Colors.black : Colors.white,
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(width: 7), // ✅ Small gap between text and arrow
-          Center(
-            child: Icon(
-              Icons.arrow_drop_down,
-              color: isWhiteBg ? Colors.black : Colors.white,
-              size: 18, // ✅ Slightly smaller for better alignment
-            ),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 6), // Stable spacing
+        Icon(
+          Icons.arrow_drop_down,
+          color: isWhiteBg ? Colors.black : Colors.white,
+          size: 18,
+        ),
+      ],
     ),
   );
 }

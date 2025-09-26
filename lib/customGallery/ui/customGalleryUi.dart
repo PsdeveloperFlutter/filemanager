@@ -363,7 +363,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                 child: StatefulBuilder(
                   builder: (context, setStatePopup) {
                     return Padding(
-                      padding: const EdgeInsets.only(right:8.0),
+                      padding: const EdgeInsets.only(right:8.0,top: 4.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -607,63 +607,64 @@ Widget buildFolderSelectionSheet({
                 color: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                 margin: EdgeInsets.zero,
-                child: SizedBox(
-                  height: 65,
-                  child: RadioListTile<String>(
-                    secondary: Icon(Icons.folder,
+
+                child: RadioListTile<String>(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 0),
+                  secondary: Icon(Icons.folder,
+                      color: selectedFolder == folderName
+                          ? Colors.blue
+                          : Colors.black,
+                      size: 23),
+                  title: Text(
+                    folderName
+                        .split('/')
+                        .last,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
                         color: selectedFolder == folderName
-                            ? Colors.blue
-                            : Colors.black,
-                        size: 23),
-                    title: Text(
-                      folderName
-                          .split('/')
-                          .last,
-                      style: TextStyle(
-                          color: selectedFolder == folderName
-                              ? Colors.blue
-                              : Colors.black87),
-                    ),
-                    subtitle: folderName == "All files"
-                        ? Text(
-                      "${allFiles.length} files",
-                      style: TextStyle(
-                        color: selectedFolder == folderName
-                            ? Colors.blue
-                            : Colors.black87,
-                      ),
-                    )
-                        : Text(
-                      "${folders[folderName]?.length ??
-                          0} files - ${CustomGallerySetting().getStorageType(
-                          folderName)}",
-                      style: TextStyle(
-                        color: selectedFolder == folderName
-                            ? Colors.blue
-                            : Colors.black87,
-                      ),
-                    ),
-                    value: folderName,
-                    groupValue: selectedFolder,
-                    onChanged: (value) {
-                      if (value != null) {
-                        // Filter files based on current file type and selected folder
-                        // Use settings.getFilteredFiles
-                        // final filteredFiles = settings.getFilteredFiles(
-                        // Use CustomGallerySetting.getFilteredFiles if it's static, or create an instance
-                        // For example, if it's static:
-                        final filteredFiles =
-                      fileFetchSetting.getFilteredFiles(
-                          allFiles: allFiles,
-                          folderPath: value,
-                          fileType: selectedFileType,
-                        );
-                        onFolderSelected(value, filteredFiles);
-                      }
-                    },
-                    activeColor: Colors.blue,
-                    controlAffinity: ListTileControlAffinity.trailing,
+                            ? Colors.blue.shade700
+                            : Colors.black87),
                   ),
+                  subtitle: folderName == "All files"
+                      ? Text(
+                    "${allFiles.length} files",
+                    style: TextStyle(
+                      color: selectedFolder == folderName
+                          ? Colors.blue.shade700
+                          : Colors.black87,
+                    ),
+                  )
+                      : Text(
+                    "${folders[folderName]?.length ??
+                        0} files - ${CustomGallerySetting().getStorageType(
+                        folderName)}",
+                    style: TextStyle(
+                      color: selectedFolder == folderName
+                          ? Colors.blue.shade700
+                          : Colors.black87,
+                    ),
+                  ),
+                  value: folderName,
+                  groupValue: selectedFolder,
+                  onChanged: (value) {
+                    if (value != null) {
+                      // Filter files based on current file type and selected folder
+                      // Use settings.getFilteredFiles
+                      // final filteredFiles = settings.getFilteredFiles(
+                      // Use CustomGallerySetting.getFilteredFiles if it's static, or create an instance
+                      // For example, if it's static:
+                      final filteredFiles =
+                    fileFetchSetting.getFilteredFiles(
+                        allFiles: allFiles,
+                        folderPath: value,
+                        fileType: selectedFileType,
+                      );
+                      onFolderSelected(value, filteredFiles);
+                    }
+                  },
+                  activeColor: Colors.blue.shade700,
+                  controlAffinity: ListTileControlAffinity.trailing,
                 ),
               );
             },

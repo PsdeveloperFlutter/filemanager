@@ -8,7 +8,8 @@ import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-
+import 'dart:ui' as ui;
+import 'package:pdf_render/pdf_render.dart';
 class CustomGallerySetting {
 // Allowed File Extensions
   List<String> allowedExtensions = [
@@ -45,6 +46,8 @@ class CustomGallerySetting {
     }
   }
 
+  //Get Folders with Files
+  // This will help in the Modal Bottom Sheet part.
 
 
   // ✅ Import files into new folder Logic
@@ -171,6 +174,38 @@ class CustomGallerySetting {
       }
     });
   }
+  // ✅ Get PDF first page AS  Icon based on PDF
+  Future<ImageProvider?> getPdfFirstPageImage(String path,
+      {int width = 150,
+        int height = 200,
+        required Map<String, ImageProvider> cache}) async {
+    try {
+      if (cache.containsKey(path)) return cache[path];
+
+      final doc = await PdfDocument.openFile(path);
+      final page = await doc.getPage(1);
+
+      final pageImage = await page.render(width: width, height: height);
+
+      final uiImage = await pageImage.createImageIfNotAvailable();
+      final byteData = await uiImage.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) {
+        uiImage.dispose();
+        return null;
+      }
+
+      final pngBytes = byteData.buffer.asUint8List();
+      uiImage.dispose();
+
+      final provider = MemoryImage(pngBytes);
+      cache[path] = provider;
+      return provider;
+    } catch (e) {
+      debugPrint('PDF thumbnail error: $e');
+      return null;
+    }
+  }
+
 
   // Helper function to determine and Identify  storage type
   String getStorageType(String folderPath) {
