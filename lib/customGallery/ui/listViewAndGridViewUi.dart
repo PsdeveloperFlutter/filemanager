@@ -69,6 +69,8 @@ Widget buildFilesView({
 
           title: Text(
               fileName,
+              overflow: TextOverflow.ellipsis,
+
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -76,7 +78,6 @@ Widget buildFilesView({
                     ? Colors.blue.shade700
                     : Colors.black,
               ),
-              overflow: TextOverflow.ellipsis,
               maxLines: 1,
               softWrap: false,
             ),

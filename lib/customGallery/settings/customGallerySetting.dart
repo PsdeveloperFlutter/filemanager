@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:ui' as ui;
+
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -7,9 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:pdf_render/pdf_render.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:external_path/external_path.dart';
+
 class CustomGallerySetting {
 // Allowed File Extensions
   List<String> allowedExtensions = [
@@ -46,65 +45,7 @@ class CustomGallerySetting {
     }
   }
 
-// ✅ Recursive file fetching for all Android versions
-  Future<List<File>> getFilesFromDirectory(
-      Directory dir, {
-        Set<String>? visited,
-        bool showHiddenFiles = false,
-      }) async {
-    visited ??= {};
-    List<File> files = [];
-    List<String> restrictedFolders = ["Android", "data", "obb"];
 
-    if (visited.contains(dir.path)) return files;
-    visited.add(dir.path);
-
-    try {
-      await for (var entity in dir.list(followLinks: false)) {
-        String entityName=p.basename(entity.path);
-        // ✅ Skip hidden files/folders if showHiddenFiles = false
-        if (!showHiddenFiles && entityName.startsWith(".")) {
-          continue;
-        }
-        if (entity is File) {
-          String ext =
-          p.extension(entity.path).replaceAll('.', '').toLowerCase();
-          if (allowedExtensions.contains(ext)) {
-            files.add(entity);
-          }
-        } else if (entity is Directory) {
-          String folderName = p.basename(entity.path);
-          if (!restrictedFolders.contains(folderName) &&
-              !folderName.startsWith(".")) {
-            try {
-              files.addAll(
-                  await getFilesFromDirectory(entity, visited: visited));
-            } catch (_) {}
-          }
-        }
-      }
-    } catch (e) {
-      // Ignore permission denied errors
-    }
-    return files;
-  }
-
-  //Get Folders with Files
-  // This will help in the Modal Bottom Sheet part.
-
-  /// ✅ Get folders with files safely
-  Future<Map<String, List<String>>> getFoldersWithFiles(String rootPath) async {
-    Map<String, List<String>> folders = {};
-    Directory rootDir = Directory(rootPath);
-
-    List<File> files = await getFilesFromDirectory(rootDir);
-
-    for (var file in files) {
-      String folderPath = p.dirname(file.path);
-      folders.putIfAbsent(folderPath, () => []).add(file.path);
-    }
-    return folders;
-  }
 
   // ✅ Import files into new folder Logic
   Future<void> importSelectedFiles(BuildContext context, List<File> importFiles,
@@ -289,14 +230,14 @@ class CustomGallerySetting {
             children: [
               Text(
                 "$createdDate , ",
-                style: GoogleFonts.poppins(fontSize: 11, color: Colors.black87),
+                style: GoogleFonts.poppins(fontSize: 10, color: Colors.black87),
                 overflow: TextOverflow.ellipsis,
               ),
 
               Text(
                 sizeText,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(fontSize: 11, color: Colors.black87),
+                style: GoogleFonts.poppins(fontSize: 10, color: Colors.black87),
               ),
             ],
           ),
@@ -311,7 +252,7 @@ class CustomGallerySetting {
                 child: Text(
                   displayPath,
                   style:
-                  GoogleFonts.poppins(fontSize: 10, color: Colors.black87),
+                  GoogleFonts.poppins(fontSize: 9, color: Colors.black87),
                   overflow: TextOverflow.ellipsis, // ✅ Ellipses for long paths
                   maxLines: 1,
                 ),
@@ -374,41 +315,41 @@ class CustomGallerySetting {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ✅ Date + Size in one line
-          Row(
-            children: [
-              Icon(Icons.access_time, size: 12, color: dateColor),
-              SizedBox(width: 2),
-              Expanded(
-                child: Text(
+          SingleChildScrollView(
+           scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                Icon(Icons.access_time, size: 12, color: dateColor),
+                const SizedBox(width: 2),
+                Text(
                   createdDate,
-                  style:
-                  GoogleFonts.poppins(fontSize: 9, color: Colors.black54),
+                  style: GoogleFonts.poppins(fontSize: 9, color: Colors.black54),
                   overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          Row(
-            children: [
-              Icon(Icons.storage, size: 12, color: sizeColor),
-              SizedBox(width: 2),
-              Expanded(
-                child: Text(
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                Icon(Icons.storage, size: 12, color: sizeColor),
+                const SizedBox(width: 2),
+                Text(
                   sizeText,
-                  style:
-                  GoogleFonts.poppins(fontSize: 9, color: Colors.black54),
+                  style: GoogleFonts.poppins(fontSize: 9, color: Colors.black54),
                   overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          SizedBox(height: 2),
+          const SizedBox(height: 2),
           // ✅ File Path in one line
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(Icons.folder, size: 12, color: pathColor),
-              SizedBox(width: 2),
+              const SizedBox(width: 2),
               Expanded(
                 child: Text(
                   displayPath,
@@ -430,44 +371,6 @@ class CustomGallerySetting {
     }
   }
 
-  List<File> getFilteredFiles({
-    required List<File> allFiles,
-    required String? folderPath,
-    required String? fileType,
-  }) {
-    // Folder filter
-    List<File> folderFiles;
-    if (folderPath == null || folderPath == "All files") {
-      folderFiles = List.from(allFiles);
-    } else {
-      folderFiles = allFiles.where((file) => file.path.contains(folderPath)).toList();
-    }
-
-    // File type filter
-    if (fileType == null || fileType == "File Type" || fileType == "All Files") {
-      return folderFiles;
-    } else {
-      return folderFiles.where((file) {
-        String name = file.path.toLowerCase();
-        switch (fileType) {
-          case "PDF":
-            return name.endsWith(".pdf");
-          case "DOC/DOCX":
-            return name.endsWith(".doc") || name.endsWith(".docx");
-          case "XLS/XLSX":
-            return name.endsWith(".xls") || name.endsWith(".xlsx");
-          case "TXT":
-            return name.endsWith(".txt");
-          case "PPT/PPTX":
-            return name.endsWith(".ppt") || name.endsWith(".pptx");
-          case "ODT":
-            return name.endsWith(".odt");
-          default:
-            return false;
-        }
-      }).toList();
-    }
-  }
 
 // Yeh variable aapke State class ke andar hoga:
   // String? selectedFileType = "All Files"; // Default // Commented out as it's managed by the parent widget
@@ -697,50 +600,6 @@ class CustomGallerySetting {
     }
   }
 
-//Only Check Status of Permission
-  Future<bool> isStoragePermissionGranted() async {
-    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
-    AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
-    int sdkInt = androidInfo.version.sdkInt;
-    if (sdkInt >= 30) {
-      // ✅ Android 11+
-      return await Permission.manageExternalStorage.isGranted;
-    } else {
-      // ✅ Android 10 & below
-      return await Permission.storage.isGranted;
-    }
-  }
-
-  Future<ImageProvider?> getPdfFirstPageImage(String path,
-      {int width = 150,
-        int height = 200,
-        required Map<String, ImageProvider> cache}) async {
-    try {
-      if (cache.containsKey(path)) return cache[path];
-
-      final doc = await PdfDocument.openFile(path);
-      final page = await doc.getPage(1);
-
-      final pageImage = await page.render(width: width, height: height);
-
-      final uiImage = await pageImage.createImageIfNotAvailable();
-      final byteData = await uiImage.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) {
-        uiImage.dispose();
-        return null;
-      }
-
-      final pngBytes = byteData.buffer.asUint8List();
-      uiImage.dispose();
-
-      final provider = MemoryImage(pngBytes);
-      cache[path] = provider;
-      return provider;
-    } catch (e) {
-      debugPrint('PDF thumbnail error: $e');
-      return null;
-    }
-  }
 
 
 
@@ -788,22 +647,4 @@ class CustomGallerySetting {
     Navigator.pop(context);
   }
 
-  // SD Card Check Logic
-  Future<void>checkSdCard(sdCardPath,hasSdCard,setState)async{
-    List<String>?storagePath=await ExternalPath.getExternalStorageDirectories();
-    if(storagePath!=null && storagePath.length>1){
-      // मान लो Internal हमेशा 0th Index पर है और SD Card 1st Index पर
-      sdCardPath=storagePath[1];
-      Directory sdRoot=Directory(sdCardPath!);
-      // चेक करें कि SD Card में फाइल्स हैं या नहीं
-      List<FileSystemEntity>sdFiles=sdRoot.listSync(recursive: true, followLinks: false);
-      if(sdFiles.isNotEmpty){
-        debugPrint("\nSD Card is accessible and has files.");
-        setState((){
-          // यहाँ पर अपनी लॉजिक डालें जैसे कि UI अपडेट करना या फाइल्स लोड करना
-          hasSdCard=true;
-        });
-      }
-    }
-  }
 }

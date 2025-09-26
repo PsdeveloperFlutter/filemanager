@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import '../settings/customGallerySetting.dart';
 import 'customGalleryUi.dart';
+import 'package:filemanager/customGallery/settings/fileFetchSetting.dart';
 
 
 class DashboardUi extends StatefulWidget {
@@ -19,7 +20,8 @@ class _DashboardUiState extends State<DashboardUi>
   late TabController _tabController;
 
   List<Map<String, dynamic>> importedFolders = []; // To store folder info
-  final settings = CustomGallerySetting();
+  final settings = CustomGallerySetting();// Instance of your settings class
+  final FileFetchSettings fileSettings= FileFetchSettings();  // Instance of your file fetch settings class
   @override
   void initState() {
     super.initState();
@@ -103,7 +105,7 @@ class _DashboardUiState extends State<DashboardUi>
 
   /// ✅ Handle Floating Action Button tap
   Future<void> _handleFabTap() async {
-    bool granted = await settings.isStoragePermissionGranted();
+    bool granted = await fileSettings.isStoragePermissionGranted();
 
     if (granted) {
       // ✅ Agar permission pehle se granted hai

@@ -1,5 +1,5 @@
 import 'dart:io';
-
+import 'package:filemanager/customGallery/settings/fileFetchSetting.dart';
 import 'package:external_path/external_path.dart';
 import 'package:filemanager/customGallery/settings/customGallerySetting.dart';
 import 'package:filemanager/customGallery/ui/customGalleryUiHelper.dart';
@@ -36,6 +36,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
 
   // Settings Instance
   final CustomGallerySetting settings = CustomGallerySetting();
+  final FileFetchSettings fileSettings= FileFetchSettings();
 
   // ✅ ScrollController for horizontal scrolling
   final ScrollController _scrollController = ScrollController();
@@ -44,7 +45,10 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
   void initState() {
     super.initState();
     loadFiles();
-    settings.checkSdCard(sdCardPath, hasSdCard, setState);
+    fileSettings.checkSdCard(setState, (path) {
+      sdCardPath = path;
+      hasSdCard = true; // अब UI में SD Card Option दिखेगा
+    });
   }
 
   /// Fetches files from external storage directories.
@@ -68,14 +72,14 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
         }
 
         Directory root = Directory(path);
-        List<File> storageFiles = await settings.getFilesFromDirectory(
+        List<File> storageFiles = await fileSettings.getFilesFromDirectory(
           root,
           showHiddenFiles: _showHiddenFiles,
         );
         allFiles.addAll(storageFiles);
 
         Map<String, List<String>> foldersString =
-        await settings.getFoldersWithFiles(root.path);
+        await fileSettings.getFoldersWithFiles(root.path);
         folders.addAll(foldersString.map((folderPath, filePaths) {
           List<File> fileObject = filePaths.map((e) => File(e)).toList();
           return MapEntry(folderPath, fileObject);
@@ -121,7 +125,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                 setState(() {
                   lastSelectedFolder = folderPath;
                   selectedFolder = folderPath;
-                  files = settings.getFilteredFiles(
+                  files = fileSettings.getFilteredFiles(
                     allFiles: allFiles,
                     folderPath: folderPath,
                     fileType: selectedFileType,
@@ -167,15 +171,13 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
     }
 
     if (selectedFolder != null && selectedFolder != "All files") {
-    // ✅ Get files of the selected folder
-    List<File> folderFiles = folders[selectedFolder] ?? [];
     settings.showFileTypeBottomSheet(
     context,
     allFiles, // हमेशा allFiles का use करो
     selectedFolder,
     (filteredFiles, selectedType) {
     setState(() {
-    files = settings.getFilteredFiles(
+    files = fileSettings.getFilteredFiles(
     allFiles: allFiles,
     folderPath: selectedFolder,
     fileType: selectedType,
@@ -189,7 +191,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
     (newType) {
     setState(() {
     selectedFileType = newType ?? "All Files";
-    files = settings.getFilteredFiles(
+    files = fileSettings.getFilteredFiles(
     allFiles: allFiles,
     folderPath: selectedFolder,
     fileType: selectedFileType,
@@ -323,7 +325,6 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                 color: Colors.white),
           ),
           PopupMenuButton<String>(
-            padding: EdgeInsets.zero, // ✅ Remove extra space on PopupMenuButton
             borderRadius: BorderRadius.circular(0),
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onSelected: (String result) {
@@ -336,17 +337,15 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
               // ✅ Open system files item
               PopupMenuItem<String>(
-                height: 30,
+                height: 25,
                 value: 'pickFiles',
-                padding: EdgeInsets.zero, // Remove Flutter's default padding
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(5, 5, 5, 5), // ✅ Exactly 5px on both sides
+                child: Padding(
+                  padding: const EdgeInsets.only(right:8.0),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       const Icon(Icons.folder, color: Colors.black),
-                      const SizedBox(width: 7),
                       Text(
                         'Open System Files',
                         style: GoogleFonts.poppins(color: Colors.black),
@@ -356,18 +355,17 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                   ),
                 ),
               ),
-
+               if (hasSdCard) // SD Card है तो ही ये option दिखाओ
               // ✅ Show SD card files option
               PopupMenuItem<String>(
-                height: 30,
+                height: 25,
                 value: 'toggleSdCardFiles',
-                padding: EdgeInsets.zero,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-                  child: StatefulBuilder(
-                    builder: (context, setStatePopup) {
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                child: StatefulBuilder(
+                  builder: (context, setStatePopup) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right:8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Checkbox(
@@ -387,36 +385,35 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                               setState(() {
                                 _isLoading = true;
                                 lastSelectedFolder = "All files";
+                                selectedFileType="File Type";
                               });
                               await loadFiles();
                             },
                             activeColor: Colors.blue,
                             checkColor: Colors.white,
                           ),
-                          const SizedBox(width: 5),
                           Text(
                             "Show SD Card Files",
                             style: GoogleFonts.poppins(color: Colors.black),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 ),
               ),
 
               // ✅ Show hidden files option
               PopupMenuItem<String>(
-                height: 30,
+                height: 25,
                 value: 'toggleHiddenFiles',
-                padding: EdgeInsets.zero,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-                  child: StatefulBuilder(
-                    builder: (context, setStatePopup) {
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                child: StatefulBuilder(
+                  builder: (context, setStatePopup) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right:8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Checkbox(
@@ -434,27 +431,33 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                                 _showHiddenFiles = value ?? false;
                               });
                               List<File> updatedFiles =
-                              await settings.getFilesFromDirectory(
+                              await fileSettings.getFilesFromDirectory(
                                 Directory('/storage/emulated/0/'),
                                 showHiddenFiles: _showHiddenFiles,
                               );
                               setState(() {
                                 files = updatedFiles;
+                                  _isLoading = true;
+                                  lastSelectedFolder = "All files";
+                                  selectedFileType="File Type";
                               });
+                              await loadFiles();
                             },
                             activeColor: Colors.blue,
                             checkColor: Colors.white,
                           ),
-                          const SizedBox(width: 5),
-                          Text(
-                            "Show Hidden Files",
-                            style: GoogleFonts.poppins(color: Colors.black),
-                            overflow: TextOverflow.ellipsis,
+                          Padding(
+                            padding: const EdgeInsets.only(right:8.0),
+                            child: Text(
+                              "Show Hidden Files",
+                              style: GoogleFonts.poppins(color: Colors.black),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -539,6 +542,7 @@ Widget buildFolderSelectionSheet({
   required void Function(String folderPath, List<File> filteredFiles)
   onFolderSelected,
 }) {
+  final FileFetchSettings fileFetchSetting = FileFetchSettings(); // Create an instance
   List<String> folderNames = folders.keys.toList();
   folderNames.insert(0, "All files"); // Default option on top
 
@@ -649,7 +653,7 @@ Widget buildFolderSelectionSheet({
                         // Use CustomGallerySetting.getFilteredFiles if it's static, or create an instance
                         // For example, if it's static:
                         final filteredFiles =
-                        CustomGallerySetting().getFilteredFiles(
+                      fileFetchSetting.getFilteredFiles(
                           allFiles: allFiles,
                           folderPath: value,
                           fileType: selectedFileType,

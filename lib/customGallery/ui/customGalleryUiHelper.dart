@@ -63,30 +63,32 @@ Widget buildImportFunctionalityOptions(String text) {
         ),
       ],
     ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      // ✅ Proper vertical alignment
-      children: [
-        Text(
-          text,
-          textAlign: TextAlign.center,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.poppins(
-            color: isWhiteBg ? Colors.black : Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.poppins(
+              color: isWhiteBg ? Colors.black : Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-        const SizedBox(width: 2), // ✅ Small gap between text and arrow
-        Center(
-          child: Icon(
-            Icons.arrow_drop_down,
-            color: isWhiteBg ? Colors.black : Colors.white,
-            size: 18, // ✅ Slightly smaller for better alignment
+          const SizedBox(width: 7), // ✅ Small gap between text and arrow
+          Center(
+            child: Icon(
+              Icons.arrow_drop_down,
+              color: isWhiteBg ? Colors.black : Colors.white,
+              size: 18, // ✅ Slightly smaller for better alignment
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 }
