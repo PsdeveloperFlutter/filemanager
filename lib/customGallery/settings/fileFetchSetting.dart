@@ -5,6 +5,8 @@ import 'package:external_path/external_path.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
+
+import 'customGallerySetting.dart';
 //This is a custom file fetch settings class for fetching files from device storage.
 class FileFetchSettings {
   List<String> allowedExtensions = [
@@ -185,5 +187,48 @@ class FileFetchSettings {
   }
 
 
+  //This Function is Responsible for the Folder Length and Type Display in the UI.
+  Widget buildFolderLengthAndType(
+      String folderName,
+      List<File> allFiles,
+      Map<String, List<File>> folders,
+      String selectedFolder,
+      ) {
+    return Builder(
+      builder: (context) {
+        int fileCount = 0;
+        String storageType = "";
+
+        if (folderName == "All files") {
+          fileCount = allFiles.length;
+        } else if (folderName.split('/').last == '0') {
+          // Internal Storage only
+          fileCount = folders.entries
+              .where((MapEntry<String, List<File>> entry) =>
+              entry.key.startsWith('/storage/emulated/0'))
+              .fold(0, (sum, entry) => sum + entry.value.length);
+          storageType = "Internal Storage";
+        } else {
+          // Regular folder
+          fileCount = folders[folderName]?.length ?? 0;
+          storageType = CustomGallerySetting().getStorageType(folderName);
+        }
+
+        String subtitleText = "$fileCount files";
+        if (storageType.isNotEmpty && folderName != "All files") {
+          subtitleText += " - $storageType";
+        }
+
+        return Text(
+          subtitleText,
+          style: TextStyle(
+            color: selectedFolder == folderName
+                ? Colors.blue.shade700
+                : Colors.black87,
+          ),
+        );
+      },
+    );
+  }
 
 }
