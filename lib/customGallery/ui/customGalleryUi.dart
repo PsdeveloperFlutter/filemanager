@@ -97,8 +97,9 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
     }
   }
 
-  String? lastSelectedFolder =
-      "All files"; // Track last selected folder globally
+  String? lastSelectedFolderPath; // Actual folder path track karega
+  String selectedFolderDisplayName = "All files"; // UI display name
+
   void showFolderSelection() {
     showModalBottomSheet(
       context: context,
@@ -107,32 +108,30 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) {
-        String? tempSelectedFolder = lastSelectedFolder;
+        // Temporary selection inside modal
+        String? tempSelectedFolderPath = lastSelectedFolderPath ?? "All files";
 
         return StatefulBuilder(
           builder: (context, setStateModal) {
             return buildFolderSelectionSheet(
               folders: folders,
-              selectedFolder: tempSelectedFolder,
+              selectedFolder: tempSelectedFolderPath,
               selectedFileType: selectedFileType,
               allFiles: allFiles,
               context: context,
               onFolderSelected: (folderPath, _) {
-                // First update modal radio UI
+                // ✅ Modal ke andar UI update karo
                 setStateModal(() {
-                  tempSelectedFolder = folderPath;
+                  tempSelectedFolderPath = folderPath;
                 });
-                // Then update parent state and filter files
+
+                // ✅ Parent state update karo aur files filter karo
                 setState(() {
-                  lastSelectedFolder = folderPath.split('/').last == '0'
-                      ? "Internal Storage"
-                      : folderPath.split('/').last.contains(
-                              RegExp(r'^[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}$'))
-                          ? "Disk"
-                          : folderPath.split('/').last;
+                  lastSelectedFolderPath = folderPath; // actual path store
+                  selectedFolderDisplayName = _getDisplayName(folderPath); // UI name
                   selectedFolder = folderPath;
+
                   files = fileSettings.getFilteredFiles(
-                    //GetFilteredFiles and Return to the Parent
                     allFiles: allFiles,
                     folderPath: folderPath,
                     fileType: selectedFileType,
@@ -145,6 +144,18 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
       },
     );
   }
+
+  /// ✅ Function to get display name from folder path
+  String _getDisplayName(String folderPath) {
+    String lastSegment = folderPath.split('/').last;
+
+    if (lastSegment == '0') return "Internal Storage";
+    if (RegExp(r'^[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}$').hasMatch(lastSegment)) {
+      return "Disk";
+    }
+    return lastSegment;
+  }
+
 
 // Row for All Files, File Type, Sort By
   Widget buildTopOptionsRow() {
@@ -159,9 +170,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                 onTap: showFolderSelection,
                 // Show Folder Selection Modal
                 child: buildImportFunctionalityOptions(
-                    lastSelectedFolder == "All files"
-                        ? "All Files"
-                        : lastSelectedFolder?.split('/').last ?? "All Files")),
+                    selectedFolderDisplayName)),
           ),
         ),
         Expanded(
@@ -411,7 +420,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                                       });
                                       setState(() {
                                         _isLoading = true;
-                                        lastSelectedFolder = "All files";
+                                        selectedFolderDisplayName="All files";
                                         selectedFileType = "File Type";
                                       });
                                       await loadFiles();
@@ -468,7 +477,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                                     setState(() {
                                       files = updatedFiles;
                                       _isLoading = true;
-                                      lastSelectedFolder = "All files";
+                                      selectedFolderDisplayName = "All files";
                                       selectedFileType = "File Type";
                                     });
                                     await loadFiles();
@@ -512,7 +521,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                     files.isEmpty
                         ? Center(
                             child: Text(
-                                "No files found in ${lastSelectedFolder?.split('/').last}"))
+                                "No files found in ${lastSelectedFolderPath?.split('/').last}"))
                         : buildFilesView(
                             //From listViewAndGridViewUi.dart
                             files: files,
