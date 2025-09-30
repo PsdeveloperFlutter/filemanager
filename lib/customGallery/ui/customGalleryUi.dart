@@ -271,7 +271,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
         backgroundColor: const Color(0xFF0A3D62),
         iconTheme: const IconThemeData(color: Colors.white),
         title: importFiles.isNotEmpty
-            ? Text("${importFiles.length} Files Selected",
+            ? Text(importFiles.length == 1 ? "1 File Selected" : "${importFiles.length} Files Selected",
                 style: GoogleFonts.poppins(color: Colors.white, fontSize: 15))
             : !_isSearching
                 ? Text(
@@ -683,30 +683,30 @@ Widget buildFolderSelectionSheet({
                       if (folderName == "All files") {
                         fileCount = allFiles.length;
                       } else if (folderName.split('/').last == '0') {
-                        // Internal Storage
-                        fileCount = folders.entries
-                            .where((entry) =>
-                                entry.key.startsWith('/storage/emulated/0'))
-                            .fold(
-                                0,
-                                (sum, entry) =>
-                                    sum + (entry.value?.length ?? 0));
+                        // Internal Storage - Count only files directly in /storage/emulated/0
+                        fileCount = folders['/storage/emulated/0']?.where((file) {
+                              // Check if the file's parent directory is exactly /storage/emulated/0
+                              return file.parent.path == '/storage/emulated/0';
+                            }).length ??
+                            0;
                         storageType = "Internal Storage";
                       } else if (folderName.split('/').last.contains(
                           RegExp(r'^[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}$'))) {
-                        // SD Card
-                        fileCount = folders.entries
-                            .where((entry) =>
-                                entry.key.contains(folderName.split('/').last))
-                            .fold(
-                                0,
-                                (sum, entry) =>
-                                    sum + (entry.value?.length ?? 0));
+                        // SD Card - Count only files directly in the SD card root
+                        final sdCardRootPath = folderName; // The folderName itself is the root path
+                        fileCount = folders[sdCardRootPath]?.where((file) {
+                              // Check if the file's parent directory is exactly the SD card root path
+                              return file.parent.path == sdCardRootPath;
+                            }).length ??
+                            0;
                         storageType = "SD Card";
                       } else {
-                        fileCount = folders[folderName]?.length ?? 0;
+                        // For other folders, count all files within that specific folder
+                        fileCount = folders[folderName]?.where((file) {
+                              return file.parent.path == folderName;
+                            }).length ?? 0;
                         storageType =
-                            CustomGallerySetting().getStorageType(folderName);
+                            CustomGallerySetting().getStorageType(folderName);  // Get storage type
                       }
 
                       String subtitleText = "$fileCount files";
@@ -735,9 +735,15 @@ Widget buildFolderSelectionSheet({
                       // For example, if it's static:
                       final filteredFiles = fileFetchSetting.getFilteredFiles(
                         allFiles: allFiles,
-                        folderPath: value,
+                        folderPath: value == "0"
+                            ? "/storage/emulated/0" // Internal storage home
+                            : RegExp(r'^[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}$')
+                                    .hasMatch(value.split('/').last)
+                                ? value // SD Card root path (filtered for SD Card home)
+                                : value, // Regular folder path
                         fileType: selectedFileType,
                       );
+
                       onFolderSelected(value, filteredFiles);
                     }
                   },

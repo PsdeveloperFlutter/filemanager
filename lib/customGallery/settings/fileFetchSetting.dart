@@ -138,8 +138,24 @@ class FileFetchSettings {
     // Folder filter
     List<File> folderFiles;
     if (folderPath == null || folderPath == "All files") {
+      // No specific folder, return all files
       folderFiles = List.from(allFiles);
+    } else if (folderPath.split('/').last == '0') {
+      // Internal Storage (Home Screen)
+      // Filter files that are directly in the root of internal storage
+      folderFiles = allFiles.where((file) {
+        final parentDir = p.dirname(file.path);
+        return parentDir == folderPath;
+      }).toList();
+    } else if (folderPath.contains(RegExp(r'^\/storage\/[A-Z0-9]{4}-[A-Z0-9]{4}$'))) {
+      // SD Card (Home Screen)
+      // Filter files that are directly in the root of the SD card
+      folderFiles = allFiles.where((file) {
+        final parentDir = p.dirname(file.path);
+        return parentDir == folderPath;
+      }).toList();
     } else {
+      // Specific folder selected
       folderFiles =
           allFiles.where((file) => file.path.contains(folderPath)).toList();
     }
