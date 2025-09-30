@@ -128,7 +128,8 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                 // ✅ Parent state update karo aur files filter karo
                 setState(() {
                   lastSelectedFolderPath = folderPath; // actual path store
-                  selectedFolderDisplayName = _getDisplayName(folderPath); // UI name
+                  selectedFolderDisplayName =
+                      _getDisplayName(folderPath); // UI name
                   selectedFolder = folderPath;
 
                   files = fileSettings.getFilteredFiles(
@@ -156,7 +157,6 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
     return lastSegment;
   }
 
-
 // Row for All Files, File Type, Sort By
   Widget buildTopOptionsRow() {
     return Row(
@@ -169,8 +169,8 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
             child: GestureDetector(
                 onTap: showFolderSelection,
                 // Show Folder Selection Modal
-                child: buildImportFunctionalityOptions(
-                    selectedFolderDisplayName)),
+                child:
+                    buildImportFunctionalityOptions(selectedFolderDisplayName)),
           ),
         ),
         Expanded(
@@ -272,7 +272,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
         iconTheme: const IconThemeData(color: Colors.white),
         title: importFiles.isNotEmpty
             ? Text("${importFiles.length} Files Selected",
-                style: GoogleFonts.poppins(color: Colors.white,fontSize: 15))
+                style: GoogleFonts.poppins(color: Colors.white, fontSize: 15))
             : !_isSearching
                 ? Text(
                     "File",
@@ -335,14 +335,24 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
         actions: _isSearching
             ? [] // Hide all icons when searching
             : [
-                IconButton(
-                  icon: const Icon(Icons.search, color: Colors.white),
-                  onPressed: () {
-                    setState(() {
-                      _isSearching = true;
-                    });
-                  },
-                ),
+                importFiles.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.done_all,
+                            color: Colors.white),
+                        onPressed: () {
+                          setState(() {
+                            importFiles = List.from(files);
+                          });
+                        },
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.search, color: Colors.white),
+                        onPressed: () {
+                          setState(() {
+                            _isSearching = true;
+                          });
+                        },
+                      ),
                 IconButton(
                   onPressed: () {
                     setState(() {
@@ -420,8 +430,9 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                                       });
                                       setState(() {
                                         _isLoading = true;
-                                        selectedFolderDisplayName="All files";
+                                        selectedFolderDisplayName = "All files";
                                         selectedFileType = "File Type";
+                                        importFiles.clear();  //This is for Resetting Import List and appbar menu Option
                                       });
                                       await loadFiles();
                                     },
@@ -479,6 +490,7 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
                                       _isLoading = true;
                                       selectedFolderDisplayName = "All files";
                                       selectedFileType = "File Type";
+                                      importFiles.clear();  //This is for Resetting Import List and appbar menu Option
                                     });
                                     await loadFiles();
                                   },
