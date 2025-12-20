@@ -1,5 +1,5 @@
 import 'dart:io';
-
+import 'package:get/get.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:external_path/external_path.dart';
 import 'package:flutter/material.dart';
@@ -7,9 +7,10 @@ import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
 
 import 'customGallerySetting.dart';
-//This is a custom file fetch settings class for fetching files from device storage.
+
 class FileFetchSettings {
-  List<String> allowedExtensions = [
+  // ✅ Make allowedExtensions reactive
+  RxList<String> allowedExtensions = [
     "pdf",
     "doc",
     "docx",
@@ -18,9 +19,12 @@ class FileFetchSettings {
     "ppt",
     "pptx",
     "odt"
-  ];
+  ].obs;
 
-// ✅ Recursive file fetching for all Android versions
+  // ✅ Make restricted folders reactive
+  RxList<String> restrictedFolders = ['Android', 'data', 'obb'].obs;
+
+  // ✅ Recursive file fetching with GetX
   Future<List<File>> getFilesFromDirectory(
       Directory dir, {
         Set<String>? visited,
@@ -28,9 +32,7 @@ class FileFetchSettings {
       }) async {
     visited ??= <String>{};
     final List<File> files = [];
-    final List<String> restrictedFolders = ['Android', 'data', 'obb'];
 
-    // avoid infinite loops / repeated directories
     if (visited.contains(dir.path)) return files;
     visited.add(dir.path);
 
@@ -38,10 +40,7 @@ class FileFetchSettings {
       await for (final entity in dir.list(followLinks: false)) {
         final String entityName = p.basename(entity.path);
 
-        // Skip dot (hidden) files/folders unless user asked to show hidden
-        if (!showHiddenFiles && entityName.startsWith('.')) {
-          continue;
-        }
+        if (!showHiddenFiles && entityName.startsWith('.')) continue;
 
         if (entity is File) {
           final String ext =
@@ -52,12 +51,11 @@ class FileFetchSettings {
         } else if (entity is Directory) {
           final String folderName = p.basename(entity.path);
 
-          // skip restricted folders (case-insensitive)
-          if (restrictedFolders.any((r) => r.toLowerCase() == folderName.toLowerCase())) {
+          if (restrictedFolders
+              .any((r) => r.toLowerCase() == folderName.toLowerCase())) {
             continue;
           }
 
-          // recurse — IMPORTANT: pass showHiddenFiles and visited along
           try {
             final childFiles = await getFilesFromDirectory(
               entity,
@@ -65,55 +63,50 @@ class FileFetchSettings {
               showHiddenFiles: showHiddenFiles,
             );
             files.addAll(childFiles);
-          } catch (_) {
-            // ignore errors from subfolders (e.g., permission denied)
-          }
+          } catch (_) {}
         }
       }
     } catch (e) {
-      // ignore permission denied / other IO errors for this dir
       debugPrint("Error accessing ${dir.path}: $e");
     }
 
     return files;
   }
 
-  /// ✅ Get folders with files safely
-  Future<Map<String, List<String>>> getFoldersWithFiles(String rootPath) async {
-    Map<String, List<String>> folders = {};
+  // ✅ Get folders with files reactively
+  Future<RxMap<String, List<String>>> getFoldersWithFiles(String rootPath) async {
+    RxMap<String, List<String>> folders = <String, List<String>>{}.obs;
     Directory rootDir = Directory(rootPath);
 
     List<File> files = await getFilesFromDirectory(rootDir);
 
     for (var file in files) {
       String folderPath = p.dirname(file.path);
-      folders.putIfAbsent(folderPath, () => []).add(file.path);
+      if (!folders.containsKey(folderPath)) {
+        folders[folderPath] = [];
+      }
+      folders[folderPath]!.add(file.path);
     }
+
     return folders;
   }
 
-//✔ This is the Function Responsible for Checking if the SD Card is in User Device or not.
-
-  Future<void> checkSdCard(
-      Function setState, Function(String) onSdCardFound) async {
+  // ✅ SD Card detection using reactive updates
+  Future<void> checkSdCard(RxnString sdCardPath, RxBool hasSdCard) async {
     try {
       List<String>? storagePaths =
-          await ExternalPath.getExternalStorageDirectories();
+      await ExternalPath.getExternalStorageDirectories();
 
-      // कम से कम 2 paths चाहिए → Internal + SD Card
       if (storagePaths != null && storagePaths.length > 1) {
-        String sdCardPath = storagePaths[1]; // SD Card path
+        String path = storagePaths[1];
+        Directory sdRoot = Directory(path);
 
-        Directory sdRoot = Directory(sdCardPath);
         if (await sdRoot.exists()) {
-          // SD Card के अंदर कम से कम 1 फाइल या फोल्डर होना चाहिए
           List<FileSystemEntity> sdFiles = sdRoot.listSync(followLinks: false);
-
           if (sdFiles.isNotEmpty) {
-            debugPrint("✅ SD Card Found: $sdCardPath");
-            setState(() {
-              onSdCardFound(sdCardPath); // SD Card path पास करो
-            });
+            debugPrint("✅ SD Card Found: $path");
+            sdCardPath.value = path;
+            hasSdCard.value = true;
           } else {
             debugPrint("⚠️ SD Card Empty है");
           }
@@ -128,42 +121,31 @@ class FileFetchSettings {
     }
   }
 
-  // ✅ Get Filtered Files based on folder and file type
-
+  // ✅ Get filtered files
   List<File> getFilteredFiles({
     required List<File> allFiles,
     required String? folderPath,
     required String? fileType,
   }) {
-    // Folder filter
     List<File> folderFiles;
+
     if (folderPath == null || folderPath == "All files") {
-      // No specific folder, return all files
       folderFiles = List.from(allFiles);
     } else if (folderPath.split('/').last == '0') {
-      // Internal Storage (Home Screen)
-      // Filter files that are directly in the root of internal storage
-      folderFiles = allFiles.where((file) {
-        final parentDir = p.dirname(file.path);
-        return parentDir == folderPath;
-      }).toList();
-    } else if (folderPath.contains(RegExp(r'^\/storage\/[A-Z0-9]{4}-[A-Z0-9]{4}$'))) {
-      // SD Card (Home Screen)
-      // Filter files that are directly in the root of the SD card
-      folderFiles = allFiles.where((file) {
-        final parentDir = p.dirname(file.path);
-        return parentDir == folderPath;
-      }).toList();
+      folderFiles = allFiles
+          .where((file) => p.dirname(file.path) == folderPath)
+          .toList();
+    } else if (folderPath
+        .contains(RegExp(r'^\/storage\/[A-Z0-9]{4}-[A-Z0-9]{4}$'))) {
+      folderFiles = allFiles
+          .where((file) => p.dirname(file.path) == folderPath)
+          .toList();
     } else {
-      // Specific folder selected
       folderFiles =
           allFiles.where((file) => file.path.contains(folderPath)).toList();
     }
 
-    // File type filter
-    if (fileType == null ||
-        fileType == "File Type" ||
-        fileType == "All Files") {
+    if (fileType == null || fileType == "File Type" || fileType == "All Files") {
       return folderFiles;
     } else {
       return folderFiles.where((file) {
@@ -188,63 +170,54 @@ class FileFetchSettings {
     }
   }
 
-  //Only Check Status of Permission
+  // ✅ Storage permission
   Future<bool> isStoragePermissionGranted() async {
     DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
     AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
     int sdkInt = androidInfo.version.sdkInt;
     if (sdkInt >= 30) {
-      // ✅ Android 11+
       return await Permission.manageExternalStorage.isGranted;
     } else {
-      // ✅ Android 10 & below
       return await Permission.storage.isGranted;
     }
   }
 
-
-  //This Function is Responsible for the Folder Length and Type Display in the UI.
+  // ✅ Folder length and type UI with Obx
   Widget buildFolderLengthAndType(
       String folderName,
-      List<File> allFiles,
-      Map<String, List<File>> folders,
+      RxList<File> allFiles,
+      RxMap<String, List<File>> folders,
       String selectedFolder,
       ) {
-    return Builder(
-      builder: (context) {
-        int fileCount = 0;
-        String storageType = "";
+    return Obx(() {
+      int fileCount = 0;
+      String storageType = "";
 
-        if (folderName == "All files") {
-          fileCount = allFiles.length;
-        } else if (folderName.split('/').last == '0') {
-          // Internal Storage only
-          fileCount = folders.entries
-              .where((MapEntry<String, List<File>> entry) =>
-              entry.key.startsWith('/storage/emulated/0'))
-              .fold(0, (sum, entry) => sum + entry.value.length);
-          storageType = "Internal Storage";
-        } else {
-          // Regular folder
-          fileCount = folders[folderName]?.length ?? 0;
-          storageType = CustomGallerySetting().getStorageType(folderName);
-        }
+      if (folderName == "All files") {
+        fileCount = allFiles.length;
+      } else if (folderName.split('/').last == '0') {
+        fileCount = folders.entries
+            .where((entry) => entry.key.startsWith('/storage/emulated/0'))
+            .fold(0, (sum, entry) => sum + entry.value.length);
+        storageType = "Internal Storage";
+      } else {
+        fileCount = folders[folderName]?.length ?? 0;
+        storageType = CustomGallerySetting().getStorageType(folderName);
+      }
 
-        String subtitleText = "$fileCount files";
-        if (storageType.isNotEmpty && folderName != "All files") {
-          subtitleText += " - $storageType";
-        }
+      String subtitleText = "$fileCount files";
+      if (storageType.isNotEmpty && folderName != "All files") {
+        subtitleText += " - $storageType";
+      }
 
-        return Text(
-          subtitleText,
-          style: TextStyle(
-            color: selectedFolder == folderName
-                ? Colors.blue.shade700
-                : Colors.black87,
-          ),
-        );
-      },
-    );
+      return Text(
+        subtitleText,
+        style: TextStyle(
+          color: selectedFolder == folderName
+              ? Colors.blue.shade700
+              : Colors.black87,
+        ),
+      );
+    });
   }
-
 }

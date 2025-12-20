@@ -4,7 +4,7 @@ import 'package:filemanager/FileManagement/uiComponents/uiUtility.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-void main() {
+u() {
   runApp(MaterialApp(debugShowCheckedModeBanner: false, home: applock()));
 }
 

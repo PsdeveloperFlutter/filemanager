@@ -5,6 +5,7 @@ import 'package:filemanager/customGallery/settings/customGallerySetting.dart';
 import 'package:filemanager/customGallery/settings/fileFetchSetting.dart';
 import 'package:filemanager/customGallery/ui/customGalleryUiHelper.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'listViewAndGridViewUi.dart';
@@ -18,135 +19,98 @@ class CustomGalleryApp extends StatefulWidget {
 
 class _CustomGalleryAppState extends State<CustomGalleryApp> {
   // ✅ Folder List
-  List<File> files = []; // All Files
-  List<File> allFiles = []; // All Files
-  Map<String, List<File>> folders = {}; // Folders with Files
-  String? selectedFolder =
-      "All files"; // Currently Selected Folder, default to "All files"
-  String selectedFileType = "File Type"; // Currently Selected File Type
-  bool _isLoading = true; // Added for loading state
-  bool isGridView = false; // Toggle between List and Grid View
-  bool _showHiddenFiles = false; // Added to control visibility of hidden files
-  // ✅ Files user clicked on → shown at the bottom horizontal list
-  List<File> importFiles = [];
-  bool _isSearching = false;
-  bool showSdCardFiles = false;
-  bool hasSdCard = false; // SD Card present है या नहीं
-  String? sdCardPath;
+  RxList<File> files = <File>[].obs; // Currently visible files
+  RxList<File> allFiles = <File>[].obs; // Master all files
+  final RxMap<String, List<File>> folders = <String, List<File>>{}.obs;
+  final RxnString selectedFolder = RxnString("All files");
+  final RxString selectedFileType = "File Type".obs;
+  RxBool _isLoading = true.obs;
+  RxBool isGridView = false.obs;
+  RxBool _showHiddenFiles = false.obs;
+
+  // Make importFiles reactive so UI updates automatically
+  RxList<File> importFiles = <File>[].obs;
+
+  RxBool _isSearching = false.obs;
+  RxBool showSdCardFiles = false.obs;
+  RxBool hasSdCard = false.obs;
+  RxnString sdCardPath = RxnString(null);
   TextEditingController searchController = TextEditingController();
 
   // Settings Instance
   final CustomGallerySetting settings = CustomGallerySetting();
   final FileFetchSettings fileSettings = FileFetchSettings();
 
-  // ✅ ScrollController for horizontal scrolling
+  // ScrollController for horizontal import list
   final ScrollController _scrollController = ScrollController();
+
+  // For tracking last selected folder path and display name (non-reactive display name kept reactive via obs where needed)
+  String? lastSelectedFolderPath;
+  RxString selectedFolderDisplayName = "All files".obs;
 
   @override
   void initState() {
     super.initState();
+
+    // Load files initially
     loadFiles();
-    fileSettings.checkSdCard(setState, (path) {
-      sdCardPath = path;
-      hasSdCard = true; // अब UI में SD Card Option दिखेगा
-    });
+
+    // Replace passing setState with a no-op and update Rx values in callback
+    // (Assuming checkSdCard signature accepts a function and callback)
+    // Check SD Card reactively
+    fileSettings.checkSdCard(sdCardPath, hasSdCard);
   }
 
-  /// Fetches files from external storage directories.
-  /// It requests storage permission, then iterates through available storage paths.
-  /// For each path, it retrieves files and folders, updating the `allFiles` and `folders` state variables.
-
-  // Load Files and Folders
+  /// Load files from available external paths
   Future<void> loadFiles() async {
     bool granted = await settings.requestStoragePermission();
-    if (granted) {
-      List<String>? storagePaths =
-          await ExternalPath.getExternalStorageDirectories();
-      allFiles = [];
-      folders = {};
+    if (!granted || !mounted) return;
 
-      for (int i = 0; i < storagePaths!.length; i++) {
-        String path = storagePaths[i];
+    List<String>? storagePaths =
+        await ExternalPath.getExternalStorageDirectories();
+    allFiles.clear();
+    folders.clear();
 
-        // Internal हमेशा 0th index, SD Card 1st index
-        if (i == 1 && !showSdCardFiles) {
-          continue; // SD Card अनचेक है तो Skip करो
-        }
+    if (storagePaths == null) {
+      _isLoading.value = false;
+      return;
+    }
 
-        Directory root = Directory(path);
-        List<File> storageFiles = await fileSettings.getFilesFromDirectory(
-          root,
-          showHiddenFiles: _showHiddenFiles,
-        );
-        allFiles.addAll(storageFiles);
+    for (int i = 0; i < storagePaths.length; i++) {
+      String path = storagePaths[i];
 
-        Map<String, List<String>> foldersString =
-            await fileSettings.getFoldersWithFiles(root.path);
-        folders.addAll(foldersString.map((folderPath, filePaths) {
-          List<File> fileObject = filePaths.map((e) => File(e)).toList();
-          return MapEntry(folderPath, fileObject);
-        }));
+      // Skip SD card if user has unchecked it
+      if (i == 1 && !showSdCardFiles.value) {
+        continue;
       }
 
-      files = List.from(allFiles);
-      selectedFolder = "All files";
-      await Future.delayed(const Duration(seconds: 1));
-      setState(() {
-        _isLoading = false;
-      });
+      Directory root = Directory(path);
+      List<File> storageFiles = await fileSettings.getFilesFromDirectory(
+        root,
+        showHiddenFiles: _showHiddenFiles.value,
+      );
+
+      allFiles.addAll(storageFiles);
+
+      Map<String, List<String>> foldersString =
+          await fileSettings.getFoldersWithFiles(root.path);
+      folders.addAll(foldersString.map((folderPath, filePaths) {
+        List<File> fileObject = filePaths.map((e) => File(e)).toList();
+        return MapEntry(folderPath, fileObject);
+      }));
     }
+
+    // Default to all files
+    files.assignAll(allFiles);
+    selectedFolder.value = "All files";
+    lastSelectedFolderPath = null;
+    selectedFolderDisplayName.value = "All files";
+    // Small delay to allow any UI transitions like loader; keep if desired
+    await Future.delayed(const Duration(milliseconds: 300));
+    _isLoading.value = false;
   }
 
-  String? lastSelectedFolderPath; // Actual folder path track karega
-  String selectedFolderDisplayName = "All files"; // UI display name
-
-  void showFolderSelection() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        // Temporary selection inside modal
-        String? tempSelectedFolderPath = lastSelectedFolderPath ?? "All files";
-
-        return StatefulBuilder(
-          builder: (context, setStateModal) {
-            return buildFolderSelectionSheet(
-              folders: folders,
-              selectedFolder: tempSelectedFolderPath,
-              selectedFileType: selectedFileType,
-              allFiles: allFiles,
-              context: context,
-              onFolderSelected: (folderPath, _) {
-                // ✅ Modal ke andar UI update karo
-                setStateModal(() {
-                  tempSelectedFolderPath = folderPath;
-                });
-
-                // ✅ Parent state update karo aur files filter karo
-                setState(() {
-                  lastSelectedFolderPath = folderPath; // actual path store
-                  selectedFolderDisplayName =
-                      _getDisplayName(folderPath); // UI name
-                  selectedFolder = folderPath;
-
-                  files = fileSettings.getFilteredFiles(
-                    allFiles: allFiles,
-                    folderPath: folderPath,
-                    fileType: selectedFileType,
-                  );
-                });
-              },
-            );
-          },
-        );
-      },
-    );
-  }
-
-  /// ✅ Function to get display name from folder path
+  /// Convert folder path to friendly display name
   String _getDisplayName(String folderPath) {
     String lastSegment = folderPath.split('/').last;
 
@@ -157,7 +121,57 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
     return lastSegment;
   }
 
-// Row for All Files, File Type, Sort By
+  /// Show folder selection bottom sheet. We keep StatefulBuilder inside the sheet for modal-local interactions.
+  void showFolderSelection() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        // Temporary selection inside modal
+        RxnString tempSelectedFolderPath = RxnString(lastSelectedFolderPath);
+
+        return StatefulBuilder(
+          builder: (context, setStateModal) {
+            return buildFolderSelectionSheet(
+              folders: folders,
+              // RxMap is compatible; buildSheet reads its keys
+              selectedFolder:
+                  tempSelectedFolderPath.value ?? selectedFolder.value,
+              selectedFileType: selectedFileType.value,
+              allFiles: allFiles.toList(),
+              context: context,
+              onFolderSelected: (folderPath, filteredFiles) {
+                // Update temporary modal selection UI
+                setStateModal(() {
+                  tempSelectedFolderPath.value = folderPath;
+                });
+
+                // Update parent reactive state (no setState)
+                lastSelectedFolderPath =
+                    folderPath == "All files" ? null : folderPath;
+                selectedFolderDisplayName.value = folderPath == "All files"
+                    ? "All files"
+                    : _getDisplayName(folderPath ?? 'All files');
+                selectedFolder.value = folderPath;
+
+                // Update visible files according to selected folder and currently selectedFileType
+                files.assignAll(fileSettings.getFilteredFiles(
+                  allFiles: allFiles,
+                  folderPath: folderPath ?? "All files",
+                  fileType: selectedFileType.value,
+                ));
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Top options row: wrapped in Obx implicitly by top-level Obx in build
   Widget buildTopOptionsRow() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -168,9 +182,8 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
             child: GestureDetector(
                 onTap: showFolderSelection,
-                // Show Folder Selection Modal
-                child:
-                    buildImportFunctionalityOptions(selectedFolderDisplayName)),
+                child: Obx(() => buildImportFunctionalityOptions(
+                    selectedFolderDisplayName.value))),
           ),
         ),
         Expanded(
@@ -179,68 +192,59 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
             child: GestureDetector(
               onTap: () {
-                // ✅ अगर selectedFileType null या empty है, तो default "All Files" set करो
-                if (selectedFileType == null ||
-                    selectedFileType!.isEmpty ||
-                    selectedFileType == "File Type") {
-                  selectedFileType = "All Files";
+                // Ensure selectedFileType has a valid fallback
+                if (selectedFileType.value.isEmpty ||
+                    selectedFileType.value == "File Type") {
+                  selectedFileType.value = "All Files";
                 }
 
-                if (selectedFolder != null && selectedFolder != "All files") {
+                // Use settings.showFileTypeBottomSheet (unchanged) — adapt callbacks to update Rx vars
+                if (selectedFolder.value != null &&
+                    selectedFolder.value != "All files") {
                   settings.showFileTypeBottomSheet(
                     context,
-                    allFiles, // हमेशा allFiles का use करो
-                    selectedFolder,
+                    allFiles.toList(),
+                    selectedFolder.value,
                     (filteredFiles, selectedType) {
-                      setState(() {
-                        files = fileSettings.getFilteredFiles(
-                          allFiles: allFiles,
-                          folderPath: selectedFolder,
-                          fileType: selectedType,
-                        );
-                        selectedFileType =
-                            selectedType == null || selectedType.isEmpty
-                                ? "All Files"
-                                : selectedType; // UI update
-                      });
+                      files.assignAll(fileSettings.getFilteredFiles(
+                        allFiles: allFiles,
+                        folderPath: selectedFolder.value!,
+                        fileType: selectedType,
+                      ));
+                      selectedFileType.value =
+                          (selectedType == null || selectedType.isEmpty)
+                              ? "All Files"
+                              : selectedType;
                     },
-                    selectedFileType, // ✅ अब हमेशा valid value pass होगी
+                    selectedFileType.value,
                     (newType) {
-                      setState(() {
-                        selectedFileType = newType ?? "All Files";
-                        files = fileSettings.getFilteredFiles(
-                          allFiles: allFiles,
-                          folderPath: selectedFolder,
-                          fileType: selectedFileType,
-                        );
-                      });
+                      selectedFileType.value = newType ?? "All Files";
+                      files.assignAll(fileSettings.getFilteredFiles(
+                        allFiles: allFiles,
+                        folderPath: selectedFolder.value,
+                        fileType: selectedFileType.value,
+                      ));
                     },
                   );
                 } else {
-                  // All files selected
+                  // All files
                   settings.showFileTypeBottomSheet(
                     context,
-                    allFiles,
-                    selectedFolder,
+                    allFiles.toList(),
+                    selectedFolder.value,
                     (filteredFiles, selectedType) {
-                      setState(() {
-                        files = filteredFiles;
-                        selectedFileType = selectedType ??
-                            "All Files"; // ✅ Always All Files as default
-                      });
+                      files.assignAll(filteredFiles);
+                      selectedFileType.value = selectedType ?? "All Files";
                     },
-                    selectedFileType, // ✅ अब हमेशा valid value pass होगी
+                    selectedFileType.value,
                     (newType) {
-                      setState(() {
-                        selectedFileType = newType ?? "All Files";
-                      });
+                      selectedFileType.value = newType ?? "All Files";
                     },
                   );
                 }
               },
-
-              // Show File Type Selection Modal
-              child: buildImportFunctionalityOptions(selectedFileType),
+              child: Obx(() =>
+                  buildImportFunctionalityOptions(selectedFileType.value)),
             ),
           ),
         ),
@@ -249,14 +253,10 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
             child: GestureDetector(
-                onTap: () =>
-                    //Show Sort Options Modal Bottom Sheet
-                    showSortOptionsBottomSheet(context, files, (sortedFiles) {
-                      setState(() {
-                        files = sortedFiles;
-                      });
+                onTap: () => showSortOptionsBottomSheet(context, files.toList(),
+                        (sortedFiles) {
+                      files.assignAll(sortedFiles);
                     }),
-                // Show Sort Options Modal
                 child: buildImportFunctionalityOptions("Sort By")),
           ),
         ),
@@ -266,320 +266,306 @@ class _CustomGalleryAppState extends State<CustomGalleryApp> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0A3D62),
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: importFiles.isNotEmpty
-            ? Text(importFiles.length == 1 ? "1 File Selected" : "${importFiles.length} Files Selected",
-                style: GoogleFonts.poppins(color: Colors.white, fontSize: 15))
-            : !_isSearching
-                ? Text(
-                    "File",
-                    style: GoogleFonts.poppins(color: Colors.white),
-                  ) //TextField for searching
-                : TextField(
-                    controller: searchController,
-                    autofocus: true,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: "Search files...",
-                      hintStyle:
-                          TextStyle(color: Colors.white.withOpacity(0.7)),
-                      border: InputBorder.none,
-                    ),
-                    onChanged: (query) {
-                      setState(() {
+    // Wrap entire scaffold inside Obx so reactive reads rebuild automatically
+    return Obx(() {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF0A3D62),
+          iconTheme: const IconThemeData(color: Colors.white),
+          title: importFiles.isNotEmpty
+              ? Text(
+                  importFiles.length == 1
+                      ? "1 File Selected"
+                      : "${importFiles.length} Files Selected",
+                  style: GoogleFonts.poppins(color: Colors.white, fontSize: 15),
+                )
+              : !_isSearching.value
+                  ? Text("File",
+                      style: GoogleFonts.poppins(color: Colors.white))
+                  : TextField(
+                      controller: searchController,
+                      autofocus: true,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: "Search files...",
+                        hintStyle:
+                            TextStyle(color: Colors.white.withOpacity(0.7)),
+                        border: InputBorder.none,
+                      ),
+                      onChanged: (query) {
                         if (query.isEmpty) {
-                          files = List.from(allFiles);
+                          files.assignAll(allFiles);
                         } else {
-                          files = allFiles
-                              .where((file) => file.path
-                                  .split('/')
-                                  .last
-                                  .toLowerCase()
-                                  .contains(query.trim().toLowerCase()))
-                              .toList();
+                          final q = query.trim().toLowerCase();
+                          files.assignAll(allFiles.where((file) => file.path
+                              .split('/')
+                              .last
+                              .toLowerCase()
+                              .contains(q)));
                         }
-                      });
-                    },
-                  ),
-        leading: importFiles.isNotEmpty
-            ? IconButton(
-                icon: const Icon(Icons.close_rounded, color: Colors.white),
-                onPressed: () {
-                  setState(() {
-                    importFiles.clear();
-                  });
-                })
-            : _isSearching
-                ? IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () {
-                      setState(() {
-                        _isSearching = false;
-                        searchController.clear();
-                        // TODO: Reset file list if needed
-                        files = List.from(allFiles);
-                      });
-                    },
-                  )
-                : (selectedFolder == null
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                      )),
-        actions: _isSearching
-            ? [] // Hide all icons when searching
-            : [
-                importFiles.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.done_all,
-                            color: Colors.white),
-                        onPressed: () {
-                          setState(() {
-                            importFiles = List.from(files);
-                          });
-                        },
-                      )
-                    : IconButton(
-                        icon: const Icon(Icons.search, color: Colors.white),
-                        onPressed: () {
-                          setState(() {
-                            _isSearching = true;
-                          });
-                        },
-                      ),
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      isGridView = !isGridView;
-                    });
-                  },
-                  icon: Icon(isGridView ? Icons.list : Icons.grid_view,
-                      color: Colors.white),
-                ),
-                PopupMenuButton<String>(
-                  borderRadius: BorderRadius.circular(0),
-                  icon: const Icon(Icons.more_vert, color: Colors.white),
-                  onSelected: (String result) {
-                    if (result == 'pickFiles') {
-                      settings.pickFilesFromSystemWithAutoFolder(
-                          setState, files, context);
-                    }
-                  },
-                  offset: const Offset(0, 40),
-                  color: Colors.white,
-                  itemBuilder: (BuildContext context) =>
-                      <PopupMenuEntry<String>>[
-                    // ✅ Open system files item
-                    PopupMenuItem<String>(
-                      height: 25,
-                      value: 'pickFiles',
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.folder, color: Colors.black),
-                            Text(
-                              'Open System Files',
-                              style: GoogleFonts.poppins(color: Colors.black),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
+                      },
                     ),
-                    if (hasSdCard) // SD Card है तो ही ये option दिखाओ
-                      // ✅ Show SD card files option
-                      PopupMenuItem<String>(
-                        height: 25,
-                        value: 'toggleSdCardFiles',
-                        child: StatefulBuilder(
-                          builder: (context, setStatePopup) {
-                            return Padding(
-                              padding:
-                                  const EdgeInsets.only(right: 8.0, top: 4.0),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Checkbox(
-                                    materialTapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                    visualDensity: VisualDensity.compact,
-                                    fillColor:
-                                        MaterialStateProperty.resolveWith(
-                                            (states) {
+          leading: importFiles.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.close_rounded, color: Colors.white),
+                  onPressed: () {
+                    importFiles.clear();
+                  })
+              : _isSearching.value
+                  ? IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () {
+                        _isSearching.value = false;
+                        searchController.clear();
+                        files.assignAll(allFiles);
+                      },
+                    )
+                  : (selectedFolder == null
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                        )),
+          actions: _isSearching.value
+              ? []
+              : [
+                  importFiles.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.done_all, color: Colors.white),
+                          onPressed: () {
+                            // Select all visible files into importFiles
+                            importFiles.assignAll(files);
+                          },
+                        )
+                      : IconButton(
+                          icon: const Icon(Icons.search, color: Colors.white),
+                          onPressed: () {
+                            _isSearching.value = true;
+                          },
+                        ),
+                  IconButton(
+                    onPressed: () {
+                      isGridView.value = !isGridView.value;
+                    },
+                    icon: Icon(isGridView.value ? Icons.list : Icons.grid_view,
+                        color: Colors.white),
+                  ),
+            PopupMenuButton<String>(
+              borderRadius: BorderRadius.circular(0),
+              icon: const Icon(Icons.more_vert, color: Colors.white),
+              onSelected: (String result) {
+                if (result == 'pickFiles') {
+                  settings.pickFilesFromSystemWithAutoFolder(
+                      setState, files, context);
+                }
+              },
+              offset: const Offset(0, 40),
+              color: Colors.white,
+              itemBuilder: (BuildContext context) =>
+              <PopupMenuEntry<String>>[
+                // ✅ Open system files item
+                PopupMenuItem<String>(
+                  height: 25,
+                  value: 'pickFiles',
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.folder, color: Colors.black),
+                        Text(
+                          'Open System Files',
+                          style: GoogleFonts.poppins(color: Colors.black),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (hasSdCard.value) // SD Card है तो ही ये option दिखाओ
+                // ✅ Show SD card files option
+                  PopupMenuItem<String>(
+                    height: 25,
+                    value: 'toggleSdCardFiles',
+                    child: StatefulBuilder(
+                      builder: (context, setStatePopup) {
+                        return Padding(
+                          padding:
+                          const EdgeInsets.only(right: 8.0, top: 4.0),
+                          child: Row(
+                            mainAxisAlignment:
+                            MainAxisAlignment.spaceEvenly,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Checkbox(
+                                materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                                fillColor:
+                                MaterialStateProperty.resolveWith(
+                                        (states) {
                                       if (states
                                           .contains(WidgetState.selected)) {
                                         return Colors.blue.shade700;
                                       }
                                       return Colors.white;
                                     }),
-                                    value: showSdCardFiles,
-                                    onChanged: (bool? value) async {
-                                      setStatePopup(() {
-                                        showSdCardFiles = value ?? false;
-                                      });
-                                      setState(() {
-                                        _isLoading = true;
-                                        selectedFolderDisplayName = "All files";
-                                        selectedFileType = "File Type";
-                                        importFiles.clear();  //This is for Resetting Import List and appbar menu Option
-                                      });
-                                      await loadFiles();
-                                    },
-                                    activeColor: Colors.blue,
-                                    checkColor: Colors.white,
-                                  ),
-                                  Text(
-                                    "Show SD Card Files",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.black),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
+                                value: showSdCardFiles.value,
+                                onChanged: (bool? value) async {
+                                  setStatePopup(() {
+                                    showSdCardFiles.value = value ?? false;
+                                  });
+                                  setState(() {
+                                    _isLoading.value = true;
+                                    selectedFolderDisplayName.value = "All files";
+                                    selectedFileType.value = "File Type";
+                                    importFiles.clear();  //This is for Resetting Import List and appbar menu Option
+                                  });
+                                  await loadFiles();
+                                },
+                                activeColor: Colors.blue,
+                                checkColor: Colors.white,
                               ),
-                            );
-                          },
-                        ),
-                      ),
+                              Text(
+                                "Show SD Card Files",
+                                style: GoogleFonts.poppins(
+                                    color: Colors.black),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
 
-                    // ✅ Show hidden files option
-                    PopupMenuItem<String>(
-                      height: 25,
-                      value: 'toggleHiddenFiles',
-                      child: StatefulBuilder(
-                        builder: (context, setStatePopup) {
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Checkbox(
-                                  materialTapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                  visualDensity: VisualDensity.compact,
-                                  fillColor: MaterialStateProperty.resolveWith(
+                // ✅ Show hidden files option
+                PopupMenuItem<String>(
+                  height: 25,
+                  value: 'toggleHiddenFiles',
+                  child: StatefulBuilder(
+                    builder: (context, setStatePopup) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Checkbox(
+                              materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                              fillColor: MaterialStateProperty.resolveWith(
                                       (states) {
                                     if (states.contains(WidgetState.selected)) {
                                       return Colors.blue.shade700;
                                     }
                                     return Colors.white;
                                   }),
-                                  value: _showHiddenFiles,
-                                  onChanged: (bool? value) async {
-                                    setStatePopup(() {
-                                      _showHiddenFiles = value ?? false;
-                                    });
-                                    List<File> updatedFiles = await fileSettings
-                                        .getFilesFromDirectory(
-                                      Directory('/storage/emulated/0/'),
-                                      showHiddenFiles: _showHiddenFiles,
-                                    );
-                                    setState(() {
-                                      files = updatedFiles;
-                                      _isLoading = true;
-                                      selectedFolderDisplayName = "All files";
-                                      selectedFileType = "File Type";
-                                      importFiles.clear();  //This is for Resetting Import List and appbar menu Option
-                                    });
-                                    await loadFiles();
-                                  },
-                                  activeColor: Colors.blue,
-                                  checkColor: Colors.white,
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 8.0),
-                                  child: Text(
-                                    "Show Hidden Files",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.black),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
+                              value: _showHiddenFiles.value,
+                              onChanged: (bool? value) async {
+                                setStatePopup(() {
+                                  _showHiddenFiles.value = value ?? false;
+                                });
+                                List<File> updatedFiles = await fileSettings
+                                    .getFilesFromDirectory(
+                                  Directory('/storage/emulated/0/'),
+                                  showHiddenFiles: _showHiddenFiles.value,
+                                );
+                                setState(() {
+                                  files.value = updatedFiles;
+                                  _isLoading.value = true;
+                                  selectedFolderDisplayName.value = "All files";
+                                  selectedFileType.value = "File Type";
+                                  importFiles.clear();  //This is for Resetting Import List and appbar menu Option
+                                });
+                                await loadFiles();
+                              },
+                              activeColor: Colors.blue,
+                              checkColor: Colors.white,
                             ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                )
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: Text(
+                                "Show Hidden Files",
+                                style: GoogleFonts.poppins(
+                                    color: Colors.black),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ],
-      ),
-      body: Column(
-        children: [
-          buildTopOptionsRow(), // Add the top options row here
-          Expanded(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // ✅ Main File List with Padding for the Bottom Import List
-                _isLoading // Check if loading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                        color: Color(0xFF0A3D62),
-                      ))
-                    : // Show progress indicator with appbar color
-                    files.isEmpty
-                        ? Center(
-                            child: Text(
-                                "No files found in ${lastSelectedFolderPath?.split('/').last}"))
-                        : buildFilesView(
-                            //From listViewAndGridViewUi.dart
-                            files: files,
+            )
+                ],
+        ),
+        body: Column(
+          children: [
+            buildTopOptionsRow(),
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _isLoading.value
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                          color: Color(0xFF0A3D62),
+                        ))
+                      : (files.isEmpty
+                          ? Center(
+                              child: Text("No files found in ${selectedFolderDisplayName.value}"))
+                          : buildFilesView(
+                              files: files,
+                              importFiles: importFiles,
+                              isGridView: isGridView,
+                              toggleFileSelection: (File file) {
+                                // pass a no-op instead of setState to settings function
+                                settings.toggleFileSelection(file, importFiles,
+                                    (_) {}, _scrollController);
+                              },
+                              settings: settings,
+                            )),
+                  // Import list bottom
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 3, horizontal: 8),
+                      child: Obx(() => importListSection(
+                            context,
                             importFiles: importFiles,
-                            isGridView: isGridView,
-                            // Change to true for GridView
                             toggleFileSelection: (File file) =>
                                 settings.toggleFileSelection(file, importFiles,
-                                    setState, _scrollController),
+                                    (_) {}, _scrollController),
+                            importSelectedFiles: () =>
+                                settings.importSelectedFiles(
+                                    context, importFiles, (_) {}),
+                            scrollController: _scrollController,
                             settings: settings,
-                          ),
-                // ✅ Import List Bottom
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                      color: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 3, horizontal: 8),
-                      //Import List Section Function
-                      child: importListSection(
-                        // ✅ Pass required arguments
-                        context,
-                        importFiles: importFiles,
-                        toggleFileSelection: (File file) =>
-                            settings.toggleFileSelection(
-                                file, importFiles, setState, _scrollController),
-                        importSelectedFiles: () => settings.importSelectedFiles(
-                            context, importFiles, setState),
-                        scrollController: _scrollController,
-                        settings: settings,
-                      )),
-                )
-              ],
+                          )),
+                    ),
+                  )
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
+    });
   }
 }
 
-// Show Folder Selection Modal
-// Show Folder Selection Modal
 // FOLDER SELECTION BOTTOM SHEET WIDGET
-
 Widget buildFolderSelectionSheet({
   required Map<String, List<File>> folders,
   required String? selectedFolder,
@@ -589,8 +575,7 @@ Widget buildFolderSelectionSheet({
   required void Function(String folderPath, List<File> filteredFiles)
       onFolderSelected,
 }) {
-  final FileFetchSettings fileFetchSetting =
-      FileFetchSettings(); // Create an instance
+  final FileFetchSettings fileFetchSetting = FileFetchSettings();
   List<String> folderNames = folders.keys.toList();
   folderNames.insert(0, "All files"); // Default option on top
 
@@ -614,24 +599,21 @@ Widget buildFolderSelectionSheet({
                   border: Border.all(color: Colors.grey.shade300, width: 1),
                   borderRadius: BorderRadius.circular(100),
                 ),
-                padding: EdgeInsets.all(7),
-                child: Icon(Icons.folder, size: 23, color: Colors.black),
+                padding: const EdgeInsets.all(7),
+                child: const Icon(Icons.folder, size: 23, color: Colors.black),
               ),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("Select Folder",
+                children: const [
+                  Text("Select Folder",
                       style: TextStyle(
                           color: Colors.black,
                           fontSize: 15,
                           fontWeight: FontWeight.w600)),
-                  const Text("Show files from folder",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 15,
-                      ))
+                  Text("Show files from folder",
+                      style: TextStyle(color: Colors.black, fontSize: 15)),
                 ],
               ),
             ],
@@ -640,10 +622,8 @@ Widget buildFolderSelectionSheet({
         Divider(color: Colors.grey.shade400, height: 0.1),
         Expanded(
           child: ListView.separated(
-            separatorBuilder: (context, index) => const Divider(
-              color: Colors.black26,
-              height: 0.1,
-            ),
+            separatorBuilder: (context, index) =>
+                const Divider(color: Colors.black26, height: 0.1),
             itemCount: folderNames.length,
             itemBuilder: (context, index) {
               String folderName = folderNames[index];
@@ -675,72 +655,62 @@ Widget buildFolderSelectionSheet({
                             ? Colors.blue.shade700
                             : Colors.black87),
                   ),
-                  subtitle: Builder(
-                    builder: (context) {
-                      int fileCount;
-                      String storageType = "";
+                  subtitle: Builder(builder: (context) {
+                    int fileCount;
+                    String storageType = "";
 
-                      if (folderName == "All files") {
-                        fileCount = allFiles.length;
-                      } else if (folderName.split('/').last == '0') {
-                        // Internal Storage - Count only files directly in /storage/emulated/0
-                        fileCount = folders['/storage/emulated/0']?.where((file) {
-                              // Check if the file's parent directory is exactly /storage/emulated/0
-                              return file.parent.path == '/storage/emulated/0';
-                            }).length ??
-                            0;
-                        storageType = "Internal Storage";
-                      } else if (folderName.split('/').last.contains(
-                          RegExp(r'^[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}$'))) {
-                        // SD Card - Count only files directly in the SD card root
-                        final sdCardRootPath = folderName; // The folderName itself is the root path
-                        fileCount = folders[sdCardRootPath]?.where((file) {
-                              // Check if the file's parent directory is exactly the SD card root path
-                              return file.parent.path == sdCardRootPath;
-                            }).length ??
-                            0;
-                        storageType = "SD Card";
-                      } else {
-                        // For other folders, count all files within that specific folder
-                        fileCount = folders[folderName]?.where((file) {
-                              return file.parent.path == folderName;
-                            }).length ?? 0;
-                        storageType =
-                            CustomGallerySetting().getStorageType(folderName);  // Get storage type
-                      }
+                    if (folderName == "All files") {
+                      fileCount = allFiles.length;
+                    } else if (folderName.split('/').last == '0') {
+                      fileCount = folders['/storage/emulated/0']
+                              ?.where((file) =>
+                                  file.parent.path == '/storage/emulated/0')
+                              .length ??
+                          0;
+                      storageType = "Internal Storage";
+                    } else if (folderName
+                        .split('/')
+                        .last
+                        .contains(RegExp(r'^[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}$'))) {
+                      final sdCardRootPath = folderName;
+                      fileCount = folders[sdCardRootPath]
+                              ?.where(
+                                  (file) => file.parent.path == sdCardRootPath)
+                              .length ??
+                          0;
+                      storageType = "SD Card";
+                    } else {
+                      fileCount = folders[folderName]
+                              ?.where((file) => file.parent.path == folderName)
+                              .length ??
+                          0;
+                      storageType =
+                          CustomGallerySetting().getStorageType(folderName);
+                    }
 
-                      String subtitleText = "$fileCount files";
-                      if (storageType.isNotEmpty && folderName != "All files") {
-                        subtitleText += " - $storageType";
-                      }
+                    String subtitleText = "$fileCount files";
+                    if (storageType.isNotEmpty && folderName != "All files") {
+                      subtitleText += " - $storageType";
+                    }
 
-                      return Text(
-                        subtitleText,
+                    return Text(subtitleText,
                         style: TextStyle(
-                          color: selectedFolder == folderName
-                              ? Colors.blue.shade700
-                              : Colors.black87,
-                        ),
-                      );
-                    },
-                  ),
+                            color: selectedFolder == folderName
+                                ? Colors.blue.shade700
+                                : Colors.black87));
+                  }),
                   value: folderName,
                   groupValue: selectedFolder,
                   onChanged: (value) {
                     if (value != null) {
-                      // Filter files based on current file type and selected folder
-                      // Use settings.getFilteredFiles
-                      // final filteredFiles = settings.getFilteredFiles(
-                      // Use CustomGallerySetting.getFilteredFiles if it's static, or create an instance
-                      // For example, if it's static:
                       final filteredFiles = fileFetchSetting.getFilteredFiles(
                         allFiles: allFiles,
                         folderPath: value == "0"
-                            ? "/storage/emulated/0" // Internal storage home
-                            : RegExp(r'^[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}$')
+                            ? "/storage/emulated/0"
+                            : (RegExp(r'^[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}$')
                                     .hasMatch(value.split('/').last)
-                                ? value // SD Card root path (filtered for SD Card home)
-                                : value, // Regular folder path
+                                ? value
+                                : value),
                         fileType: selectedFileType,
                       );
 

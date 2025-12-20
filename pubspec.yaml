@@ -67,6 +67,7 @@ dependencies:
   # Read more about this package at https://pub.dev/packages/get
   signature: ^5.5.0
   crypto: ^3.0.3
+  http: ^1.2.3
   intl: ^0.20.2
   pdf_render: ^1.4.12
   flutter_pdfview: ^1.4.1

@@ -9,9 +9,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:ui' as ui;
 import 'package:pdf_render/pdf_render.dart';
+import 'package:get/get.dart';
 class CustomGallerySetting {
 // Allowed File Extensions
-  List<String> allowedExtensions = [
+  RxList<String> allowedExtensions = [
     "pdf",
     "doc",
     "docx",
@@ -20,7 +21,7 @@ class CustomGallerySetting {
     "ppt",
     "pptx",
     "odt"
-  ];
+  ].obs;
 
 // ✅ Request Storage Permission for Android 10, 11, 12, 13+
   Future<bool> requestStoragePermission() async {
@@ -153,14 +154,12 @@ class CustomGallerySetting {
     }
   }
   // ✅ Add / Remove file from Import List
-  void toggleFileSelection(File file,List importFiles, setState, ScrollController _scrollController) {
-    setState(() {
+  void toggleFileSelection(File file,RxList importFiles, setState, ScrollController _scrollController) {
       if (importFiles.contains(file)) {
         importFiles.remove(file);
       } else {
         importFiles.add(file);
       }
-    });
 
     // ✅ Scroll to the end after UI updates
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -600,7 +599,7 @@ class CustomGallerySetting {
 
 // ✅ Fetch Files from System File Manager
   Future<void> pickFilesFromSystemWithAutoFolder(setState, files, context) async {
-    List<String> allowedExtensions = [
+    RxList<String> allowedExtensions = [
       "pdf",
       "doc",
       "docx",
@@ -609,7 +608,7 @@ class CustomGallerySetting {
       "ppt",
       "pptx",
       "odt"
-    ];
+    ].obs;
 
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
