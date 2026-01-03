@@ -5,6 +5,7 @@ import 'package:sqflite/sqflite.dart';
 class DbHelper {
   /// Singleton
   DbHelper._();
+
   static final DbHelper instance = DbHelper._();
 
   static const String studentTable = 'students';
@@ -58,6 +59,7 @@ class DbHelper {
         isPresent INTEGER
       )
     ''');
+
     ///Holiday Table
     await db.execute('''
     CREATE TABLE holidays(
@@ -69,9 +71,7 @@ class DbHelper {
 
   /// ================= DATABASE MIGRATION =================
 
-  Future<void> _onUpgrade(
-      Database db, int oldVersion, int newVersion) async {
-
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     // Old versions support
     if (oldVersion < 2) {
       await db.execute(
@@ -111,7 +111,6 @@ class DbHelper {
     )
   ''');
     }
-
   }
 
   /// ================= STUDENT CRUD =================
@@ -273,7 +272,6 @@ class DbHelper {
     return {'present': present, 'absent': absent};
   }
 
-
   /// ================= MONTHLY ATTENDANCE SUMMARY =================
   Future<Map<String, dynamic>> getMonthlyAttendanceSummary({
     required int studentId,
@@ -304,11 +302,7 @@ class DbHelper {
     WHERE studentId = ?
     AND isPresent = 1
     AND date BETWEEN ? AND ?
-  ''', [
-      studentId,
-      startDate.toIso8601String(),
-      endDate.toIso8601String()
-    ]);
+  ''', [studentId, startDate.toIso8601String(), endDate.toIso8601String()]);
 
     int presentDays = Sqflite.firstIntValue(presentResult) ?? 0;
 
@@ -317,21 +311,28 @@ class DbHelper {
     SELECT COUNT(*) as total
     FROM holidays
     WHERE date BETWEEN ? AND ?
-  ''', [
-      startDate.toIso8601String(),
-      endDate.toIso8601String()
-    ]);
+  ''', [startDate.toIso8601String(), endDate.toIso8601String()]);
 
     int holidayCount = Sqflite.firstIntValue(holidayResult) ?? 0;
 
     /// Working days calculation
     int workingDays = totalDays - (sundayCount + holidayCount);
-    int absentDays = workingDays - presentDays;
 
-    double percentage = workingDays == 0
-        ? 0
-        : (presentDays / workingDays) * 100;
+    /// Count Absent Days from DB
+    final absentResult = await db.rawQuery('''
+    SELECT COUNT(*) as absent
+    FROM $attendanceTable
+    WHERE studentId = ?
+    AND isPresent = 0
+    AND date BETWEEN ? AND ?
+  ''', [studentId, startDate.toIso8601String(), endDate.toIso8601String()]);
 
+    int absentDays = Sqflite.firstIntValue(absentResult) ?? 0;
+
+    double percentage =
+        workingDays == 0 ? 0 : (presentDays / workingDays) * 100;
+
+    ///Return summary map From Database to Attendance Summary Screen
     return {
       'totalDays': totalDays,
       'sundays': sundayCount,
@@ -342,7 +343,6 @@ class DbHelper {
       'percentage': percentage.toStringAsFixed(2),
     };
   }
-
 
   ///-------------------------------- INSERT HOLIDAY  -------------------------------
   Future<int> addHoliday({
@@ -356,4 +356,16 @@ class DbHelper {
     });
   }
 
+  //-------------------------------- GET HOLIDAY  -------------------------------//
+  Future<List<Map<String, dynamic>>> getHolidays() async {
+    final db = await getDB();
+    return db.query('holidays');
+  }
+
+  //-------------------------------- DELETE HOLIDAY  -------------------------------//
+  Future<bool> deleteHolidays(int id) async {
+    final db = await getDB();
+    final count = await db.delete('holidays', where: 'id=?', whereArgs: [id]);
+    return count > 0;
+  }
 }

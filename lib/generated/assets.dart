@@ -85,6 +85,7 @@ class Assets {
   static const String settingsCustomGallerySetting = 'lib/customGallery/settings/customGallerySetting.dart';
   static const String settingsFileFetchSetting = 'lib/customGallery/settings/fileFetchSetting.dart';
   static const String studentManagementMain = 'lib/StudentManagement/main.dart';
+  static const String textTovoiceTextToVoice = 'lib/StudentManagement/textTovoice/textToVoice.dart';
   static const String uiComponentsUiUtility = 'lib/FileManagement/uiComponents/uiUtility.dart';
   static const String uiCustomGalleryUi = 'lib/customGallery/ui/customGalleryUi.dart';
   static const String uiCustomGalleryUiHelper = 'lib/customGallery/ui/customGalleryUiHelper.dart';

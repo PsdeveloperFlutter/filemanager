@@ -2,14 +2,16 @@ import 'dart:io';
 
 import 'package:filemanager/StudentManagement/screens/detailsStudentScreen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
 import '../db/db_helper.dart';
 import '../provider/auth_provider.dart';
+import '../textTovoice/textToVoice.dart';
 import 'UiHelper.dart';
+import 'addHolidayScreen.dart';
 import 'attendanceHistory.dart';
-import 'settingScreen.dart';
 
 /// ================= CONTROLLERS =================
 
@@ -33,270 +35,439 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  late FlutterTts futureTts;
+
   @override
   void initState() {
     super.initState();
+    futureTts = FlutterTts();
     Future.microtask(() {
+      context.read<AuthProviders>().loadProfileImage();
       context.read<AuthProviders>().fetchStudentData().then((_) {
         context.read<AuthProviders>().fetchUserSignUpData();
+        speakWelcomeMessage(context, futureTts);
       });
     });
   }
 
   @override
+  void dispose() {
+    futureTts.stop();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      drawer: Drawer(
-          backgroundColor: Colors.white,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              UserAccountsDrawerHeader(
-                accountName: Text(
-                  context.read<AuthProviders>().userSignUpData.isNotEmpty
-                      ? context.read<AuthProviders>().userSignUpData[0]
-                              ['name'] ??
-                          ''
-                      : '',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                accountEmail: Text(
-                  context.read<AuthProviders>().userSignUpData.isNotEmpty
-                      ? context.read<AuthProviders>().userSignUpData[0]
-                              ['email'] ??
-                          ''
-                      : '',
-                ),
-                currentAccountPicture: const CircleAvatar(
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.person, color: Colors.blue),
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.lock),
-                title: const Text('Password'),
-                subtitle: Text(
-                  context
-                          .read<AuthProviders>()
-                          .userSignUpData[0]['password']
-                          .isNotEmpty
-                      ? context
-                          .read<AuthProviders>()
-                          .userSignUpData[0]['password']
-                          .toString()
-                          .replaceAll(RegExp(r'.'), '*')
-                      : '',
-                ),
-              ),
-              SizedBox(height: MediaQuery.of(context).size.height * 0.50),
-              Center(
-                child: Text(
-                    "Developed by Priyanshu Satija \n© 2025 All Rights Reserved",
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.black,
-                    )),
-              ),
-            ],
-          )),
-      appBar: AppBar(
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => SettingsScreen()),
-              );
-            },
-          ),
-        ],
-        backgroundColor: Colors.blue,
-        title: const Text("Home Screen", style: TextStyle(color: Colors.white)),
-      ),
-
-      /// ADD BUTTON
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.blue,
-        onPressed: () {
-          clearControllers(
-            nameController,
-            classController,
-            rollNoController,
-            ageController,
-            phoneController,
-            emailController,
-            descriptionController,
-          );
-          context.read<AuthProviders>().isUpdating = false;
-          bottomSheetItem(context);
-        },
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.white, Color(0xffabfff0)],
-          ),
-        ),
-        child: Column(
-          children: [
-            /// ================= SEARCH BAR =================
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: TextField(
-                controller: searchController,
-                onChanged: (value) {
-                  context.read<AuthProviders>().searchStudent(value);
-                },
-                decoration: InputDecoration(
-                  hintText: "Search by name, class or rollno etc",
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
+    return SafeArea(
+      child: Scaffold(
+        drawer: Drawer(
+            backgroundColor: Colors.white,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  UserAccountsDrawerHeader(
+                    accountName: Text(
+                      context.read<AuthProviders>().userSignUpData.isNotEmpty
+                          ? context.read<AuthProviders>().userSignUpData[0]
+                                  ['name'] ??
+                              ''
+                          : '',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    accountEmail: Text(
+                      context.read<AuthProviders>().userSignUpData.isNotEmpty
+                          ? context.read<AuthProviders>().userSignUpData[0]
+                                  ['email'] ??
+                              ''
+                          : '',
+                    ),
+                    currentAccountPicture: GestureDetector(
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          builder: (_) => Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.camera_alt),
+                                title: const Text("Camera"),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  context
+                                      .read<AuthProviders>()
+                                      .pickProfileFromCamera();
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.photo),
+                                title: const Text("Gallery"),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  context
+                                      .read<AuthProviders>()
+                                      .pickProfileFromGallery();
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      child: Consumer<AuthProviders>(
+                        builder: (context, provider, _) {
+                          return CircleAvatar(
+                            backgroundColor: Colors.white,
+                            radius: 30,
+                            backgroundImage: provider.profileImage != null
+                                ? FileImage(provider.profileImage!)
+                                : null,
+                            child: provider.profileImage == null
+                                ? const Icon(Icons.person, color: Colors.blue)
+                                : null,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  Container(
+                    margin:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.orange,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.lock_outline,
+                          color: Colors.white,
+                        ),
+                      ),
+                      title: const Text(
+                        "Password",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                      subtitle: Text(
+                        context.read<AuthProviders>().userSignUpData.isNotEmpty
+                            ? context
+                                .read<AuthProviders>()
+                                .userSignUpData[0]['password']
+                                .toString()
+                                .replaceAll(RegExp(r'.'), '•')
+                            : '',
+                        style: const TextStyle(
+                          letterSpacing: 2,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  InkWell(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => AddHolidayScreen()),
+                      );
+                    },
+                    child: Container(
+                      margin:
+                          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.event_available,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Text(
+                              "Add Holiday",
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const Icon(Icons.arrow_forward_ios, size: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.40),
+                  Center(
+                    child: Text(
+                        "Developed by Priyanshu Satija \n© 2025 All Rights Reserved",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.black,
+                        )),
+                  ),
+                ],
+              ),
+            )),
+        appBar: AppBar(
+          backgroundColor: Colors.blue,
+          title: const Text("Home Screen", style: TextStyle(color: Colors.white)),
+        ),
+      
+        /// ADD BUTTON
+        floatingActionButton: FloatingActionButton(
+          backgroundColor: Colors.blue,
+          onPressed: () {
+            clearControllers(
+              nameController,
+              classController,
+              rollNoController,
+              ageController,
+              phoneController,
+              emailController,
+              descriptionController,
+            );
+            context.read<AuthProviders>().isUpdating = false;
+            bottomSheetItem(context);
+          },
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
+      
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.white, Color(0xffabfff0)],
+            ),
+          ),
+          child: Column(
+            children: [
+              /// ================= SEARCH BAR =================
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: TextField(
+                  controller: searchController,
+                  onChanged: (value) {
+                    context.read<AuthProviders>().searchStudent(value);
+                  },
+                  decoration: InputDecoration(
+                    hintText: "Search by name, class or rollno etc",
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
               ),
-            ),
-
-            /// ================= STUDENT LIST =================
-            Expanded(
-              child: Consumer<AuthProviders>(
-                builder: (context, provider, child) {
-                  if (provider.filteredStudentData.isEmpty) {
-                    return const Center(child: Text("No Students Found"));
-                  }
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: provider.filteredStudentData.length,
-                    itemBuilder: (context, index) {
-                      final student = provider.filteredStudentData[index];
-
-                      return Card(
-                        elevation: 3,
-                        margin: const EdgeInsets.only(bottom: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(context,
-                                MaterialPageRoute(builder: (context) {
-                              return detailsScreen(student: {
-                                'name': student.name,
-                                'roll': student.rollno,
-                                'age': student.age,
-                                'className': student.className,
-                                'email': student.email,
-                                'phone': student.phone,
-                                'photo': student.photo,
-                                'description': student.description,
-                              });
-                            }));
-                          },
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              radius: 25,
-                              backgroundImage: (student.photo != null &&
-                                      student.photo!.isNotEmpty)
-                                  ? FileImage(File(student.photo!))
-                                  : null,
-                              backgroundColor: Colors.blue,
-                            ),
-                            title: Text(
-                              student.name,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Column(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Class: ${student.className}\nRoll No: ${student.rollno}",
+      
+              /// ================= STUDENT LIST =================
+              /// Displays all students with profile, basic info and quick actions
+              Expanded(
+                child: Consumer<AuthProviders>(
+                  builder: (context, provider, child) {
+      
+                    /// Show loader while data is loading
+                    if (provider.filteredStudentData.isEmpty) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+      
+                    return ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      itemCount: provider.filteredStudentData.length,
+                      itemBuilder: (context, index) {
+                        final student = provider.filteredStudentData[index];
+      
+                        return Card(
+                          elevation: 4,
+                          margin: const EdgeInsets.only(bottom: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+      
+                          /// Tap whole card to open student details screen
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => detailsScreen(
+                                    student: {
+                                      'name': student.name,
+                                      'roll': student.rollno,
+                                      'age': student.age,
+                                      'className': student.className,
+                                      'email': student.email,
+                                      'phone': student.phone,
+                                      'photo': student.photo,
+                                      'description': student.description,
+                                    },
+                                  ),
                                 ),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    /// EDIT STUDENT
-                                    IconButton(
-                                      icon: const Icon(Icons.edit,
-                                          color: Colors.green),
-                                      onPressed: () {
-                                        nameController.text = student.name;
-                                        classController.text =
-                                            student.className;
-                                        rollNoController.text =
-                                            student.rollno.toString();
-                                        ageController.text =
-                                            student.age.toString();
-                                        phoneController.text = student.phone;
-                                        emailController.text = student.email;
-
-                                        // ✅ NEW: Set description while editing
-                                        descriptionController.text =
-                                            student.description ?? '';
-
-                                        provider.isUpdating = true;
-                                        provider.updatingStudentId = student.id;
-
-                                        bottomSheetItem(context);
-                                      },
+                              );
+                            },
+      
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+      
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+      
+                                  /// ================= STUDENT PROFILE IMAGE =================
+                                  CircleAvatar(
+                                    radius: 30,
+                                    backgroundColor: Colors.blue.shade100,
+                                    backgroundImage: (student.photo != null &&
+                                        student.photo!.isNotEmpty)
+                                        ? FileImage(File(student.photo!))
+                                        : null,
+                                    child: (student.photo == null ||
+                                        student.photo!.isEmpty)
+                                        ? const Icon(Icons.person,
+                                        size: 30, color: Colors.blue)
+                                        : null,
+                                  ),
+      
+                                  const SizedBox(width: 12),
+      
+                                  /// ================= STUDENT BASIC INFO =================
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+      
+                                        /// Student Name
+                                        Text(
+                                          student.name,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+      
+                                        const SizedBox(height: 4),
+      
+                                        /// Class & Roll No
+                                        Text(
+                                          "Class: ${student.className} • Roll No: ${student.rollno}",
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.grey.shade700,
+                                          ),
+                                        ),
+      
+                                        const SizedBox(height: 8),
+      
+                                        /// ================= QUICK ACTION BUTTONS =================
+                                        Row(
+                                          children: [
+      
+                                            /// Edit Student
+                                            IconButton(
+                                              tooltip: "Edit Student",
+                                              icon: const Icon(Icons.edit,
+                                                  color: Colors.green),
+                                              onPressed: () {
+                                                nameController.text = student.name;
+                                                classController.text = student.className;
+                                                rollNoController.text =
+                                                    student.rollno.toString();
+                                                ageController.text =
+                                                    student.age.toString();
+                                                phoneController.text = student.phone;
+                                                emailController.text = student.email;
+                                                descriptionController.text =
+                                                    student.description ?? '';
+      
+                                                provider.isUpdating = true;
+                                                provider.updatingStudentId = student.id;
+      
+                                                bottomSheetItem(context);
+                                              },
+                                            ),
+                                            /// Mark Attendance
+                                            IconButton(
+                                              tooltip: "Mark Attendance",
+                                              icon: const Icon(Icons.check_circle_outline,
+                                                  color: Colors.blue),
+                                              onPressed: () {
+                                                bottomSheetAttendance(
+                                                    context, student.id, student.name);
+                                              },
+                                            ),
+      
+                                            /// View Attendance History
+                                            IconButton(
+                                              tooltip: "Attendance History",
+                                              icon: const Icon(Icons.history,
+                                                  color: Colors.deepPurple),
+                                              onPressed: () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        AttendanceHistoryScreen(
+                                                          studentId: student.id,
+                                                          studentName: student.name,
+                                                          studentImage: student.photo,
+                                                        ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ],
+                                        )
+                                      ],
                                     ),
-
-                                    /// DELETE STUDENT
-                                    IconButton(
-                                      icon: const Icon(Icons.delete,
-                                          color: Colors.red),
-                                      onPressed: () async {
-                                        confirmDeleteOfStudentData(
-                                            context, student, provider);
-                                      },
-                                    ),
-                                    IconButton(
-                                      icon: Icon(Icons.check_circle_outline,
-                                          color: Colors.blue),
-                                      tooltip: 'Mark Attendance / View',
-                                      onPressed: () {
-                                        bottomSheetAttendance(
-                                            context, student.id, student.name);
-                                        // Optionally: navigate to history
-                                      },
-                                    ),
-                                    IconButton(
-                                      onPressed: () {
-                                        Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (_) =>
-                                                    AttendanceHistoryScreen(
-                                                        studentId: student.id,
-                                                        studentName:
-                                                            student.name)));
-                                      },
-                                      icon: Icon(Icons.add_alert),
-                                    )
-                                  ],
-                                ),
-                              ],
+                                  ),
+                                  /// Delete Student
+                                  IconButton(
+                                    tooltip: "Delete Student",
+                                    icon: const Icon(Icons.delete,
+                                        color: Colors.red),
+                                    onPressed: () {
+                                      confirmDeleteOfStudentData(
+                                          context, student, provider);
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  );
-                },
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+      
+            ],
+          ),
         ),
       ),
     );
@@ -336,8 +507,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 12),
                 ListTile(
                   leading: const Icon(Icons.calendar_today),
-                title: Text("Date: ${selectedDate.toIso8601String().split('T')[0]}", style: TextStyle(color: Colors.black),),
-          onTap: () async {
+                  title: Text(
+                    "Date: ${selectedDate.toIso8601String().split('T')[0]}",
+                    style: TextStyle(color: Colors.black),
+                  ),
+                  onTap: () async {
                     DateTime? picked = await showDatePicker(
                       context: context,
                       initialDate: selectedDate,

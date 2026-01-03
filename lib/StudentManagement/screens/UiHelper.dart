@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../db/db_helper.dart';
 
@@ -57,11 +58,11 @@ confirmDeleteOfStudentData(BuildContext context, student, provider) async {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
+          child:  Text('Cancel',style: GoogleFonts.habibi()),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          child: Text('Delete', style:  GoogleFonts.habibi(color: Colors.red)),
         ),
       ],
     ),
@@ -70,7 +71,7 @@ confirmDeleteOfStudentData(BuildContext context, student, provider) async {
   if (confirm == true) {
     provider.deleteStudent(student.id);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Student deleted successfully')),
+      SnackBar(content: Text('Student deleted successfully',style: GoogleFonts.habibi())),
     );
   }
 }
@@ -83,16 +84,16 @@ confirmDeleteOfAttendanceData(
   showDialog<bool>(
   context: context,
   builder: (context) => AlertDialog(
-  title: const Text('Confirm delete'),
-  content: const Text('Are you sure you want to delete this attendance record?'),
+  title: Text('Confirm delete',style: GoogleFonts.habibi()),
+  content: Text('Are you sure you want to delete this attendance record?',style: GoogleFonts.habibi()),
   actions: [
   TextButton(
   onPressed: () => Navigator.of(context).pop(false),
-  child: const Text('Cancel'),
+  child:  Text('Cancel',style: GoogleFonts.habibi()),
   ),
   TextButton(
   onPressed: () => Navigator.of(context).pop(true),
-  child: const Text('Delete'),
+  child:  Text('Delete',style: GoogleFonts.habibi()),
   ),
   ],
   ),
@@ -100,11 +101,61 @@ confirmDeleteOfAttendanceData(
   if (confirmed == true) {
   DbHelper.instance.deleteAttendance(record['id'] as int).then((value) {
   ScaffoldMessenger.of(context).showSnackBar(
-  const SnackBar(content: Text("Attendance record deleted")),
+  SnackBar(content: Text("Attendance record deleted",style: GoogleFonts.habibi())),
   );
   loadAttendance();
   });
   }
   });
 
+}
+void showSortDialog(
+    BuildContext context,
+    List<Map<String, dynamic>> attendanceList,
+    Function(List<Map<String, dynamic>>) onSorted, /// Callback for Sorted List
+    ) {
+  showDialog(
+    context: context,
+    barrierDismissible: true,
+    builder: (BuildContext dialogContext) {
+      return AlertDialog(
+        title: Text('Sort Attendance',style: GoogleFonts.habibi()),
+        content:  Text('Choose sorting option',style: GoogleFonts.habibi()),
+        actions: [
+
+          /// PRESENT FIRST
+          TextButton(
+            onPressed: () {
+              final sorted =
+              List<Map<String, dynamic>>.from(attendanceList);
+
+              sorted.sort((a, b) =>
+                  (b['isPresent'] as int)
+                      .compareTo(a['isPresent'] as int));
+
+              Navigator.pop(dialogContext);
+              onSorted(sorted);
+            },
+            child:  Text('Present First',style: GoogleFonts.habibi()),
+          ),
+
+          /// ABSENT FIRST
+          TextButton(
+            onPressed: () {
+              final sorted =
+              List<Map<String, dynamic>>.from(attendanceList);
+
+              sorted.sort((a, b) =>
+                  (a['isPresent'] as int)
+                      .compareTo(b['isPresent'] as int));
+
+              Navigator.pop(dialogContext);
+              onSorted(sorted);
+            },
+            child: Text('Absent First',style: GoogleFonts.habibi(),),
+          ),
+        ],
+      );
+    },
+  );
 }

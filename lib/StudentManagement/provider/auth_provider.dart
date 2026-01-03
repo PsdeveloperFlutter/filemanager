@@ -16,6 +16,9 @@ class AuthProviders with ChangeNotifier {
   bool isUpdating = false;
   int? updatingStudentId;
   File?studentImage;
+  File? profileImage;  ///Profile Image
+  String? profileImagePath;///Profile Image Path
+
   final ImagePicker _picker=ImagePicker();
   ThemeMode _themeMode = ThemeMode.system;
   ThemeMode get themeMode => _themeMode;
@@ -212,7 +215,7 @@ class AuthProviders with ChangeNotifier {
 
       String? storedEmail = prefs.getString('email');
       String? storedPassword = prefs.getString('password');
-
+       print("Stored Email: $storedEmail, Stored Password: $storedPassword \n");
       if (storedEmail == email && storedPassword == password) {
         _isLoggedIn = true;
         await prefs.setBool('isLoggedIn', true);
@@ -233,4 +236,44 @@ class AuthProviders with ChangeNotifier {
     await prefs.setBool('isLoggedIn', false);
     notifyListeners();
   }
+
+  Future<void> pickProfileFromCamera() async {
+    final XFile? image =
+    await _picker.pickImage(source: ImageSource.camera);
+
+    if (image != null) {
+      profileImage = File(image.path);
+      await saveProfileImagePath(image.path);
+      notifyListeners();
+    }
+  }
+
+  Future<void> pickProfileFromGallery() async {
+    final XFile? image =
+    await _picker.pickImage(source: ImageSource.gallery);
+
+    if (image != null) {
+      profileImage = File(image.path);
+      await saveProfileImagePath(image.path);
+      notifyListeners();
+    }
+  }
+   ///SaveProfileImageIntoPath
+  Future<void> saveProfileImagePath(String path) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('profile_image', path);
+  }
+  ///GetProfileImageFromPath
+  Future<void> loadProfileImage() async {
+    final prefs = await SharedPreferences.getInstance();
+    profileImagePath = prefs.getString('profile_image');
+
+    if (profileImagePath != null) {
+      profileImage = File(profileImagePath!);
+    }
+    notifyListeners();
+  }
+
+
+
 }
